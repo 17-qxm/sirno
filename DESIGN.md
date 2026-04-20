@@ -20,7 +20,19 @@ Codebases accumulate knowledge that does not appear in their syntax: invariants 
 
 In its absence, knowledge migrates into comments, commit messages, and design documents that are disconnected from each other and from the code they describe. A change to code or to a recorded claim has no mechanism to identify which other claims must be re-examined. Consistency between knowledge and code is unverifiable.
 
-Sirno provides the structured representation. Entries name individual claims. Dependencies record causal relationships among them. Groundings bind entries to code locations. Obligations make the effect of a mutation explicit and propagate it to dependent claims. The coherence invariant defines when the resulting graph state is self-consistent.
+In response, Sirno provides the structured representation. Entries name individual claims. Dependencies record causal relationships among them. Groundings bind entries to code locations. Obligations make the effect of a mutation explicit and propagate it to dependent claims. Coherence then states when the graph and repository view agree after a change.
+
+---
+
+## Components
+
+Sirno is defined above two smaller components:
+
+- `eter`, which provides immutable versioned graph storage
+- `mosaika`, which provides anti-drift codebase alignment through
+  delimiter-based analysis of repository text
+
+Sirno defines the knowledge semantics that use those components.
 
 ---
 
@@ -28,76 +40,182 @@ Sirno provides the structured representation. Entries name individual claims. De
 
 ### Entry
 
-An entry is the primitive unit of knowledge in Sirno. Each entry carries:
+An entry is the primitive object in Sirno. An entry carries:
 
-- An *id* is a unique, agent-assigned nominal identifier.
-- A *name* is an optional human-readable concept name.
-- A *description* concisely summarizes the entry's claim.
-- An *explanation* gives a full account of the entry's content, rationale, and context.
+- a nominal identifier
+- an optional human-readable name
+- a concise description
+- a full explanation
 
-An entry represents a single claim about the codebase: an invariant, a design decision, a module's purpose, a data representation choice, or any other isolable piece of understanding. Entries are self-contained in the sense that their explanation is intelligible on its own, though their full significance may involve their position in the graph.
+An entry states one claim about the codebase. The claim may describe an
+invariant, a design decision, a representation choice, a module purpose, or
+another isolated piece of understanding.
 
-Entries are the only durable owner of dedicated explanatory text in the model. When another concept needs prose, it refers to an entry. Non-entry strings are reserved for operational syntax such as search patterns.
+Entries are the only durable owner of explanatory prose in Sirno. When Sirno
+needs narrative text for another object, it refers to an entry.
 
-In the Sirno data representation, an entry is stored as one Markdown file in the data directory. The header contains the entry id, the optional human-readable name, the concise description, and the graph metadata owned by the entry. The body contains the full explanation.
+An entry explanation may link to other entries. These links are navigational
+references in prose. They do not create propagation edges.
 
-### Edge
+### Dependency
 
-Edges connect entries. Every edge is one of two kinds:
+A dependency `X -> Y` states that `Y` must be re-examined when the content of
+`X` changes.
 
-- A *dependency* is a directed edge X → Y asserting that Y's validity is contingent on X's content. If X changes, Y must be re-examined. Dependencies encode causal structure.
+Dependency direction is the direction of causal force. The source entry is the
+claim being depended upon. The target entry is the claim whose validity depends
+on the source.
 
-- An *affinity* is a directed edge between entries that share conceptual relevance. Affinities exist for navigation and epistemic context. They carry no causal force and generate no obligations.
-
-Either kind of edge may optionally refer to an additional entry that explains what the relation means. The attached entry is descriptive metadata. The edge kind and endpoints still determine the operational behavior.
-
-Affinity direction is a data-representation and traversal choice. It determines which entry owns the edge in the Sirno data representation and which adjacency list exposes it first. It does not introduce dependency propagation or any notion of logical consequence.
+A dependency may refer to an additional entry that explains what the dependency
+means. That entry is descriptive metadata. The operational semantics of the
+dependency are determined by the dependency endpoints.
 
 ### Grounding
 
-A grounding maps an entry to locations in the codebase. Groundings are the interpretation function from the abstract graph into concrete syntax. An entry may have zero or more groundings.
+A grounding binds an entry to repository text. The binding is stored as a
+Sirno grounding specification interpreted through `mosaika`.
 
-Sirno provides two grounding mechanisms:
+A grounding has three components:
 
-- *Grep* provides a set of search patterns (regular expressions, literal strings, glob patterns) that locate relevant code regions heuristically. Grep groundings are approximate: they may overapproximate or underapproximate the true set of relevant locations. They are useful for broad exploration and for entries whose relevance is diffuse across the codebase.
+- a source selection over files
+- one or more delimiter-based log transforms
+- a Sirno interpretation of the resulting regions
 
-- *Telescope* is an anchor-based mechanism that embeds entry identifiers directly into code comments (e.g., `// @sirno:entry-id`). A telescope grounding establishes a nominal binding between an entry and a precise code location. Telescope anchors survive refactoring as long as the comment moves with the code.
+Sirno uses three grounding interpretations.
 
-Telescope anchors support derived views:
+An anchor grounding is a one-delimiter region that marks the nominal presence of
+the entry in source text.
 
-- A *span* is the region between two anchors, or from an anchor to a scope boundary, providing block-level code views without fragile line references.
+A region grounding is a region associated with the entry for inspection,
+reflection, or actualization. It is not evidentiary by itself.
 
-- A *witness* is a telescope-grounded code region that serves as evidence for an entry's claim. During a rewrite session, an agent verifies that witnesses still substantiate their entries.
+A witness grounding is a region designated as evidence for the entry's claim.
 
-Grounding validation is stratified. Structural validation checks invariants expressible in the graph itself, such as anchor ownership. Repository validation checks supported grounding kinds against the codebase. A validator may report unsupported heuristic checks as warnings rather than commit blockers.
+Groundings are defined over repository artifacts in their textual form.
 
 ### Lifting
 
-Lifting is the inverse of grounding: it constructs or updates an entry from observed code. Where grounding interprets the abstract graph into concrete syntax, lifting abstracts concrete code back into the knowledge graph, creating new entries, revising descriptions, or adjusting dependencies based on what the codebase contains.
+Lifting is the abstraction from repository observations back into the Sirno
+graph.
 
-Lifting is the primary operation during reflection. An agent examines code (located via grep or telescope), determines what knowledge it embodies, and lifts that knowledge into the graph.
+Lifting consumes grounded repository regions and produces Sirno field writes. It
+may create entries, revise entry text, revise dependency egress, and revise
+grounding specifications.
+
+Lifting is the primary operation in reflection.
 
 ### Obligation
 
-An obligation is a proof burden generated when an entry is mutated. If entry X changes and a dependency X → Y exists, an obligation is created on Y: the claim that Y must be re-examined for consistency with the new X.
+An obligation is a proof burden created by a claim-bearing change.
 
-An obligation remains pending until an agent discharges it through confirmation, update, or justified deferral.
+A change is claim-bearing when it changes either:
+
+- the text of an entry
+- the dependency egress of an entry
+
+Grounding changes and lock-state changes are not claim-bearing. They change
+repository interpretation or authority. They do not change downstream validity
+by themselves.
+
+If a claim-bearing write changes entry `X`, every dependency `X -> Y` in the
+resulting graph creates an obligation on `Y`.
+
+### Lock
+
+A lock is a write-capability boundary on an entry.
+
+A locked entry may be read, grounded, and used during propagation. Changing its
+claim-bearing fields requires external approval.
+
+Locks protect entries with wide consequences, such as architectural decisions,
+global invariants, and externally promised guarantees.
+
+### Justification
+
+A justification is the review object for a proposed locked-entry change.
+
+It contains the proposed write together with an argument entry that explains the
+change. The rationale is an entry so that it remains part of the graph rather
+than transient review metadata.
 
 ### Coherence
 
-A graph state is coherent when every obligation has been discharged, every locked-entry mutation has received approval, and every grounding has been validated under the commit-time grounding validator. Coherence is the well-formedness invariant of the knowledge graph: the analogue of well-typedness for the system as a whole.
+A Sirno snapshot is coherent when all of the following hold:
+
+- every obligation induced by the write has been discharged
+- every locked-entry change has been approved
+- every grounding specification is valid under the `mosaika` analysis model
+- every required anchor and witness validates against the repository view used
+  for the write
+
+Coherence is the global well-formedness invariant of Sirno.
 
 ---
 
-## Sirno Data Representation
+## Storage Model
 
-A Sirno-managed project has a project root containing `Sirno.toml`. Together with the configured data directory, these files form the Sirno data representation. If the setting is absent, the data directory defaults to `.sirno` relative to the project root.
+Sirno is stored as an `eter` node schema.
 
-The Sirno data representation is the durable form of the current Sirno graph. The data directory is a flat directory of Markdown files. Each file represents one entry. The file stem is the entry id, so entry ids are serialized as portable single path segments rather than hierarchical paths. The layout is flat because entry ids are nominal: directory structure does not carry graph meaning.
+Every Sirno entry is an `eter` node. The entry identifier is the `NodeId`. A
+durable Sirno state is an `eter` snapshot identified by an `Eterator`.
 
-Each entry file in the Sirno data representation begins with a machine-readable JSON header followed by a Markdown body. The header stores only state with a unique ownership rule. Entry-local fields, groundings, and lock state are owned by the entry itself. A dependency `X → Y` is owned by `X`. An affinity `X ↝ Y` is also owned by `X`. The body stores the entry's explanation text.
+The logical Sirno fields are:
 
-The Sirno data representation is the ground truth for a Sirno project. The in-memory graph, sessions, patches, and obligations are operational views derived from it. If Sirno keeps caches or indexes, they are derived data and may be rebuilt from the Sirno data representation.
+- lifecycle
+- entry name
+- entry description
+- entry explanation
+- dependency egress
+- grounding specifications
+- lock state
+
+The lifecycle field is the `eter` lifecycle field. Sirno uses it to determine
+whether an entry exists at a snapshot.
+
+Sirno chooses non-reuse of entry identifiers. Once an identifier has existed,
+it remains reserved even after deletion. Nominal identity therefore persists
+across the whole graph history.
+
+Dependency egress is stored on the source entry. Reverse adjacency is derived
+state.
+
+Grounding specifications are stored as typed Sirno data compatible with the
+`mosaika` analysis model.
+
+Locks are stored on entries because authority is part of the graph state.
+
+History is `eter` history.
+
+---
+
+## Repository Semantics
+
+Sirno uses `mosaika` to define and validate grounded repository regions as part
+of codebase alignment.
+
+The grounding language is delimiter-based. A grounding identifies source files,
+declares delimiter-based log transforms, and interprets the resulting regions as
+anchors, regions, or witnesses.
+
+`mosaika` replacement actions belong to actualization tooling that rewrites
+repository text to satisfy entries. Sirno grounding uses the analysis side of
+`mosaika`.
+
+Grounding validation has three layers.
+
+The first layer is specification validity. The source selection, delimiters, and
+region interpretation must form a valid `mosaika` analysis specification.
+
+The second layer is repository analysis. The `mosaika` analysis must resolve the
+selected files and produce the required regions without ambiguity.
+
+The third layer is Sirno interpretation. Anchors must bind to the owning entry.
+Witnesses must remain evidentiary for the entry's claim. Required grounded
+regions must be present.
+
+Groundings are evaluated relative to a repository view. In a repository-backed
+deployment, that view is typically a checked-out tree plus any in-progress code
+changes owned by the active task.
 
 ---
 
@@ -105,96 +223,88 @@ The Sirno data representation is the ground truth for a Sirno project. The in-me
 
 ### Polarity
 
-When an agent works on an entry, it adopts a polarity:
+Sirno uses two reasoning polarities.
 
-- In *actualization*, the graph is treated as authoritative. The agent rewrites code to match the entry's content.
+In actualization, the graph is authoritative. Repository text is rewritten to
+satisfy the selected entries.
 
-- In *reflection*, the codebase is treated as authoritative. The agent updates the entry to match observed code.
+In reflection, the repository is authoritative. Repository observations are
+lifted back into the graph.
 
-Polarity is per-entry guidance to the agent, chosen based on the task at hand. Both polarities may coexist within a single session: an agent may reflect some entries while actualizing others. The system does not enforce polarity; it is a convention that structures the agent's reasoning about direction of truth.
-
-### Lock
-
-A lock is a write capability guard on an entry. A locked entry can be read and its obligations can be examined, but mutation requires external approval.
-
-Locks encode trust boundaries. They protect entries whose content has system-wide consequences (core invariants, architectural decisions, stability guarantees) from unreviewed modification.
-
-### Justification
-
-A justification is a record produced when an agent proposes a mutation to a locked entry. It contains the deferred mutation and an argument entry describing why the change is necessary.
-
-A justification is submitted to a reviewer, who grants or withholds approval. The deferred mutation materializes only upon approval.
-
-### Checkpoint
-
-A checkpoint is an immutable snapshot of the entire graph at a moment of coherence. Every checkpoint satisfies the coherence invariant. In a repository-backed deployment, a checkpoint is realized by a coherent snapshot of the Sirno data representation, typically through the host version-control history.
-
-### Patch
-
-A patch is the accumulated record of all proposed mutations during a session. It captures entry edits, entry creation, dependency and affinity changes, and grounding updates. A patch is a pending transaction: it describes the difference between the current Sirno data representation and the intended next checkpoint.
+Polarity changes the direction of reasoning. Dependency direction, lock rules,
+and storage semantics remain fixed.
 
 ### Session
 
-A session is the working interval between two checkpoints. It loads the current Sirno data representation into a mutable working graph. All mutations during the interval flow through the session, which applies each mutation to the working copy, records it in the patch, and generates obligations when entry content changes. The working state is visible only to the active session; other observers see the last checkpoint.
+A session is a client-side working interval rooted at one base `Eterator`.
 
-Only entry mutations (updates to an entry's name, description, or explanation, and entry removal) generate obligations. Structural mutations (edge changes, grounding attachments, lock state) do not. When an entry is removed, its dependents are captured before the removal deletes the associated edges.
+The session holds:
 
-The session tracks which entries have been examined during obligation discharge as a *visited set*. When a discharge generates obligations on an already-visited entry, the obligation is still created — the entry may need re-examination in a cycle — but the visited set allows the agent to detect re-entry and adjust its strategy. The session provides this state; it does not impose traversal order. The agent drives the iteration.
+- the base snapshot
+- the proposed Sirno field writes relative to that snapshot
+- the obligations induced by those writes
+- the repository view used for grounding validation
+- any pending justifications for locked entries
 
-### Discharge
-
-An agent discharges an obligation through one of four operations:
-
-- *Confirm*: the target entry remains valid. The obligation is marked discharged; the target is added to the visited set.
-
-- *Resolve*: the target entry requires an update. The update is applied through the normal mutation path, which may generate further obligations on its dependents. The obligation is marked discharged; the target is added to the visited set.
-
-- *Justify*: the target entry requires an update but is locked. The agent submits a justification. The obligation transitions to awaiting approval.
-
-- *Approve*: an external reviewer grants approval for a justified mutation. The deferred mutation is applied, generating further obligations as usual. The obligation is marked discharged; the target is added to the visited set. The lock is not rechecked — the approval is the authorization.
+The session is not a durable storage primitive. Durability begins when the
+session commits one `eter` write transaction and receives a new `Eterator`.
 
 ### Commit
 
-A patch is promoted to a new checkpoint (committed) when the resulting graph state is coherent.
+A commit is the `eter` write transaction that materializes the session's field
+writes.
 
-In practice this requires that all obligations induced by the patch's mutations have been discharged, every mutation to a locked entry has received reviewer approval, and every grounding in the resulting graph has been validated. The commit writes the resulting graph back to the Sirno data representation.
+The session computes the resulting Sirno state, validates coherence against the
+repository view, and then writes the accepted field rows. If the write
+succeeds, `eter` returns a new `Eterator`. That snapshot is the new durable
+Sirno state.
 
-The grounding validator is part of the commit context. A structural validator checks graph-internal invariants only. A repository validator additionally checks supported grounding kinds against the codebase.
+Sirno has one write boundary. Repository analysis occurs before the `eter`
+commit. Repository materialization, when actualization edits code, also occurs
+before the `eter` commit. The graph is committed only after the repository view
+and the graph view agree.
 
 ---
 
 ## Propagation Semantics
 
-When an entry X is mutated within a session:
+Propagation follows dependency edges in their declared direction.
 
-1. For each dependency edge X → Y, an obligation is generated on Y.
-2. The agent examines Y in context of the new X and the edge.
-3. If Y requires no change, the obligation is discharged.
-4. If Y is updated, the obligation is discharged and step 1 recurs with Y.
-5. If Y is locked, the agent produces a justification and the obligation remains pending until approval is granted and the update is applied.
+When a session stages a claim-bearing change to entry `X`, Sirno computes the
+dependency egress of `X` in the resulting graph. For each dependency `X -> Y`,
+Sirno creates an obligation on `Y`.
 
-Propagation follows dependency edges in their declared direction in both polarities. Reflection changes the source of truth: the agent starts from code observations, lifts them into entries, and then propagates obligations to downstream dependents in the same way as actualization.
+An obligation is discharged in one of three ways.
 
-For cyclic dependencies, the entries in a strongly connected component must be re-examined collectively. Obligations within a cycle are discharged as a group once the component reaches a consistent fixed point.
+Confirmation records that `Y` remains valid under the new upstream state.
+
+Revision records new field writes for `Y`. If that revision is claim-bearing,
+propagation continues from `Y`.
+
+Approval records that a previously justified change to a locked `Y` is
+accepted. The approved writes are then applied and propagated in the same way
+as any other revision.
+
+Cycles are handled at the level of strongly connected components. Every entry in
+the component must be re-examined against the same candidate state. The
+component is discharged only when its entries reach a fixed point.
 
 ---
 
-## Summary of Concepts
+## Boundary
 
-| Concept       | Role                                                   |
-| ------------- | ------------------------------------------------------ |
-| Entry         | Primitive knowledge unit with nominal identity         |
-| Dependency    | Directed causal edge; validity contingency             |
-| Affinity      | Directed navigational edge; epistemic context          |
-| Grounding     | Entry-to-code mapping (grep or telescope)              |
-| Lifting       | Code-to-entry abstraction; inverse of grounding        |
-| Witness       | Telescope-grounded evidence for an entry's claim       |
-| Obligation    | Proof burden from mutation, propagated along edges     |
-| Coherence     | Well-formedness invariant on the graph state           |
-| Polarity      | Per-entry direction-of-authority guidance              |
-| Lock          | Write capability guard requiring reviewer approval     |
-| Justification | Deferred locked-entry mutation plus its argument entry |
-| Checkpoint    | Immutable coherent snapshot of the full graph          |
-| Patch         | Pending transaction accumulating session mutations     |
-| Session       | Working interval between checkpoints                   |
-| Commit        | Promotion of a patch to a new checkpoint               |
+`eter` provides immutable typed graph storage. `mosaika` provides typed
+repository alignment over delimiter-defined textual regions.
+
+Sirno adds:
+
+- entries as nominal knowledge claims
+- dependency as the causal graph relation
+- grounding interpretation as anchors, regions, and witnesses
+- lifting from repository observations into graph writes
+- obligation propagation over dependency edges
+- locks and justifications for claim-bearing writes
+- coherence as a joint invariant over graph state and repository state
+
+Everything else belongs to `eter`, `mosaika`, or application-specific tooling
+built above them.

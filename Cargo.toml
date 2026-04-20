@@ -7,3 +7,5 @@ edition = "2024"
 smol_str = "0.3.6"
 thiserror = "2"
 tracing = "0.1"
+eter = { path = "../eter" }
+mosaika = { path = "../mosaika" }
