@@ -1,361 +1,312 @@
 # Sirno Methodology
 
-Sirno is a methodology for design-led software development with durable
-alignment between design, planning, and code.
+Sirno is a method for keeping design and implementation in conversation.
+It assumes that a project has one readable narrative,
+a store of compact named entries,
+and a codebase that can witness those entries.
 
-The method starts from a comprehensive `DESIGN.md`. It then elaborates that
-document into a graph of smaller design entries, grounds those entries to the
-codebase, and enforces re-examination when a local change affects other parts of
-the design. The result is a persistent blueprint that remains useful after the
-initial code generation step.
+The method is not automatic understanding.
+It is disciplined bookkeeping for people and agents who already intend to
+understand.
 
-The method uses three layers:
-
-- `DESIGN.md`, which states the whole design in one human-readable document
-- the Sirno design graph, which refines that design into structured entries and
-  relations
-- the codebase, which realizes the refined design in executable artifacts
-
-The design graph is the intermediate representation between the broad design
-document and the concrete codebase.
+Sirno should make the next design move easier to state,
+the next implementation move easier to justify,
+and the next review easier to ground in named project knowledge.
 
 ---
 
-## Motivation
+## What To Expect
 
-Project design usually begins in a form that is broad, coherent, and readable.
-As implementation proceeds, that design is fragmented across code, comments,
-issues, review threads, and planning sessions. The original design intent is
-still present, but it is no longer explicit, localizable, or propagatable.
+A Sirno-assisted project should not feel like a pile of notes.
+It should feel like a project whose design has handles.
 
-One-time code generation does not solve this problem. It can produce an initial
-codebase from a polished design document, but the resulting codebase is often a
-dead end from the perspective of design alignment. The generated code has no
-durable mechanism for recording which design commitments it realizes, which
-higher-level concepts it refines, or which neighboring decisions must be
-reconsidered when it changes.
+The user can point at the long narrative and ask for it to be lowered into
+entries.
+The user can point at entries and ask for code to realize them.
+The user can point at changed code and ask which entries should reflect the
+change.
+The user can ask for the long narrative to be raised from the current store.
 
-Sirno treats this gap as an intermediate-representation problem. `DESIGN.md`
-contains the whole design at document scale. The codebase contains the realized
-implementation at artifact scale. Between them sits a graph of entries that is
-small enough to manipulate locally and structured enough to preserve global
-design intent.
+Sirno supplies the shared structure for those requests.
+It maintains entry ids, metadata, relation fields, generated footers,
+storage conventions, and witness lookup.
+It lets humans, LLMs, skills, CLIs, MCP tools, and editors speak about the same
+objects without inventing a new map in every session.
 
----
-
-## Starting Point
-
-The starting point of the method is a project-level `DESIGN.md`.
-
-`DESIGN.md` is written first and polished until it reaches a stable statement of
-the project's major ideas, constraints, architecture, and agenda. It is not
-required to contain every implementation detail. It must contain the design at a
-level where refinement can begin without inventing the project direction during
-coding.
-
-An initial codebase may be generated from this design state. That generation
-step is a bootstrap step, not the whole method. The generated codebase becomes
-maintainable only when it is brought under the design graph and its entries.
-
-Sirno begins when the project is ready to move from whole-document design to
-structured refinement.
+Sirno does not decide whether a design is good.
+It does not prove that code satisfies an entry.
+It does not find design-code mismatch by itself.
+It makes the relevant objects easier to name, inspect, connect, and revise.
 
 ---
 
-## Core Artifacts
+## Keep One Monograph
 
-### DESIGN.md
+Every Sirno project has one `mono` surface.
+It is the configured long-form Markdown narrative,
+often `DESIGN.md`.
 
-`DESIGN.md` is the top-level design statement of the project. It is written for
-whole-project readability. Its job is to define the system, its major decisions,
-and its intended shape.
+The monograph is written for a reader who wants the project in one sitting.
+It may omit local details in a large project,
+but it should still describe the aim, intent, architecture,
+and important design choices as a coherent document.
 
-`DESIGN.md` is authoritative at document scale. It says what the project is.
+When a project has no Sirno store yet,
+the monograph may be the best statement of intent.
+When the store is established,
+the monograph becomes the raised narrative view of the store.
 
-### Entry
-
-An `Entry` is the text-oriented node of the design graph.
-
-An `Entry` is a Markdown file with metadata in its header and explanatory prose
-in its body. The body carries the actual design content. The header carries the
-structured data needed for graph behavior, refinement discipline, grounding, and
-obligation propagation.
-
-An `Entry` is smaller and tighter than `DESIGN.md`. It should state one claim,
-one concept, one refinement step, one implementation commitment, or one work
-item with a stable design meaning.
-
-### Design Graph
-
-The design graph is the persistent intermediate representation between
-`DESIGN.md` and the codebase.
-
-The graph organizes entries into a structure that supports:
-
-- refinement from broad design to local implementation detail
-- grounding from design intent to code regions
-- propagation from local changes to affected entries
-- persistent planning and review
-
-The graph is the durable working state of the project blueprint.
-
-### Codebase
-
-The codebase is the implementation surface realized from the design graph.
-
-It is not treated as independent from the design. Repository artifacts are
-grounded to entries so that implementation remains attributable to design
-intent, and design remains checkable against implementation.
+Do not let the monograph become a dumping ground.
+It should read as a narrative,
+not as a directory of entries.
 
 ---
 
-## Refinement
+## Give Design A Nominal Form
 
-Refinement is the primary construction rule of the method.
+The Sirno store is the `sirno` surface.
+It contains Markdown entries.
+Each entry is a nominal object:
+its filename stem is its id,
+and that id is the stable handle used by other entries and by witnesses.
 
-The method starts from concise and overarching ideas and progressively refines
-them into more detailed entries. A higher-level entry captures an intention,
-constraint, or architectural commitment. A lower-level entry captures a more
-detailed realization of that same commitment.
+An entry should be small enough to read locally.
+It should state a concept, relation, refinement, invariant,
+implementation commitment, or narrative route with a name attached.
 
-A refinement edge therefore connects design scale to implementation scale
-without collapsing the two.
+The required metadata fields are `name` and `description`.
+Both are plain strings.
 
-The highest entries may be slogans, agendas, major architectural principles, or
-concise design claims. Intermediate entries may define subsystems, protocols,
-data models, invariants, workflows, and interfaces. Lower entries may define
-algorithms, pseudocode, module-local design, or work items close to actual code.
-The lowest entries may correspond almost directly to implementation.
+The structural fields are `category`, `clustee`, and `refiner`.
+They are always lists of entry ids.
 
-Refinement is gradual by design. The method does not require the whole graph to
-be elaborated uniformly before implementation begins. It requires that any area
-being implemented has enough refined design context to support aligned work.
+The `witness:` marker has no value.
+It is either present in canonical form or absent.
+When present, the entry id is the `mosaika` query key.
 
-Refinement and obligation are distinct edge types.
-
-Refinement is vertical. It answers the question: how is this higher-level claim
-elaborated into a more concrete one.
-
-Obligation is lateral or upward. It answers the question: what else must be
-reconsidered when this claim changes.
+Operational relations come from metadata.
+Prose links may help readers and external tools,
+but they do not carry Sirno structure.
 
 ---
 
-## Concepts Before Implementation
+## Lower Before Work Gets Local
 
-Sirno is concept-driven.
+Lowering moves from `mono` to `sirno`.
+It takes broad narrative design and gives it compact named form.
 
-Between specification and implementation, the method refines through concepts.
-Concepts capture intention at a scale that is small enough to manipulate and
-large enough to compress detail. A good concept says what several local
-implementation choices are for, not merely what they are.
+Lower before implementation when the work would otherwise rely on memory,
+chat context,
+or a vague agreement about what the code is supposed to become.
 
-This makes the design graph closer to a project wiki than to a task list, but it
-is a wiki with graph semantics and operational consequences.
+Lowering does not require every part of the project to be decomposed at once.
+It requires enough entries for the area being changed.
 
-Concept-driven refinement serves three purposes:
-
-- it preserves story-level understanding while details accumulate
-- it gives local implementation decisions a named design home
-- it improves compression for both human review and model reasoning
-
-An implementation entry without a concept above it is suspect. A concept entry
-without any plausible route to implementation is incomplete. Refinement keeps
-both sides accountable.
+Good lowering preserves the intent of the monograph while making local work
+addressable.
+The result is not a task list.
+It is a set of named objects that future work can refer to without retelling
+the whole story.
 
 ---
 
-## Persistent Planning
+## Realize From Named Objects
 
-Sirno treats planning as durable design state rather than disposable chat
-output.
+Realizing moves from `sirno` to `code`.
+It is implementation guided by entries.
 
-Ordinary planning sessions with an LLM are often one-time artifacts. They may be
-useful in the moment, but they are rarely integrated into the project's durable
-knowledge. Sirno replaces this with persistent planning in the design graph.
+Before editing code,
+read the entries that govern the work.
+Follow their categories, clustees, refiners, and witnesses.
+Then inspect the witnessed repository regions.
 
-A reviewable and reproducible worklist is represented as entries and relations
-inside the graph. Planning therefore becomes part of the design blueprint
-itself. A work item is not only a todo; it is a refinement step that is related
-to design intent, neighboring work, and implementation groundings.
+Implementation should be able to answer a simple question:
+which entry explains why this code exists?
 
-The graph therefore acts as a persistent plan mode:
-
-- previous planning work is retained
-- planning results are organized rather than merely archived
-- future work begins from the existing design state instead of from an empty
-  session
-
-The method is compatible with interactive planning by an LLM. The expected
-integration is that the model explores the existing graph first, proposes new or
-revised worklist entries, and leaves behind reviewable structured state rather
-than ephemeral prose.
+Sirno does not require every line of code to have a nearby entry.
+It does require important design commitments to have a named place,
+and it expects implementation work to use that place.
 
 ---
 
-## Obligations
+## Reflect After Code Changes
 
-Obligations are the anti-local-maximum rule of the method.
+Reflecting moves from `code` to `sirno`.
+It updates the store after implementation teaches the project something.
 
-A local change to one entry is not allowed to remain purely local when other
-entries depend on it. A design decision may be easy to optimize in isolation and
-wrong in project context. Obligations force reconsideration of the affected
-parties of interest.
+Reflect when code changes a representation,
+narrows an invariant,
+introduces a new boundary,
+invalidates an old explanation,
+or creates a clearer local design than the entries currently record.
 
-When an entry changes, the graph identifies the entries that must be
-reconsidered in response. Those entries receive obligations. The change is not
-complete until those obligations are discharged.
+Reflection should happen while the code change is still fresh.
+Waiting turns design into archaeology.
 
-Discharging an obligation may confirm that the dependent entry remains valid, or
-it may require a further refinement or implementation change. In either case the
-graph records that the consequence of the upstream change was examined rather
-than ignored.
-
-The obligation protocol has three steps:
-
-1. Surface the obliged entries and, when useful, a bounded transitive closure of
-   their own obligations.
-2. Assess whether the upstream change invalidates, weakens, or leaves intact
-   the obliged entry's claims.
-3. Resolve by confirming validity, propagating a corresponding change, or
-   recording an explicit deferral with rationale.
-
-This mechanism is the methodological core of alignment maintenance. It prevents
-the design graph from degrading into a disconnected collection of notes.
+The reflected entry does not need to narrate the whole edit.
+It should record the durable design fact that future work needs.
 
 ---
 
-## Grounding and Alignment
+## Raise For Whole-Project Reading
 
-Grounding is the connection between an entry and repository artifacts.
+Raising moves from `sirno` to `mono`.
+It composes the current store into a readable project narrative.
 
-An entry may be attached to links or pointers to regions in the codebase that
-realize, witness, or otherwise relate to the entry's content. These links make
-design claims checkable against implementation and make code exploration start
-from design intent rather than from raw syntax alone.
+Raise when a reader needs the whole-project picture.
+Raise when the monograph has fallen behind the store.
+Raise before using the monograph as the next source of intent.
 
-The machinery for grounding is `mosaika`.
-
-Grounding supports alignment in both directions:
-
-- from design to code, by locating the repository artifacts that realize an
-  entry
-- from code to design, by locating the entry or entries whose claims explain a
-  repository region
-
-Grounding also makes design review concrete. A high-level claim can be followed
-through its refinements and then through its grounded implementation regions.
+Raising is not concatenation.
+The monograph should preserve a route through the project.
+It should introduce terms once,
+trust them afterward,
+and omit local detail when that detail belongs in entries.
 
 ---
 
-## Exploration Before Editing
+## Use Concepts For Compression
 
-No edit to the codebase should be permitted until sufficient exploration of the
-design graph.
+A concept is an entry that gives a name to compressed project knowledge.
+It may cover design intention, algorithmic detail, local vocabulary,
+behavioral specification, or test rationale.
 
-This rule prevents implementation from outrunning design context. Before any
-code is changed, the relevant entries, refinements, obligations, and grounded
-regions must be explored. The exploration step establishes:
+Concepts are useful because they let people and agents refer to a bundle of
+meaning without restating it.
+They keep intent portable across the monograph, entries, and code.
 
-- what claim is being implemented or changed
-- what higher-level decisions govern that claim
-- what neighboring entries may be affected
-- what repository regions are already grounded to the relevant design
+Use a concept when several decisions share a reason.
+Use a concept when a test property needs a name.
+Use a concept when a local implementation choice should remain connected to a
+larger idea.
 
-This is a methodological guardrail, not a convenience feature. It is what keeps
-coding aligned with the project blueprint instead of reverting to local
-trial-and-error.
-
-The persistence machinery for this graph-first discipline is `eter`. The design
-graph is durable, reviewable state that survives across sessions.
+The initialized `concept` entry is ordinary.
+It is created by project setup,
+not privileged by the system.
 
 ---
 
-## Entry Structure
+## Use Narratives For Cognitive Routes
 
-An entry contains two kinds of information.
+A narrative is an entry that records a route through concepts.
+The monograph is the primary narrative surface.
 
-The body contains the design text: the concept, refinement, work item,
-implementation note, or review argument that the entry exists to state.
+Materialized narratives may also live in the store as guides.
+They can state prerequisites,
+choose a base language,
+and point the reader through the concepts in an intentional order.
 
-The header contains the structured metadata needed for graph behavior. This
-includes explicit relations, grounding declarations, refinement status, and any
-other machine-checked data that must not be inferred from prose alone.
+Interactive narratives may be generated ephemerally by skills.
+They adapt the route to the reader,
+but the durable knowledge remains in entries.
 
-Edges in the graph may arise in two ways:
-
-- implicitly, from references in the Markdown body text
-- explicitly, from metadata tracked in the header
-
-This hybrid structure preserves readable prose while still giving the graph a
-reliable operational substrate.
-
-Implicit edges are weaker than explicit graph relations. They are suitable for
-association and navigation. Refinement, obligation, and grounding should remain
-explicit in metadata because they carry operational consequences.
+The initialized `narrative` entry is ordinary.
+It is a starting convention,
+not a special case.
 
 ---
 
-## Method in Practice
+## Organize Without Hidden Semantics
 
-The method proceeds in the following order.
+Use `category` to classify an entry by other entries.
+Use the `meta` category for entries that define categories.
+There is no separate `meta` field.
 
-1. Write and polish `DESIGN.md` until the project direction is stable enough to
-   support refinement.
-2. Generate the initial codebase if desired, treating that generation as a
-   bootstrap step rather than as the completed design process.
-3. Elaborate `DESIGN.md` into entries that isolate major claims, concepts,
-   subsystems, and development agenda.
-4. Refine high-level entries into lower-level entries until the area being
-   worked on has enough context to support implementation.
-5. Record planning output as entries in the graph rather than as disposable
-   session text.
-6. Explore the relevant design graph before editing the codebase.
-7. Ground entries to repository artifacts and use those groundings during code
-   work and review.
-8. When an entry changes, discharge the obligations created for affected
-   entries.
-9. Continue refinement and implementation together so that the graph remains the
-   live project blueprint rather than a frozen design artifact.
+Use `clustee` when entries share a subject,
+local vocabulary,
+or design neighborhood.
+The named clique closure is itself an ordinary entry.
+It gives the group a place to be named and explained.
 
-The output of the method is not only a codebase. It is a codebase together with
-an aligned, persistent, and refinable design blueprint.
+Use `refiner` when a more specific entry elaborates one or more broader
+entries.
+Refinement is how broad design becomes local design,
+implementation detail,
+or testable behavior.
+
+These fields should make navigation and responsibility clearer.
+They should not smuggle in unstated rules.
 
 ---
 
-## Design Rationale
+## Witness The Repository
 
-The design graph is a graph rather than a tree because design couplings are not
-purely hierarchical. Refinement is hierarchical, but obligations and grounding
-cross those boundaries.
+Use `witness:` when the repository contains evidence for an entry.
 
-The method uses obligations rather than a generic notion of dependency because
-the intended meaning is reconsideration under change, not mere existence or
-build-order reliance.
+The witness may be source code, tests, configuration, generated files, assets,
+or any artifact that `mosaika` can mark and query.
+Sirno queries witnesses by entry id.
 
-Grounding is external to the code rather than embedded as comments because the
-relation must be traversable, reviewable, and independently checkable.
+The entry body may explain how to interpret the evidence.
+That prose is helpful,
+but the structural convention is the marker and the id.
 
-Concepts sit between slogans and code because they carry the highest
-compression of intention. They are the layer most capable of preserving design
-meaning while remaining generative for further refinement.
+Witnesses make review concrete.
+They let a reader move from a named design claim to the repository artifacts
+that should be inspected.
 
 ---
 
-## Intended Result
+## Let Sirno Maintain The Edges Of The Page
 
-The intended result of Sirno is a software project whose design remains durable
-after implementation begins.
+Sirno may maintain generated footers at the bottom of entries.
+The footer can use Markdown links or Obsidian-style links,
+depending on project configuration.
 
-The project keeps:
+The generated region is bounded by sentinels.
+The sentinels say that Sirno owns the region.
+Humans and other tools should leave it untouched.
 
-- a readable whole-project design document
-- a persistent graph of refined design entries
-- grounded links between design and code
-- obligations that force reconsideration of affected design when local changes
-  occur
-- planning state that survives and remains organized across sessions
+Generated footers exist for navigation and interoperability.
+They reflect Sirno-managed structure for tools that prefer links.
 
-This is the methodological meaning of a semantic intermediate representation of
-nominal obligations. The intermediate representation is the design graph. The
-nominal units are entries. The obligations preserve non-local alignment.
+---
+
+## Check At Review Boundaries
+
+During editing,
+Sirno may warn about dangling `category`, `clustee`, and `refiner` ids.
+At an explicit check boundary,
+those dangling ids are errors.
+
+Witness validity is checked only during explicit checks.
+This keeps editing light and review strict.
+
+Checks are structural.
+They confirm that ids, metadata, footers, and witness lookup conventions are in
+order.
+They do not replace human or agent judgment about whether the design and code
+mean the same thing.
+
+---
+
+## Treat Planning As A Use, Not A Primitive
+
+Sirno does not define planning as a core relation or phase.
+It gives people and agents a stable structure that can support planning.
+
+A Sirno-provided skill may represent a worklist as entries.
+That worklist can use categories, refiners, clustees, and witnesses like any
+other entry set.
+
+The planning artifact is a use of Sirno.
+It is not part of Sirno's core ontology.
+
+---
+
+## The Habit
+
+Name the thing.
+Write the entry.
+Classify it only when classification helps.
+Cluster it only when the shared subject deserves a name.
+Refine it when broad design needs local form.
+Witness it when the repository contains its evidence.
+
+Lower before local work loses its source.
+Realize from named objects.
+Reflect while the code change is still fresh.
+Raise when the project needs to be read as one document.
+
+Sirno keeps the structure ready.
+People and agents keep the meaning alive.
