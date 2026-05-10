@@ -109,13 +109,19 @@ It points to the entry that it refines.
 
 ## Witness
 
+A *witness* relation is a metadata block field of the witnessed entry.
+It points to code in repository that evidences the entry's claim.
+
+When an entry describes behavior, representation, or invariant,
+the witness is the concrete program text against which that claim can be checked.
+A test may witness an entry when the test itself is the relevant code.
 
 ---
 
 When project knowledge remains in comments, design notes, plan mode notes, or reviewer memory,
 it is disconnected from both repository state and change propagation.
 A code edit can invalidate a claim without identifying the dependent claims that must be re-examined.
-A design edit can change an upstream commitment without updating the grounded repository artifacts.
+A design edit can change an upstream commitment without updating the code witnesses.
 
 ---
 
@@ -125,8 +131,7 @@ Sirno is defined above two smaller components:
 
 - `eter`, which owns immutable snapshots, history, and the write transaction
   boundary
-- `mosaika`, which owns repository alignment analysis and grounded region
-  discovery
+- `mosaika`, which owns repository alignment analysis and the discovery of witness
 
 Sirno defines the knowledge semantics that use those components. It introduces
 the design graph, its relations, and the write-acceptance rules that connect
@@ -140,14 +145,14 @@ The Sirno design graph is the intermediate representation between project-scale
 design and repository-scale implementation.
 
 The graph consists of entries together with explicit refinement, dependency, and
-grounding relations. Entry prose may also contain implicit associative links.
+witness relations. Entry prose may also contain implicit associative links.
 
 The graph is concept-driven in shape. Work begins from concept-bearing entries
 and moves downward by refinement. Higher entries capture the named ideas that
 compress intention. Lower entries unfold those ideas into specifications, work
 items, and code-adjacent detail.
 
-Refinement, dependency, and grounding are load-bearing graph relations. They are
+Refinement, dependency, and witness are load-bearing graph relations. They are
 tracked explicitly because they carry operational consequences. Prose links are
 navigational only.
 
@@ -190,8 +195,8 @@ the design from slogans and broad architecture down to code-adjacent detail.
 
 Higher entries carry the named concepts and architectural claims that compress
 intent. Lower entries unfold those concepts into specifications, work items, and
-grounded implementation detail without severing the connection to the original
-design meaning.
+implementation details supported by code witnesses without severing the
+connection to the original design meaning.
 
 Work should therefore begin by locating the relevant higher-level entries and
 following refinement downward. Local implementation is the end of this path, not
@@ -210,29 +215,30 @@ A dependency may refer to an additional entry that explains what the dependency
 means. That entry is descriptive metadata. The operational semantics of the
 dependency are determined by the endpoints.
 
-### Grounding
+### Witness
 
-A grounding binds an entry to repository artifacts. The binding is stored as a
-Sirno grounding specification interpreted through `mosaika`.
+A witness binds an entry to code that evidences the entry's claim.
+The binding is stored as a Sirno witness specification interpreted through
+`mosaika`.
 
-A grounding has three components:
+A witness has three components:
 
-- a source selection over files
+- a source selection over code files
 - one or more delimiter-based log transforms
-- a Sirno interpretation of the resulting regions
+- a Sirno interpretation of the resulting code regions
 
-Sirno uses three grounding interpretations.
+Sirno uses anchors and spans as witness machinery.
 
-An anchor grounding is a one-delimiter region that marks the nominal presence of
-the entry in repository text.
+An anchor is a one-delimiter code region that marks the nominal presence of the
+entry in program text.
 
-A region grounding is a region associated with the entry for inspection,
-reflection, or actualization. It is not evidentiary by itself.
+A span is the code region selected for inspection, reflection, or actualization.
 
-A witness grounding is a region designated as evidence for the entry's claim.
+The selected span becomes a witness only when it is designated as evidence for
+the entry's claim.
 
-Groundings operate over repository artifacts in their textual form. `mosaika`
-provides the alignment analysis that discovers the grounded regions.
+Witnesses operate over code in textual form. `mosaika` provides the alignment
+analysis that discovers the witnessed code regions.
 
 ### Obligation
 
@@ -243,8 +249,8 @@ A change is claim-bearing when it changes either:
 - the text of an entry
 - the dependency egress of an entry
 
-Grounding changes, refinement changes, and lock-state changes are not
-claim-bearing. They change repository interpretation, design organization, or
+Witness-specification changes, refinement changes, and lock-state changes are not
+claim-bearing. They change code evidence, design organization, or
 authority. They do not change downstream validity by themselves.
 
 Obligations are derived from dependency under change. They are not a separate
@@ -254,8 +260,8 @@ persistent coupling concept in the graph.
 
 A lock is the authority boundary on claim-bearing writes to an entry.
 
-A locked entry may be read, grounded, and used during propagation. Changing its
-claim-bearing fields requires external approval.
+A locked entry may be read, used during propagation, and checked against its
+witnesses. Changing its claim-bearing fields requires external approval.
 
 The approval path for a locked write carries the proposed graph write together
 with an argument entry that explains the change. The rationale is therefore part
@@ -280,7 +286,7 @@ The logical Sirno fields are:
 - entry explanation
 - refinement egress
 - dependency egress
-- grounding specifications
+- witness specifications
 - lock state
 
 The lifecycle field is the `eter` lifecycle field. Sirno uses it to determine
@@ -293,14 +299,14 @@ across the whole graph history.
 Refinement and dependency egress are stored on the source entry. Reverse
 adjacency is derived state.
 
-Grounding specifications are stored as typed Sirno data compatible with the
+Witness specifications are stored as typed Sirno data compatible with the
 `mosaika` analysis model. Lock state is stored on the entry because authority is
 part of graph state.
 
 Sirno is used in two workflows. In actualization, the graph is authoritative
-and repository artifacts are rewritten to satisfy selected entries. In
-reflection, the repository view is authoritative and grounded observations are
-written back into the graph.
+and repository code is rewritten to satisfy selected entries. In
+reflection, the repository view is authoritative and observations from code
+witnesses are written back into the graph.
 
 In both workflows, work begins from graph exploration rather than from local
 code inspection alone. The expected starting point is the relevant concept or
@@ -316,7 +322,7 @@ is computed first, then validated against the repository view, then written as
 new field rows. If the transaction succeeds, `eter` returns the new `Eterator`.
 
 A write is accepted only when all induced obligations have been discharged, all
-locked-entry changes have been approved, and the resulting grounding
+locked-entry changes have been approved, and the resulting witness
 specifications pass the required repository validation.
 
 Repository analysis occurs before the `eter` transaction. Repository
@@ -326,18 +332,18 @@ view agree.
 
 ---
 
-## Grounding and Repository Alignment
+## Witness and Repository Alignment
 
-The grounding language is delimiter-based because it is interpreted through
-`mosaika`. A grounding identifies source files, declares delimiter-based log
-transforms, and interprets the resulting regions as anchors, regions, or
-witnesses.
+The witness language is delimiter-based because it is interpreted through
+`mosaika`. A witness identifies source-code files, declares delimiter-based log
+transforms, and interprets the resulting regions as code evidence for entry
+claims.
 
 `mosaika` replacement actions belong to actualization tooling that rewrites
-repository artifacts to satisfy entries. Sirno grounding uses the analysis side
-of `mosaika`.
+repository code to satisfy entries. Sirno uses the analysis side of `mosaika`
+for witnesses.
 
-Grounding validation has three layers.
+Witness validation has three layers.
 
 The first layer is specification validity. The source selection, delimiters, and
 region interpretation must form a valid `mosaika` analysis specification.
@@ -346,14 +352,14 @@ The second layer is repository analysis. The `mosaika` analysis must resolve the
 selected files and produce the required regions without ambiguity.
 
 The third layer is Sirno interpretation. Anchors must bind to the owning entry.
-Witnesses must remain evidentiary for the entry's claim. Required grounded
-regions must be present.
+Witnesses must remain evidentiary for the entry's claim. Required code regions
+must be present.
 
-Groundings are evaluated relative to a repository view. In a repository-backed
+Witnesses are evaluated relative to a repository view. In a repository-backed
 deployment, that view is typically a checked-out tree plus any in-progress code
 changes owned by the active task.
 
-In reflection, grounded repository observations become proposed graph writes.
+In reflection, witnessed code observations become proposed graph writes.
 Sirno introduces no additional concept for that step beyond the write workflow
 itself.
 
