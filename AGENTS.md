@@ -19,8 +19,8 @@ If compatibility or migration concerns conflict with a clearer design, prefer th
 
 Actively write documentation for the program. Make sure *all* public APIs are documented.
 All written documentation must be concise, clear, accurate, and written in English unless explicitly stated.
+Keep sentences short. The line budget is 120 characters.
 Break Markdown prose at natural punctuation boundaries or conjunctions.
-Keep sentences short.
 A line may slightly exceed the line-length budget when that makes the text read better.
 No emojis unless strictly necessary.
 Add bold text only if it emphasizes truly valuable information.
