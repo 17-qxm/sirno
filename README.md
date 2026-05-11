@@ -2,7 +2,7 @@
 
 *Semantic Intermediate Representation of Nominal Objects*
 
-Sirno is a bidirectional compiler for design-aware software work.
+Sirno is a bidirectional compiler for design-aware programming work.
 It lowers a single long-form project narrative into compact Markdown entries,
 helps users and agents realize those entries in code,
 and helps code changes reflect back into the entry store.
