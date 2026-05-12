@@ -15,6 +15,12 @@ The member entries keep their own ids while the clique entry provides a route in
 
 A two-member clique closure can record why two entries belong together.
 
+Generated clustee links can preserve direct target links
+or expand the closure into clique edges.
+With clique expansion enabled,
+the closure links to its members
+and each member links to the closure and the other members.
+
 Use `clustee` when several entries should be visited together.
 The field says that the member belongs to a named neighborhood,
 not that it is an instance of a kind and not that it refines the clique entry.

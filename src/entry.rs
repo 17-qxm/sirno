@@ -64,7 +64,7 @@ impl Entry {
 /// Metadata for one Sirno entry.
 ///
 /// Invariant: `name` and `description` are single-line plain strings.
-/// Relation vectors contain entry ids and therefore cannot contain invalid relation targets.
+/// Structural vectors contain entry ids and therefore cannot contain invalid targets.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryMetadata {
     /// Human-readable entry name.
@@ -82,7 +82,7 @@ pub struct EntryMetadata {
 }
 
 impl EntryMetadata {
-    /// Construct metadata with required fields and no structural relations.
+    /// Construct metadata with required fields and no structural field values.
     pub fn new(
         name: impl Into<String>, description: impl Into<String>,
     ) -> Result<Self, EntryParseError> {
@@ -132,17 +132,17 @@ impl EntryMetadata {
         let mut out = String::new();
         out.push_str(&format!("name: {}\n", render_yaml_scalar(&self.name)?));
         out.push_str(&format!("description: {}\n", render_yaml_scalar(&self.description)?));
-        render_relation(&mut out, CATEGORY_FIELD, &self.category);
-        render_relation(&mut out, CLUSTEE_FIELD, &self.clustee);
-        render_relation(&mut out, REFINER_FIELD, &self.refiner);
+        render_id_list(&mut out, CATEGORY_FIELD, &self.category);
+        render_id_list(&mut out, CLUSTEE_FIELD, &self.clustee);
+        render_id_list(&mut out, REFINER_FIELD, &self.refiner);
         if self.witness.is_some() {
             out.push_str("witness:\n");
         }
         Ok(out)
     }
 
-    /// Returns every relation id mentioned by structural metadata.
-    pub fn relation_targets(&self) -> impl Iterator<Item = (&'static str, &EntryId)> {
+    /// Returns every entry id mentioned by structural metadata.
+    pub fn structural_targets(&self) -> impl Iterator<Item = (&'static str, &EntryId)> {
         self.category
             .iter()
             .map(|id| (CATEGORY_FIELD, id))
@@ -261,8 +261,9 @@ fn take_optional_id_list(
     values
         .into_iter()
         .map(|value| match value {
-            | Value::String(raw) => EntryId::new(&raw)
-                .map_err(|source| EntryParseError::InvalidRelationId { field, value: raw, source }),
+            | Value::String(raw) => EntryId::new(&raw).map_err(|source| {
+                EntryParseError::InvalidStructuralId { field, value: raw, source }
+            }),
             | _ => Err(EntryParseError::ListItemMustBeString(field)),
         })
         .collect()
@@ -291,7 +292,7 @@ fn validate_plain_string(field: &'static str, value: &str) -> Result<(), EntryPa
     Ok(())
 }
 
-fn render_relation(out: &mut String, field: &str, values: &[EntryId]) {
+fn render_id_list(out: &mut String, field: &str, values: &[EntryId]) {
     if values.is_empty() {
         return;
     }
@@ -339,16 +340,16 @@ pub enum EntryParseError {
     /// A string field is not a single-line plain string.
     #[error("metadata field `{0}` must be a single-line plain string")]
     FieldMustBePlainString(&'static str),
-    /// A relation field is not a YAML list.
+    /// A structural field is not a YAML list.
     #[error("metadata field `{0}` must be a list")]
     FieldMustBeList(&'static str),
-    /// A relation list item is not a string.
+    /// A structural list item is not a string.
     #[error("items in metadata field `{0}` must be strings")]
     ListItemMustBeString(&'static str),
-    /// A relation item is not a valid entry id.
+    /// A structural field item is not a valid entry id.
     #[error("metadata field `{field}` contains invalid entry id `{value}`")]
-    InvalidRelationId {
-        /// Relation field containing the invalid id.
+    InvalidStructuralId {
+        /// Structural field containing the invalid id.
         field: &'static str,
         /// Invalid raw id.
         value: String,
@@ -388,11 +389,9 @@ mod tests {
         let source = "\
 ---
 name: Witness
-description: A relation between an entry and repository artifacts.
+description: An entry whose claim is evidenced by repository artifacts.
 category:
   - concept
-refiner:
-  - relation
 witness:
 ---
 
@@ -402,17 +401,16 @@ Body.
         let entry = Entry::from_markdown(entry_id(), source).unwrap();
         assert_eq!(entry.metadata.name, "Witness");
         assert_eq!(entry.metadata.category, vec![EntryId::new("concept").unwrap()]);
-        assert_eq!(entry.metadata.refiner, vec![EntryId::new("relation").unwrap()]);
         assert_eq!(entry.metadata.witness, Some(WitnessMarker::Present));
         assert_eq!(entry.body, "Body.\n");
     }
 
     #[test]
-    fn rejects_scalar_relation_field() {
+    fn rejects_scalar_structural_field() {
         let source = "\
 ---
 name: Bad
-description: Bad relation.
+description: Bad category.
 category: concept
 ---
 ";
@@ -451,7 +449,7 @@ witness: null
 
     #[test]
     fn renders_canonical_witness_marker() {
-        let mut metadata = EntryMetadata::new("Witness", "A relation.").unwrap();
+        let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
         metadata.category.push(EntryId::new("concept").unwrap());
         metadata.witness = Some(WitnessMarker::Present);
         let entry = Entry::new(entry_id(), metadata, "Body.\n");

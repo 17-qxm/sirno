@@ -29,6 +29,25 @@ and maintain generated link footers.
 Those commands should remain plain enough to use from a terminal
 and stable enough for agents and skills to call.
 
+`sirno status` summarizes the configured repository.
+It reports the config path, monograph path, store path, entry count,
+check policy, link policy, and current check result.
+
+`sirno new` creates one Markdown entry from typed command-line metadata.
+It refuses to overwrite an existing entry file.
+
+`sirno query` reads the configured Markdown store.
+Its default mode is vague text query.
+Exact structural predicates live behind explicit exact flags.
+
+`sirno gen-link` creates or replaces Sirno-owned generated footer regions.
+`sirno gen-link delete` removes those regions.
+Both commands operate on the configured store unless an explicit entry directory is given.
+
+`sirno util completion` emits shell completion scripts.
+Completion generation is a utility interface,
+not a store operation.
+
 The MCP surface serves interactive tooling.
 It can expose the same store model to agents and editors without asking them to shell out for every action.
 Future GUI or Obsidian work should keep the same ownership rules:

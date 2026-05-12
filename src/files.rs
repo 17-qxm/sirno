@@ -27,7 +27,7 @@ pub struct EntryDirectoryReport {
     entries: Vec<Entry>,
     paths_by_id: BTreeMap<EntryId, PathBuf>,
     file_diagnostics: Vec<EntryFileDiagnostic>,
-    relation_report: CheckReport,
+    structural_report: CheckReport,
 }
 
 /// Settings for checking a public Markdown entry directory.
@@ -63,7 +63,7 @@ impl EntryDirectoryReport {
         &self.root
     }
 
-    /// Parsed entries that were valid enough to participate in relation checks.
+    /// Parsed entries that were valid enough to participate in structural checks.
     pub fn entries(&self) -> &[Entry] {
         &self.entries
     }
@@ -73,9 +73,9 @@ impl EntryDirectoryReport {
         &self.file_diagnostics
     }
 
-    /// Relation check report for successfully parsed entries.
-    pub fn relation_report(&self) -> &CheckReport {
-        &self.relation_report
+    /// Structural check report for successfully parsed entries.
+    pub fn structural_report(&self) -> &CheckReport {
+        &self.structural_report
     }
 
     /// Return the path associated with a parsed entry id.
@@ -83,15 +83,15 @@ impl EntryDirectoryReport {
         self.paths_by_id.get(id).map(PathBuf::as_path)
     }
 
-    /// Returns true when no file or relation diagnostics were produced.
+    /// Returns true when no file or structural diagnostics were produced.
     pub fn is_clean(&self) -> bool {
-        self.file_diagnostics.is_empty() && self.relation_report.is_clean()
+        self.file_diagnostics.is_empty() && self.structural_report.is_clean()
     }
 
-    /// Returns true when any file or relation diagnostic is an error.
+    /// Returns true when any file or structural diagnostic is an error.
     pub fn has_errors(&self) -> bool {
         self.file_diagnostics.iter().any(|diagnostic| diagnostic.severity == CheckSeverity::Error)
-            || self.relation_report.has_errors()
+            || self.structural_report.has_errors()
     }
 }
 
@@ -154,19 +154,19 @@ pub fn check_entry_directory_with_settings(
     let root = root.into();
     trace!("check_entry_directory begin: root={}", root.display());
     let loaded = load_entry_directory(&root, mode, settings)?;
-    let relation_report = check_entries(&loaded.entries, mode);
+    let structural_report = check_entries(&loaded.entries, mode);
     trace!(
-        "check_entry_directory end: entries={} file_diagnostics={} relation_diagnostics={}",
+        "check_entry_directory end: entries={} file_diagnostics={} structural_diagnostics={}",
         loaded.entries.len(),
         loaded.file_diagnostics.len(),
-        relation_report.diagnostics().len()
+        structural_report.diagnostics().len()
     );
     Ok(EntryDirectoryReport {
         root,
         entries: loaded.entries,
         paths_by_id: loaded.paths_by_id,
         file_diagnostics: loaded.file_diagnostics,
-        relation_report,
+        structural_report,
     })
 }
 
@@ -657,7 +657,7 @@ Body.
     }
 
     #[test]
-    fn reports_relation_diagnostics_from_loaded_entries() {
+    fn reports_structural_diagnostics_from_loaded_entries() {
         let temp = tempfile::tempdir().unwrap();
         write_entry(
             temp.path(),
@@ -675,7 +675,7 @@ category:
         let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
 
         assert!(report.has_errors());
-        assert_eq!(report.relation_report().diagnostics().len(), 1);
+        assert_eq!(report.structural_report().diagnostics().len(), 1);
     }
 
     #[test]
@@ -746,8 +746,12 @@ category:
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         init_entry_directory(&root).unwrap();
-        let settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: true };
+        let settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: true.into(),
+        };
 
         let report = gen_link_entry_directory(&root, &settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
@@ -804,8 +808,12 @@ clustee:
 Body.
 ",
         );
-        let settings =
-            GeneratedLinkSettings { category: false, clustee: true, clique: true, refiner: false };
+        let settings = GeneratedLinkSettings {
+            category: false.into(),
+            clustee: true.into(),
+            clique: true,
+            refiner: false.into(),
+        };
 
         gen_link_entry_directory(temp.path(), &settings).unwrap();
         let core = fs::read_to_string(temp.path().join("core.md")).unwrap();
@@ -864,8 +872,12 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         init_entry_directory(&root).unwrap();
-        let old_settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: true };
+        let old_settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: true.into(),
+        };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 
         let report = check_entry_directory_with_settings(
@@ -889,8 +901,12 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         init_entry_directory(&root).unwrap();
-        let old_settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: true };
+        let old_settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: true.into(),
+        };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 
         let report = check_entry_directory_with_settings(
@@ -913,8 +929,12 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         init_entry_directory(&root).unwrap();
-        let old_settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: true };
+        let old_settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: true.into(),
+        };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 
         let report = check_entry_directory_with_settings(

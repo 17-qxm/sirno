@@ -48,6 +48,40 @@ Judging design quality and proving that code satisfies a claim are left to the p
 
 ---
 
+## Project Configuration
+
+A repository is Sirno-managed when it contains `Sirno.toml`.
+The file configures the surfaces and the operational policy that Sirno applies to them.
+
+`[mono].path` names the monograph.
+`[store].path` names the public Markdown entry store.
+Both paths are resolved relative to the config file when they are not absolute.
+
+`[store].ignore` is a list of store-root-relative paths that Sirno does not read.
+An ignored path excludes that path and its descendants from store checks and generated-link operations.
+Ignored paths do not change the entry model;
+they define filesystem items that belong to adjacent tools rather than to Sirno.
+
+`[check].link` controls generated-link freshness checks.
+It is enabled by default.
+Malformed generated-link sentinels remain structural errors,
+because Sirno cannot safely identify its owned region when the sentinels are malformed.
+
+`[links]` controls generated-footer projection.
+The structural fields `category`, `clustee`, and `refiner` each accept either a boolean
+or a table shaped as `{ to = boolean, from = boolean }`.
+A boolean applies to both directions.
+`to` renders links from an entry to its metadata targets.
+`from` renders links from an entry to entries that name it as a metadata target.
+
+The default link policy renders only `clustee`.
+`links.clique` is a boolean expansion switch for clustee links.
+When it is enabled, each named clustee closure induces a clique:
+the closure entry links to members,
+and each member links to the closure and the other members.
+
+---
+
 ## Entries
 
 The `sirno` store is a set of named Markdown documents called *entries*,
@@ -281,16 +315,54 @@ and Markdown links in prose may help readers and external tools without defining
 
 ---
 
+## Query
+
+Query selects parsed entries from the Markdown store.
+It reads entry ids, metadata, and bodies;
+it does not read generated footers as structural truth.
+
+The default CLI query is vague.
+Vague query matches text against an entry's id, name, description, and body,
+and also against the ids, names, and descriptions of entries named by its structural fields.
+Each text term must match somewhere in that expanded text.
+
+Exact query is available through explicit exact flags.
+Exact structural fields are conjunctive across distinct fields
+and disjunctive inside one field.
+A query for two categories matches entries in either category,
+while a query for a category and a refiner requires both predicates.
+
+Query output is presentation.
+The selected entries remain ordinary parsed entries,
+and callers may print summaries, ids, or paths without changing the store.
+
+---
+
 ## Generated Footers
 
 Sirno may generate and maintain a footer at the bottom of entries,
 bounded by sentinels that state Sirno owns the region
 and that humans and tools should leave it untouched.
 
-The footer format is configurable,
-using either ordinary Markdown links or Obsidian-style links.
-The footer is a projection of metadata-derived structure,
+The sentinels are human-visible Markdown block quotes.
+They are separated from the generated list by blank lines,
+so Markdown renderers do not nest the closing sentinel under the list.
+When Sirno appends a generated region to a non-empty entry body,
+it inserts a horizontal divider immediately before the region unless one is already present.
+
+The generated body is a plain list of entry links.
+Each item is rendered directly as the target id and path,
+with no heading, relation label, or direction label.
+If no configured link is present, the list contains `- none`.
+
+The footer format is a projection of metadata-derived structure,
 maintained for external tools that navigate links.
+Changing a generated link by hand does not change metadata.
+Changing metadata and regenerating the footer is the correct edit path.
+
+`sirno gen-link` creates or replaces the generated region.
+`sirno gen-link delete` removes the generated region.
+Deleting generated links does not edit prose outside the guard-bounded region.
 
 ---
 
@@ -305,6 +377,26 @@ and a lightweight GUI or Obsidian extension may later provide a direct editing e
 Repository witnesses are managed through `mosaika`,
 with the entry id serving as the query key Sirno uses when locating marks.
 
+The CLI is the first operational interface.
+It can initialize stores, create entries, query entries, report status,
+check structure, generate or delete link footers,
+and emit shell completions.
+The commands operate on the configured store by default
+and accept explicit paths where a local operation needs a different entry directory.
+
+`sirno status` summarizes the configured project.
+It reports the config file, monograph, store, entry count, check policy, link policy,
+and current check result.
+
+`sirno new` creates one entry file from typed command-line metadata.
+It refuses to overwrite an existing entry file.
+
+`sirno query` is the reading interface over the Markdown store.
+It defaults to vague text query and keeps exact structural predicates behind explicit exact flags.
+
+`sirno util completion` emits shell completion scripts.
+Utility commands do not read or mutate the store unless their own subcommand says so.
+
 ---
 
 ## Checks
@@ -313,6 +405,11 @@ Sirno checks structure, not semantic truth.
 
 Structural checks include required metadata fields, accepted field shapes, reference existence,
 generated footer boundaries, and witness lookup validity when requested.
+
+Generated-link checking has two layers.
+Sentinel structure is always checked.
+Freshness is controlled by `[check].link`,
+which is enabled by default.
 
 Sirno validates references lazily:
 dangling `category`, `clustee`, and `refiner` ids may warn during edits but become errors during an explicit check,
@@ -354,7 +451,8 @@ they may use Sirno entries to leave durable work artifacts without changing Sirn
 This repository uses Sirno's own model.
 
 `DESIGN.md` is the monograph,
-and the future store will contain compact entries for the concepts, structural fields, interfaces,
+and `sirno-docs/` is the configured store.
+The store contains compact entries for the concepts, structural fields, interfaces,
 and implementation commitments described here.
 The codebase will witness those entries through `mosaika`.
 

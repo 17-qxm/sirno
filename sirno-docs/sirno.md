@@ -48,6 +48,14 @@ Sirno keeps the edges between those surfaces explicit.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- none
+- [code-surface](code-surface.md)
+- [concept-driven-development](concept-driven-development.md)
+- [future-work](future-work.md)
+- [mono](mono.md)
+- [planning](planning.md)
+- [project-self-application](project-self-application.md)
+- [sirno-store](sirno-store.md)
+- [storage-and-interfaces](storage-and-interfaces.md)
+- [surface](surface.md)
 
 > **Sirno generated links end.**

@@ -92,9 +92,9 @@ impl EntryQuery {
     /// Returns true when this query selects the entry.
     pub fn matches(&self, entry: &Entry) -> bool {
         self.matches_text(entry)
-            && matches_relation(&entry.metadata.category, &self.category)
-            && matches_relation(&entry.metadata.clustee, &self.clustee)
-            && matches_relation(&entry.metadata.refiner, &self.refiner)
+            && matches_targets(&entry.metadata.category, &self.category)
+            && matches_targets(&entry.metadata.clustee, &self.clustee)
+            && matches_targets(&entry.metadata.refiner, &self.refiner)
             && (!self.witness || entry.metadata.witness.is_some())
     }
 
@@ -110,7 +110,7 @@ impl EntryQuery {
 
 /// Vague predicate over Sirno entries.
 ///
-/// Vague text terms match an entry plus the ids, names, and descriptions of its relation targets.
+/// Vague text terms match an entry plus the ids, names, and descriptions of structural targets.
 /// Each text term must match somewhere in that expanded text.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct VagueEntryQuery {
@@ -164,7 +164,7 @@ pub fn vague_query_entries<'a>(entries: &'a [Entry], query: &VagueEntryQuery) ->
     matches
 }
 
-fn matches_relation(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
+fn matches_targets(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
     query_targets.is_empty() || query_targets.iter().any(|target| entry_targets.contains(target))
 }
 
@@ -175,7 +175,7 @@ fn entry_text(entry: &Entry) -> String {
 
 fn vague_entry_text(entry: &Entry, entries_by_id: &BTreeMap<&EntryId, &Entry>) -> String {
     let mut text = entry_text(entry);
-    for target in entry.metadata.relation_targets().map(|(_, target)| target) {
+    for target in entry.metadata.structural_targets().map(|(_, target)| target) {
         text.push('\n');
         text.push_str(target.as_str());
         if let Some(target_entry) = entries_by_id.get(target) {
@@ -224,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn relation_values_are_disjunctive_inside_one_field() {
+    fn structural_values_are_disjunctive_inside_one_field() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
         concept.metadata.category.push(id("meta"));
 
@@ -234,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn relation_fields_are_conjunctive_across_fields() {
+    fn structural_fields_are_conjunctive_across_fields() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
         concept.metadata.category.push(id("meta"));
         concept.metadata.clustee.push(id("knowledge"));
@@ -271,7 +271,7 @@ mod tests {
     }
 
     #[test]
-    fn vague_query_matches_relation_target_id() {
+    fn vague_query_matches_structural_target_id() {
         let meta = entry("meta", "Meta", "A category.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
         concept.metadata.category.push(id("meta"));
@@ -287,7 +287,7 @@ mod tests {
     }
 
     #[test]
-    fn vague_query_matches_relation_target_metadata() {
+    fn vague_query_matches_structural_target_metadata() {
         let meta = entry("meta", "Meta", "Project vocabulary.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
         concept.metadata.category.push(id("meta"));

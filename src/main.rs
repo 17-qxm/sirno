@@ -50,13 +50,13 @@ enum Command {
         /// Short entry description.
         #[arg(long)]
         description: String,
-        /// Category relation target.
+        /// Category target.
         #[arg(long)]
         category: Vec<String>,
-        /// Clique closure relation target.
+        /// Clique closure target.
         #[arg(long)]
         clustee: Vec<String>,
-        /// Refined entry relation target.
+        /// Refined entry target.
         #[arg(long)]
         refiner: Vec<String>,
         /// Add a canonical witness marker.
@@ -71,18 +71,18 @@ enum Command {
     },
     /// Query public Markdown entries.
     Query {
-        /// Vague text terms matched against entries and relation target summaries.
+        /// Vague text terms matched against entries and structural target summaries.
         terms: Vec<String>,
         /// Exact text term matched against id, name, description, and body.
         #[arg(long = "exact-term")]
         exact_terms: Vec<String>,
-        /// Exact category relation target.
+        /// Exact category target.
         #[arg(long)]
         exact_category: Vec<String>,
-        /// Exact clique closure relation target.
+        /// Exact clique closure target.
         #[arg(long)]
         exact_clustee: Vec<String>,
-        /// Exact refined entry relation target.
+        /// Exact refined entry target.
         #[arg(long)]
         exact_refiner: Vec<String>,
         /// Select only entries with a canonical witness marker.
@@ -530,7 +530,7 @@ fn print_entry_directory_report(report: &EntryDirectoryReport) {
         );
     }
 
-    for diagnostic in report.relation_report().diagnostics() {
+    for diagnostic in report.structural_report().diagnostics() {
         if let Some(path) = report.entry_path(&diagnostic.entry) {
             println!(
                 "{}: {}: {}",

@@ -285,7 +285,41 @@ refiner = true
 
         assert_eq!(
             config.links,
-            GeneratedLinkSettings { category: true, clustee: false, clique: true, refiner: true }
+            GeneratedLinkSettings {
+                category: true.into(),
+                clustee: false.into(),
+                clique: true,
+                refiner: true.into(),
+            }
+        );
+    }
+
+    #[test]
+    fn parses_directional_link_settings() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+
+[links]
+category = { to = true, from = false }
+clustee = true
+refiner = { to = false, from = true }
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.links,
+            GeneratedLinkSettings {
+                category: crate::links::GeneratedLinkFieldSettings::new(true, false),
+                clustee: crate::links::GeneratedLinkFieldSettings::new(true, true),
+                clique: false,
+                refiner: crate::links::GeneratedLinkFieldSettings::new(false, true),
+            }
         );
     }
 

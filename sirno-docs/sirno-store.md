@@ -12,6 +12,9 @@ refiner:
 The Sirno store is the configured directory of Markdown entries.
 The usual convention is `docs/`.
 
+The configured project in this repository uses `sirno-docs/`.
+`Sirno.toml` records that path under `[store].path`.
+
 The store is the human-readable intermediate representation:
 text first, structured enough for tools,
 and compact enough for humans and agents to inspect locally.
@@ -35,6 +38,12 @@ An agent can query a few related entries before changing code.
 An editor can use generated footers to expose navigation.
 All of those surfaces use the same filenames and metadata.
 
+Some files under a store root may belong to adjacent tools.
+`[store].ignore` lists store-root-relative paths that Sirno skips.
+An ignored path covers the path itself and its descendants.
+This lets a store contain editor state such as `.obsidian`
+without making that state part of the Sirno entry set.
+
 The store should avoid becoming either a glossary or a backlog.
 A glossary entry may define a word without carrying design pressure.
 A backlog item may describe work without preserving the concept behind it.
@@ -48,5 +57,11 @@ and where implementation evidence should be found when that evidence exists.
 > **Sirno generated links begin. Do not edit this section.**
 
 - [sirno](sirno.md)
+- [entry](entry.md)
+- [generated-footer](generated-footer.md)
+- [metadata](metadata.md)
+- [project-config](project-config.md)
+- [query](query.md)
+- [structural-check](structural-check.md)
 
 > **Sirno generated links end.**

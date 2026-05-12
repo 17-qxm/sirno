@@ -40,6 +40,9 @@ A raising skill should compose a readable monograph.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- none
+- [lower](lower.md)
+- [raise](raise.md)
+- [realize](realize.md)
+- [reflect](reflect.md)
 
 > **Sirno generated links end.**

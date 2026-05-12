@@ -13,6 +13,11 @@ Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
 
+Generated-link checking has two parts.
+Sentinel shape is always checked.
+Freshness is controlled by `[check].link`,
+which is enabled by default.
+
 During editing, dangling `category`, `clustee`, and `refiner` ids may warn.
 At an explicit review boundary, those dangling ids are errors.
 

@@ -2,7 +2,7 @@
 //!
 //! Sirno stores design as named Markdown entries with exact metadata.
 //! The public model follows the repository design:
-//! entries are nominal objects, relation fields are structural,
+//! entries are nominal objects, structural fields are explicit,
 //! and repository witnesses are represented by a marker on the entry.
 
 pub mod check;
@@ -30,8 +30,8 @@ pub use crate::files::{
 };
 pub use crate::id::{EntryId, EntryIdError};
 pub use crate::links::{
-    BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkError, GeneratedLinkIndex,
-    GeneratedLinkSettings, apply_generated_links, delete_generated_links,
+    BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkError, GeneratedLinkFieldSettings,
+    GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links, delete_generated_links,
     generated_links_are_stale, render_generated_links, validate_generated_links,
 };
 pub use crate::query::{

@@ -4,28 +4,137 @@
 //! Prose outside the region remains user-owned.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 use crate::entry::Entry;
+
+/// Settings for one generated-link relation field.
+///
+/// `to` includes links from the current entry to relation targets.
+/// `from` includes links from the current entry to entries that point at it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GeneratedLinkFieldSettings {
+    /// Include outgoing relation targets.
+    pub to: bool,
+    /// Include incoming relation sources.
+    pub from: bool,
+}
+
+impl GeneratedLinkFieldSettings {
+    /// Construct relation-field link settings from explicit directions.
+    pub fn new(to: bool, from: bool) -> Self {
+        Self { to, from }
+    }
+
+    /// Construct relation-field link settings from one boolean applied to both directions.
+    pub fn from_bool(enabled: bool) -> Self {
+        Self::new(enabled, enabled)
+    }
+
+    /// Construct enabled relation-field link settings.
+    pub fn enabled() -> Self {
+        Self::from_bool(true)
+    }
+
+    /// Construct disabled relation-field link settings.
+    pub fn disabled() -> Self {
+        Self::from_bool(false)
+    }
+}
+
+impl Default for GeneratedLinkFieldSettings {
+    fn default() -> Self {
+        Self::disabled()
+    }
+}
+
+impl From<bool> for GeneratedLinkFieldSettings {
+    fn from(value: bool) -> Self {
+        Self::from_bool(value)
+    }
+}
+
+impl fmt::Display for GeneratedLinkFieldSettings {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.to == self.from {
+            write!(formatter, "{}", self.to)
+        } else {
+            write!(formatter, "to={} from={}", self.to, self.from)
+        }
+    }
+}
+
+impl Serialize for GeneratedLinkFieldSettings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.to == self.from {
+            return serializer.serialize_bool(self.to);
+        }
+
+        let mut state = serializer.serialize_struct("GeneratedLinkFieldSettings", 2)?;
+        state.serialize_field("to", &self.to)?;
+        state.serialize_field("from", &self.from)?;
+        state.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for GeneratedLinkFieldSettings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = GeneratedLinkFieldValue::deserialize(deserializer)?;
+        Ok(match value {
+            | GeneratedLinkFieldValue::Bool(enabled) => Self::from_bool(enabled),
+            | GeneratedLinkFieldValue::Directions(directions) => {
+                Self::new(directions.to, directions.from)
+            }
+        })
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum GeneratedLinkFieldValue {
+    Bool(bool),
+    Directions(GeneratedLinkDirections),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GeneratedLinkDirections {
+    to: bool,
+    from: bool,
+}
 
 /// Settings that choose which metadata fields become generated links.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct GeneratedLinkSettings {
-    /// Include `category` relation targets.
-    pub category: bool,
-    /// Include `clustee` relation targets.
-    pub clustee: bool,
+    /// Include `category` targets.
+    pub category: GeneratedLinkFieldSettings,
+    /// Include `clustee` targets.
+    pub clustee: GeneratedLinkFieldSettings,
     /// Expand enabled clustee links into clique edges.
     pub clique: bool,
-    /// Include `refiner` relation targets.
-    pub refiner: bool,
+    /// Include `refiner` targets.
+    pub refiner: GeneratedLinkFieldSettings,
 }
 
 impl Default for GeneratedLinkSettings {
     fn default() -> Self {
-        Self { category: false, clustee: true, clique: false, refiner: false }
+        Self {
+            category: GeneratedLinkFieldSettings::disabled(),
+            clustee: GeneratedLinkFieldSettings::enabled(),
+            clique: false,
+            refiner: GeneratedLinkFieldSettings::disabled(),
+        }
     }
 }
 
@@ -34,59 +143,127 @@ impl Default for GeneratedLinkSettings {
 /// Invariant: each clustee closure maps to the closure id and every parsed entry that names it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GeneratedLinkIndex {
+    category_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
     cliques_by_closure: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    clustee_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    refiner_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
 }
 
 impl GeneratedLinkIndex {
     /// Construct a generated-link index from parsed entries.
     pub fn from_entries(entries: &[Entry]) -> Self {
+        let mut category_sources_by_target =
+            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
         let mut cliques_by_closure = BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
+        let mut clustee_sources_by_target =
+            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
+        let mut refiner_sources_by_target =
+            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
         for entry in entries {
+            Self::insert_sources(
+                &mut category_sources_by_target,
+                &entry.id,
+                &entry.metadata.category,
+            );
+            Self::insert_sources(
+                &mut clustee_sources_by_target,
+                &entry.id,
+                &entry.metadata.clustee,
+            );
+            Self::insert_sources(
+                &mut refiner_sources_by_target,
+                &entry.id,
+                &entry.metadata.refiner,
+            );
             for closure in &entry.metadata.clustee {
                 let clique = cliques_by_closure.entry(closure.clone()).or_default();
                 clique.insert(closure.clone());
                 clique.insert(entry.id.clone());
             }
         }
-        Self { cliques_by_closure }
+        Self {
+            category_sources_by_target,
+            cliques_by_closure,
+            clustee_sources_by_target,
+            refiner_sources_by_target,
+        }
     }
 
     /// Render the generated-link footer for one entry using this store-wide index.
     pub fn render_entry(&self, entry: &Entry, settings: &GeneratedLinkSettings) -> String {
         let mut out = String::new();
         out.push_str(BEGIN_LINKS_GUARD);
-        out.push('\n');
+        out.push_str("\n\n");
 
         let mut rendered = 0_usize;
         let mut seen = BTreeSet::new();
-        if settings.category {
+        if settings.category.to {
             rendered += render_links(&mut out, entry.metadata.category.iter(), &mut seen);
         }
-        if settings.clustee {
+        if settings.category.from {
+            let targets = self.incoming_targets(&self.category_sources_by_target, entry);
+            rendered += render_links(&mut out, targets.iter(), &mut seen);
+        }
+        if settings.clustee.to {
             if settings.clique {
-                rendered += render_links(&mut out, self.clique_targets(entry).iter(), &mut seen);
+                let targets = self.outgoing_clique_targets(entry);
+                rendered += render_links(&mut out, targets.iter(), &mut seen);
             } else {
                 rendered += render_links(&mut out, entry.metadata.clustee.iter(), &mut seen);
             }
         }
-        if settings.refiner {
+        if settings.clustee.from {
+            let targets = if settings.clique {
+                self.incoming_clique_targets(entry)
+            } else {
+                self.incoming_targets(&self.clustee_sources_by_target, entry)
+            };
+            rendered += render_links(&mut out, targets.iter(), &mut seen);
+        }
+        if settings.refiner.to {
             rendered += render_links(&mut out, entry.metadata.refiner.iter(), &mut seen);
+        }
+        if settings.refiner.from {
+            let targets = self.incoming_targets(&self.refiner_sources_by_target, entry);
+            rendered += render_links(&mut out, targets.iter(), &mut seen);
         }
         if rendered == 0 {
             out.push_str("- none\n");
         }
 
+        out.push('\n');
         out.push_str(END_LINKS_GUARD);
         out
     }
 
-    fn clique_targets(&self, entry: &Entry) -> BTreeSet<crate::EntryId> {
+    fn insert_sources(
+        sources_by_target: &mut BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+        source: &crate::EntryId, targets: &[crate::EntryId],
+    ) {
+        for target in targets {
+            sources_by_target.entry(target.clone()).or_default().insert(source.clone());
+        }
+    }
+
+    fn incoming_targets(
+        &self, sources_by_target: &BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+        entry: &Entry,
+    ) -> BTreeSet<crate::EntryId> {
+        sources_by_target.get(&entry.id).cloned().unwrap_or_default()
+    }
+
+    fn outgoing_clique_targets(&self, entry: &Entry) -> BTreeSet<crate::EntryId> {
         let mut targets = BTreeSet::new();
         for closure in &entry.metadata.clustee {
             if let Some(clique) = self.cliques_by_closure.get(closure) {
                 targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
             }
         }
+        targets
+    }
+
+    fn incoming_clique_targets(&self, entry: &Entry) -> BTreeSet<crate::EntryId> {
+        let mut targets = BTreeSet::new();
         if let Some(clique) = self.cliques_by_closure.get(&entry.id) {
             targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
         }
@@ -297,7 +474,7 @@ mod tests {
         let mut metadata = EntryMetadata::new("Concept", "A named idea.").unwrap();
         metadata.category.push(id("meta"));
         metadata.clustee.push(id("core"));
-        metadata.refiner.push(id("relation"));
+        metadata.refiner.push(id("metadata"));
         Entry::new(id("concept"), metadata, "Body.\n")
     }
 
@@ -307,7 +484,7 @@ mod tests {
 
         assert!(!footer.contains("[meta](meta.md)"));
         assert!(footer.contains("- [core](core.md)"));
-        assert!(!footer.contains("[relation](relation.md)"));
+        assert!(!footer.contains("[metadata](metadata.md)"));
         assert!(!footer.contains("## Sirno Links"));
         assert!(!footer.contains("clustee:"));
         assert!(footer.contains(BEGIN_LINKS_GUARD));
@@ -316,14 +493,26 @@ mod tests {
     }
 
     #[test]
-    fn settings_can_enable_each_relation_field() {
-        let settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: true };
+    fn quoted_guards_are_separated_from_link_list() {
+        let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
+
+        assert!(footer.contains(&format!("{BEGIN_LINKS_GUARD}\n\n- [core](core.md)")));
+        assert!(footer.contains(&format!("- [core](core.md)\n\n{END_LINKS_GUARD}")));
+    }
+
+    #[test]
+    fn settings_can_enable_each_structural_field() {
+        let settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: true.into(),
+        };
         let footer = render_generated_links(&entry(), &settings);
 
         assert!(footer.contains("- [meta](meta.md)"));
         assert!(footer.contains("- [core](core.md)"));
-        assert!(footer.contains("- [relation](relation.md)"));
+        assert!(footer.contains("- [metadata](metadata.md)"));
         assert!(!footer.contains("category:"));
         assert!(!footer.contains("clustee:"));
         assert!(!footer.contains("refiner:"));
@@ -333,8 +522,12 @@ mod tests {
     fn repeated_targets_render_once() {
         let mut entry = entry();
         entry.metadata.category.push(id("core"));
-        let settings =
-            GeneratedLinkSettings { category: true, clustee: true, clique: false, refiner: false };
+        let settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: true.into(),
+            clique: false,
+            refiner: false.into(),
+        };
 
         let footer = render_generated_links(&entry, &settings);
 
@@ -342,9 +535,60 @@ mod tests {
     }
 
     #[test]
+    fn boolean_field_settings_render_to_and_from_edges() {
+        let settings = GeneratedLinkSettings {
+            category: true.into(),
+            clustee: false.into(),
+            clique: false,
+            refiner: false.into(),
+        };
+        let category =
+            Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
+        let mut member_metadata = EntryMetadata::new("Member", "A category member.").unwrap();
+        member_metadata.category.push(id("meta"));
+        let member = Entry::new(id("member"), member_metadata, "Body.\n");
+        let entries = vec![category.clone(), member.clone()];
+        let index = GeneratedLinkIndex::from_entries(&entries);
+
+        let category_footer = index.render_entry(&category, &settings);
+        let member_footer = index.render_entry(&member, &settings);
+
+        assert!(category_footer.contains("- [member](member.md)"));
+        assert!(member_footer.contains("- [meta](meta.md)"));
+    }
+
+    #[test]
+    fn table_field_settings_can_choose_one_direction() {
+        let settings = GeneratedLinkSettings {
+            category: GeneratedLinkFieldSettings::new(false, true),
+            clustee: false.into(),
+            clique: false,
+            refiner: false.into(),
+        };
+        let category =
+            Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
+        let mut member_metadata = EntryMetadata::new("Member", "A category member.").unwrap();
+        member_metadata.category.push(id("meta"));
+        let member = Entry::new(id("member"), member_metadata, "Body.\n");
+        let entries = vec![category.clone(), member.clone()];
+        let index = GeneratedLinkIndex::from_entries(&entries);
+
+        let category_footer = index.render_entry(&category, &settings);
+        let member_footer = index.render_entry(&member, &settings);
+
+        assert!(category_footer.contains("- [member](member.md)"));
+        assert!(member_footer.contains("- none"));
+        assert!(!member_footer.contains("[meta](meta.md)"));
+    }
+
+    #[test]
     fn clique_setting_expands_clustee_closures_to_edges() {
-        let settings =
-            GeneratedLinkSettings { category: false, clustee: true, clique: true, refiner: false };
+        let settings = GeneratedLinkSettings {
+            category: false.into(),
+            clustee: true.into(),
+            clique: true,
+            refiner: false.into(),
+        };
 
         let closure = Entry::new(
             id("core"),
@@ -377,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    fn renders_none_when_entry_has_no_entry_relations() {
+    fn renders_none_when_entry_has_no_structural_targets() {
         let metadata = EntryMetadata::new("Meta", "A category.").unwrap();
         let entry = Entry::new(EntryId::new("meta").unwrap(), metadata, "Body.\n");
 
@@ -456,10 +700,10 @@ mod tests {
             &render_generated_links(
                 &entry(),
                 &GeneratedLinkSettings {
-                    category: true,
-                    clustee: true,
+                    category: true.into(),
+                    clustee: true.into(),
                     clique: false,
-                    refiner: true,
+                    refiner: true.into(),
                 },
             ),
         )

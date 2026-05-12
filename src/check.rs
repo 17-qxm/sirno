@@ -1,6 +1,6 @@
 //! Structural checks for Sirno entries.
 //!
-//! Sirno checks the shape of entries and relation targets.
+//! Sirno checks the shape of entries and structural targets.
 //! It does not decide whether prose is true or whether code satisfies a claim.
 
 use std::collections::BTreeSet;
@@ -82,11 +82,11 @@ impl CheckReport {
     }
 }
 
-/// Check structural relation targets for a set of entries.
+/// Check structural metadata targets for a set of entries.
 ///
 /// Parsing already enforces required fields, accepted field shapes,
 /// valid id syntax, and canonical `witness:` spelling.
-/// This pass checks relations between parsed entries.
+/// This pass checks entry ids named by structural fields.
 pub fn check_entries<'a>(
     entries: impl IntoIterator<Item = &'a Entry>, mode: CheckMode,
 ) -> CheckReport {
@@ -99,7 +99,7 @@ pub fn check_entries<'a>(
 
     let mut report = CheckReport::new();
     for entry in entries {
-        for (field, target) in entry.metadata.relation_targets() {
+        for (field, target) in entry.metadata.structural_targets() {
             if !ids.contains(target) {
                 report.push(CheckDiagnostic {
                     severity,

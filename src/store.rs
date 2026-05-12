@@ -301,7 +301,7 @@ mod tests {
     fn put_and_read_entry_round_trips_metadata_and_body() {
         let temp = tempfile::tempdir().unwrap();
         let mut store = SirnoStore::open(temp.path()).unwrap();
-        let mut metadata = EntryMetadata::new("Witness", "A relation.").unwrap();
+        let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
         metadata.category.push(EntryId::new("concept").unwrap());
         metadata.witness = Some(WitnessMarker::Present);
         let entry = Entry::new(EntryId::new("witness").unwrap(), metadata, "Body.\n");

@@ -2,7 +2,7 @@
 //!
 //! An entry id is the stable nominal handle for a Sirno entry.
 //! It is derived from the filename stem in the public store model
-//! and reused by relation metadata, generated footers, and witness lookup.
+//! and reused by structural metadata, generated footers, and witness lookup.
 
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
