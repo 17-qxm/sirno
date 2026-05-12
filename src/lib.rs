@@ -24,6 +24,7 @@ pub use crate::entry::{
 pub use crate::files::{
     EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryReport, EntryFileDiagnostic,
     GenLinkDirectoryReport, check_entry_directory, check_entry_directory_with_settings,
+    check_gen_link_entry_directory, check_gen_link_entry_directory_with_ignored_paths,
     create_entry_file, delete_gen_link_entry_directory,
     delete_gen_link_entry_directory_with_ignored_paths, gen_link_entry_directory,
     gen_link_entry_directory_with_ignored_paths, init_entry_directory,

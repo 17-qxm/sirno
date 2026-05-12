@@ -8,8 +8,9 @@ use clap_complete::{Shell, generate};
 use sirno::{
     CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryId, EntryIdError, EntryMetadata,
-    EntryParseError, EntryQuery, GeneratedLinkSettings, SirnoConfig, SirnoStore, StoreError,
-    VagueEntryQuery, WitnessMarker, check_entry_directory_with_settings, create_entry_file,
+    EntryParseError, EntryQuery, GenLinkDirectoryReport, GeneratedLinkSettings, SirnoConfig,
+    SirnoStore, StoreError, VagueEntryQuery, WitnessMarker, check_entry_directory_with_settings,
+    check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
     delete_gen_link_entry_directory_with_ignored_paths,
     gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
     vague_query_entries,
@@ -110,6 +111,9 @@ enum Command {
     /// Generate Markdown links in entry footers.
     #[command(name = "gen-link")]
     GenLink {
+        /// Write generated links instead of checking which entries would change.
+        #[arg(long)]
+        no_check: bool,
         /// Generated-link command.
         #[command(subcommand)]
         command: Option<GenLinkCommand>,
@@ -340,7 +344,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
-        | Command::GenLink { command, entries } => match command {
+        | Command::GenLink { command, entries, no_check } => match command {
             | None => {
                 let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
                 settings.link = false;
@@ -352,20 +356,38 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                     return Ok(ExitCode::FAILURE);
                 }
 
-                let report = gen_link_entry_directory_with_ignored_paths(
+                if no_check {
+                    let report = gen_link_entry_directory_with_ignored_paths(
+                        &entries,
+                        &settings.links,
+                        settings.ignore.clone(),
+                    )?;
+                    println!(
+                        "generated links for {} entries in {} ({} changed)",
+                        report.entry_count(),
+                        report.root().display(),
+                        report.changed_paths().len()
+                    );
+                    return Ok(ExitCode::SUCCESS);
+                }
+
+                let report = check_gen_link_entry_directory_with_ignored_paths(
                     &entries,
                     &settings.links,
                     settings.ignore.clone(),
                 )?;
-                println!(
-                    "generated links for {} entries in {} ({} changed)",
-                    report.entry_count(),
-                    report.root().display(),
-                    report.changed_paths().len()
-                );
-                Ok(ExitCode::SUCCESS)
+                print_gen_link_check_report(&report);
+                if report.changed_paths().is_empty() {
+                    Ok(ExitCode::SUCCESS)
+                } else {
+                    Ok(ExitCode::FAILURE)
+                }
             }
             | Some(GenLinkCommand::Delete { entries: delete_entries }) => {
+                if no_check {
+                    return Err(CliError::NoCheckWithGenLinkSubcommand);
+                }
+
                 let (entries, settings) =
                     resolve_entry_directory(delete_entries.or(entries), &config_path)?;
 
@@ -493,6 +515,18 @@ fn print_status(
     }
 }
 
+fn print_gen_link_check_report(report: &GenLinkDirectoryReport) {
+    println!(
+        "generated links would change {} of {} entries in {}",
+        report.changed_paths().len(),
+        report.entry_count(),
+        report.root().display()
+    );
+    for path in report.changed_paths() {
+        println!("{}", path.display());
+    }
+}
+
 fn print_query_results(
     report: &EntryDirectoryReport, entries: &[&Entry], format: CliQueryFormat,
 ) -> Result<(), CliError> {
@@ -554,6 +588,9 @@ fn severity_label(severity: CheckSeverity) -> &'static str {
 /// Error raised while running the CLI.
 #[derive(Debug, Error)]
 enum CliError {
+    /// A command-line flag was used with the wrong command shape.
+    #[error("`--no-check` only applies to `sirno gen-link` without a subcommand")]
+    NoCheckWithGenLinkSubcommand,
     /// Config-backed command failed.
     #[error(transparent)]
     Config(#[from] ConfigError),

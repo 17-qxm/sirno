@@ -363,7 +363,10 @@ maintained for external tools that navigate links.
 Changing a generated link by hand does not change metadata.
 Changing metadata and regenerating the footer is the correct edit path.
 
-`sirno gen-link` creates or replaces the generated region.
+`sirno gen-link` checks generated regions.
+It reports how many entry files would change and lists those files.
+It exits successfully only when no generated region would change.
+`sirno gen-link --no-check` creates or replaces the generated region.
 `sirno gen-link delete` removes the generated region.
 Deleting generated links does not edit prose outside the guard-bounded region.
 

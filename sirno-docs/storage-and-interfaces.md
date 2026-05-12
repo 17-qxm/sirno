@@ -40,7 +40,8 @@ It refuses to overwrite an existing entry file.
 Its default mode is vague text query.
 Exact structural predicates live behind explicit exact flags.
 
-`sirno gen-link` creates or replaces Sirno-owned generated footer regions.
+`sirno gen-link` reports generated footer regions that would change.
+`sirno gen-link --no-check` creates or replaces Sirno-owned generated footer regions.
 `sirno gen-link delete` removes those regions.
 Both commands operate on the configured store unless an explicit entry directory is given.
 

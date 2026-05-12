@@ -210,6 +210,15 @@ pub fn gen_link_entry_directory(
     gen_link_entry_directory_with_ignored_paths(root, settings, Vec::<PathBuf>::new())
 }
 
+/// Check which generated Markdown link footers would change in one public entry directory.
+///
+/// No file is written.
+pub fn check_gen_link_entry_directory(
+    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    check_gen_link_entry_directory_with_ignored_paths(root, settings, Vec::<PathBuf>::new())
+}
+
 /// Generate Markdown link footers for one public entry directory with ignored paths.
 ///
 /// Ignored paths are relative to the entry directory root.
@@ -217,8 +226,30 @@ pub fn gen_link_entry_directory_with_ignored_paths(
     root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
     ignore: impl IntoIterator<Item = PathBuf>,
 ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    process_gen_link_entry_directory(root, settings, ignore, GenLinkOperation::Write)
+}
+
+/// Check which generated Markdown link footers would change with ignored paths.
+///
+/// Ignored paths are relative to the entry directory root.
+/// No file is written.
+pub fn check_gen_link_entry_directory_with_ignored_paths(
+    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
+    ignore: impl IntoIterator<Item = PathBuf>,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    process_gen_link_entry_directory(root, settings, ignore, GenLinkOperation::Check)
+}
+
+fn process_gen_link_entry_directory(
+    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
+    ignore: impl IntoIterator<Item = PathBuf>, operation: GenLinkOperation,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
     let root = root.into();
-    trace!("gen_link_entry_directory begin: root={}", root.display());
+    trace!(
+        "gen_link_entry_directory begin: root={} operation={}",
+        root.display(),
+        operation.label()
+    );
     let check_settings = EntryDirectoryCheckSettings {
         link: false,
         links: *settings,
@@ -240,10 +271,12 @@ pub fn gen_link_entry_directory_with_ignored_paths(
         let body = apply_generated_links(&entry.body, &footer)?;
         let rendered = Entry::replace_markdown_body(&source, &body)?;
         if rendered != source {
-            fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
-                path: path.to_path_buf(),
-                source,
-            })?;
+            if operation.writes() {
+                fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
+                    path: path.to_path_buf(),
+                    source,
+                })?;
+            }
             changed_paths.push(path.to_path_buf());
         }
     }
@@ -254,6 +287,25 @@ pub fn gen_link_entry_directory_with_ignored_paths(
         changed_paths.len()
     );
     Ok(GenLinkDirectoryReport { root, entry_count: checked.entries().len(), changed_paths })
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum GenLinkOperation {
+    Check,
+    Write,
+}
+
+impl GenLinkOperation {
+    fn label(self) -> &'static str {
+        match self {
+            | Self::Check => "check",
+            | Self::Write => "write",
+        }
+    }
+
+    fn writes(self) -> bool {
+        matches!(self, Self::Write)
+    }
 }
 
 /// Delete generated Markdown link footers from one public entry directory.
@@ -836,6 +888,26 @@ Body.
 
         gen_link_entry_directory(&root, &settings).unwrap();
         let report = gen_link_entry_directory(&root, &settings).unwrap();
+
+        assert!(report.changed_paths().is_empty());
+    }
+
+    #[test]
+    fn check_gen_link_reports_changes_without_writing() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        let settings = GeneratedLinkSettings::default();
+
+        let report = check_gen_link_entry_directory(&root, &settings).unwrap();
+        let concept = fs::read_to_string(root.join("concept.md")).unwrap();
+
+        assert_eq!(report.entry_count(), 3);
+        assert_eq!(report.changed_paths().len(), 3);
+        assert!(!concept.contains(crate::links::BEGIN_LINKS_GUARD));
+
+        gen_link_entry_directory(&root, &settings).unwrap();
+        let report = check_gen_link_entry_directory(&root, &settings).unwrap();
 
         assert!(report.changed_paths().is_empty());
     }

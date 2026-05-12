@@ -53,9 +53,12 @@ the closure links to its members,
 and members link to the closure and to one another.
 When disabled, only configured structural field sections are rendered.
 
-`sirno gen-link` creates or replaces generated footer regions.
+`sirno gen-link` checks generated footer regions.
+It reports how many entry files would change and lists those files.
+It exits successfully only when no generated footer region would change.
+`sirno gen-link --no-check` creates or replaces generated footer regions.
 `sirno gen-link delete` removes them.
-Both commands leave prose outside the guard-bounded region under user ownership.
+The mutating commands leave prose outside the guard-bounded region under user ownership.
 
 In this repository, category links and clique-derived links are generated,
 while direct clustee and refiner links remain metadata-only.
