@@ -26,8 +26,13 @@ Prefer direct definitions over defensive framing.
 
 ### DESIGN.md
 
+Whenever anything changes about the project design, keep `DESIGN.md` in sync.
 When editing `DESIGN.md`, use the `design-doc-writer` skill.
 The skill carries the detailed structure, reader-evaluation, and prose-style standards.
+
+### Sirno
+
+Whenever `DESIGN.md` changes, update `sirno-docs/` to match.
 
 ### Rust
 
