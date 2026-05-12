@@ -16,10 +16,25 @@ use crate::links::GeneratedLinkSettings;
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
 
+/// Settings for structural checks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct CheckSettings {
+    /// Check generated-link footer freshness.
+    pub link: bool,
+}
+
+impl Default for CheckSettings {
+    fn default() -> Self {
+        Self { link: true }
+    }
+}
+
 /// Sirno project configuration.
 ///
 /// Invariant: `mono` points to the configured monograph path.
 /// `store` points to the configured public Markdown entry store path.
+/// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +44,9 @@ pub struct SirnoConfig {
     pub mono: PathBuf,
     /// Configured public Markdown entry store path.
     pub store: PathBuf,
+    /// Structural check settings.
+    #[serde(default)]
+    pub check: CheckSettings,
     /// Generated-link footer settings.
     #[serde(default)]
     pub links: GeneratedLinkSettings,
@@ -37,7 +55,12 @@ pub struct SirnoConfig {
 impl SirnoConfig {
     /// Construct a config from explicit paths.
     pub fn new(mono: impl Into<PathBuf>, store: impl Into<PathBuf>) -> Self {
-        Self { mono: mono.into(), store: store.into(), links: GeneratedLinkSettings::default() }
+        Self {
+            mono: mono.into(),
+            store: store.into(),
+            check: CheckSettings::default(),
+            links: GeneratedLinkSettings::default(),
+        }
     }
 
     /// Default config for a new Sirno-managed repository.
@@ -153,7 +176,24 @@ store = "docs"
 
         assert_eq!(config.mono, PathBuf::from("DESIGN.md"));
         assert_eq!(config.store, PathBuf::from("docs"));
+        assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
+    }
+
+    #[test]
+    fn parses_check_settings() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
+mono = "DESIGN.md"
+store = "docs"
+
+[check]
+link = false
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.check, CheckSettings { link: false });
     }
 
     #[test]

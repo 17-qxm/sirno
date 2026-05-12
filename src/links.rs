@@ -57,9 +57,25 @@ pub fn render_generated_links(entry: &Entry, settings: &GeneratedLinkSettings) -
 
 /// Validate generated-link guard boundaries in an entry body.
 pub fn validate_generated_links(body: &str) -> Result<(), GeneratedLinkError> {
+    validate_generated_link_bounds(body).map(|_| ())
+}
+
+/// Returns true when an existing generated-link region differs from `expected`.
+///
+/// Entries without a generated-link region are not stale.
+pub fn generated_links_are_stale(body: &str, expected: &str) -> Result<bool, GeneratedLinkError> {
+    let Some(bounds) = validate_generated_link_bounds(body)? else {
+        return Ok(false);
+    };
+    Ok(&body[bounds.region_start..bounds.region_end] != expected)
+}
+
+fn validate_generated_link_bounds(
+    body: &str,
+) -> Result<Option<GeneratedLinkBounds>, GeneratedLinkError> {
     let begin = guard_positions(body, BEGIN_LINKS_GUARD);
     let end = guard_positions(body, END_LINKS_GUARD);
-    match (begin.as_slice(), end.as_slice()) {
+    let bounds = match (begin.as_slice(), end.as_slice()) {
         | ([], []) => Ok(()),
         | ([begin], [end]) if begin < end => Ok(()),
         | ([begin], [end]) if begin > end => Err(GeneratedLinkError::EndBeforeBegin),
@@ -68,7 +84,16 @@ pub fn validate_generated_links(body: &str) -> Result<(), GeneratedLinkError> {
         | (_, _) if begin.len() > 1 => Err(GeneratedLinkError::DuplicateBegin),
         | (_, _) if end.len() > 1 => Err(GeneratedLinkError::DuplicateEnd),
         | _ => Err(GeneratedLinkError::Malformed),
+    };
+    bounds?;
+
+    if begin.is_empty() {
+        return Ok(None);
     }
+
+    let begin = begin[0];
+    let end = end[0] + END_LINKS_GUARD.len();
+    Ok(Some(GeneratedLinkBounds { region_start: line_start(body, begin), region_end: end }))
 }
 
 /// Apply generated links to an entry body.
@@ -77,16 +102,11 @@ pub fn validate_generated_links(body: &str) -> Result<(), GeneratedLinkError> {
 /// If one valid generated-link region exists, only that region is replaced.
 pub fn apply_generated_links(body: &str, footer: &str) -> Result<String, GeneratedLinkError> {
     validate_generated_links(body)?;
-    let begin = guard_positions(body, BEGIN_LINKS_GUARD);
-    if begin.is_empty() {
+    let Some(bounds) = validate_generated_link_bounds(body)? else {
         return Ok(append_footer(body, footer));
-    }
-
-    let begin = begin[0];
-    let end = guard_positions(body, END_LINKS_GUARD)[0] + END_LINKS_GUARD.len();
-    let region_start = line_start(body, begin);
-    let region_end = next_line_start(body, end);
-    let before = body[..region_start].trim_end_matches('\n');
+    };
+    let region_end = next_line_start(body, bounds.region_end);
+    let before = body[..bounds.region_start].trim_end_matches('\n');
     let after = body[region_end..].trim_start_matches('\n');
 
     let mut out = String::new();
@@ -135,6 +155,12 @@ fn append_footer(body: &str, footer: &str) -> String {
 
 fn guard_positions(body: &str, guard: &str) -> Vec<usize> {
     body.match_indices(guard).map(|(index, _)| index).collect()
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct GeneratedLinkBounds {
+    region_start: usize,
+    region_end: usize,
 }
 
 fn line_start(body: &str, index: usize) -> usize {
@@ -235,6 +261,24 @@ mod tests {
         assert!(body.ends_with("After.\n"));
         assert!(!body.contains("old"));
         assert_eq!(body.matches(BEGIN_LINKS_GUARD).count(), 1);
+    }
+
+    #[test]
+    fn reports_generated_links_staleness() {
+        let expected = render_generated_links(&entry(), &GeneratedLinkSettings::default());
+        let current = apply_generated_links("Body.\n", &expected).unwrap();
+        let stale = apply_generated_links(
+            "Body.\n",
+            &render_generated_links(
+                &entry(),
+                &GeneratedLinkSettings { category: true, clustee: true, refiner: true },
+            ),
+        )
+        .unwrap();
+
+        assert!(!generated_links_are_stale("Body.\n", &expected).unwrap());
+        assert!(!generated_links_are_stale(&current, &expected).unwrap());
+        assert!(generated_links_are_stale(&stale, &expected).unwrap());
     }
 
     #[test]

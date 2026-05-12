@@ -5,10 +5,11 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use sirno::{
-    CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryError,
-    EntryDirectoryReport, EntryId, EntryIdError, EntryMetadata, EntryParseError,
-    GeneratedLinkSettings, SirnoConfig, SirnoStore, StoreError, WitnessMarker,
-    check_entry_directory, create_entry_file, gen_link_entry_directory, init_entry_directory,
+    CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
+    EntryDirectoryError, EntryDirectoryReport, EntryId, EntryIdError, EntryMetadata,
+    EntryParseError, EntryQuery, GeneratedLinkSettings, SirnoConfig, SirnoStore, StoreError,
+    WitnessMarker, check_entry_directory_with_settings, create_entry_file,
+    gen_link_entry_directory, init_entry_directory, query_entries,
 };
 use thiserror::Error;
 
@@ -65,6 +66,29 @@ enum Command {
         #[arg(long)]
         entries: Option<PathBuf>,
     },
+    /// Query public Markdown entries.
+    Query {
+        /// Text terms matched against id, name, description, and body.
+        terms: Vec<String>,
+        /// Category relation target.
+        #[arg(long)]
+        category: Vec<String>,
+        /// Clique closure relation target.
+        #[arg(long)]
+        clustee: Vec<String>,
+        /// Refined entry relation target.
+        #[arg(long)]
+        refiner: Vec<String>,
+        /// Select only entries with a canonical witness marker.
+        #[arg(long)]
+        witness: bool,
+        /// Output format.
+        #[arg(long, value_enum, default_value_t = CliQueryFormat::Summary)]
+        format: CliQueryFormat,
+        /// Public Markdown entry directory.
+        #[arg(long)]
+        entries: Option<PathBuf>,
+    },
     /// Check current store structure.
     Check {
         /// Eter-backed entry store root.
@@ -95,6 +119,17 @@ enum CliCheckMode {
     Edit,
     /// Review boundary: dangling references are errors.
     Review,
+}
+
+/// CLI query output shape.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliQueryFormat {
+    /// Print id, path, and name.
+    Summary,
+    /// Print only entry ids.
+    Id,
+    /// Print only Markdown paths.
+    Path,
 }
 
 impl From<CliCheckMode> for CheckMode {
@@ -165,9 +200,41 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             println!("created {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
+        | Command::Query { terms, category, clustee, refiner, witness, format, entries } => {
+            let entries = match entries {
+                | Some(entries) => entries,
+                | None => {
+                    let config = SirnoConfig::from_file(&config_path)?;
+                    config.resolve_store(&config_path)
+                }
+            };
+            let report = check_entry_directory_with_settings(
+                &entries,
+                CheckMode::Edit,
+                &EntryDirectoryCheckSettings {
+                    link: false,
+                    links: GeneratedLinkSettings::default(),
+                },
+            )?;
+            if report.has_errors() {
+                print_entry_directory_report(&report);
+                return Ok(ExitCode::FAILURE);
+            }
+
+            let query = EntryQuery::new()
+                .with_text_terms(terms)
+                .with_category(parse_entry_ids(category)?)
+                .with_clustee(parse_entry_ids(clustee)?)
+                .with_refiner(parse_entry_ids(refiner)?)
+                .with_witness(witness);
+            let matches = query_entries(report.entries(), &query);
+            print_query_results(&report, &matches, format)?;
+            Ok(ExitCode::SUCCESS)
+        }
         | Command::Check { store, entries, mode } => {
             if let Some(entries) = entries {
-                let report = check_entry_directory(entries, mode.into())?;
+                let settings = explicit_entries_check_settings(&config_path)?;
+                let report = check_entry_directory_with_settings(entries, mode.into(), &settings)?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
                     Ok(ExitCode::FAILURE)
@@ -178,8 +245,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             let Some(store) = store else {
                 let config = SirnoConfig::from_file(&config_path)?;
-                let report =
-                    check_entry_directory(config.resolve_store(&config_path), mode.into())?;
+                let report = check_entry_directory_with_settings(
+                    config.resolve_store(&config_path),
+                    mode.into(),
+                    &entry_directory_check_settings(&config),
+                )?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
                     Ok(ExitCode::FAILURE)
@@ -210,7 +280,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 }
             };
 
-            let check = check_entry_directory(&entries, CheckMode::Review)?;
+            let check = check_entry_directory_with_settings(
+                &entries,
+                CheckMode::Review,
+                &EntryDirectoryCheckSettings { link: false, links: link_settings },
+            )?;
             if check.has_errors() {
                 print_entry_directory_report(&check);
                 return Ok(ExitCode::FAILURE);
@@ -229,7 +303,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let config = SirnoConfig::from_file(&config_path)?;
             let mono = config.resolve_mono(&config_path);
             let store = config.resolve_store(&config_path);
-            let report = check_entry_directory(&store, CheckMode::Review)?;
+            let report = check_entry_directory_with_settings(
+                &store,
+                CheckMode::Review,
+                &entry_directory_check_settings(&config),
+            )?;
             print_status(&config_path, &mono, &config, &report);
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
@@ -244,6 +322,21 @@ fn explicit_entries_link_settings(
     } else {
         Ok(GeneratedLinkSettings::default())
     }
+}
+
+fn explicit_entries_check_settings(
+    config_path: &std::path::Path,
+) -> Result<EntryDirectoryCheckSettings, CliError> {
+    if config_path.exists() {
+        let config = SirnoConfig::from_file(config_path)?;
+        Ok(entry_directory_check_settings(&config))
+    } else {
+        Ok(EntryDirectoryCheckSettings::default())
+    }
+}
+
+fn entry_directory_check_settings(config: &SirnoConfig) -> EntryDirectoryCheckSettings {
+    EntryDirectoryCheckSettings { link: config.check.link, links: config.links }
 }
 
 fn parse_entry_ids(raw: Vec<String>) -> Result<Vec<EntryId>, CliError> {
@@ -274,6 +367,8 @@ fn print_status(
     println!("mono: {}", mono.display());
     println!("store: {}", report.root().display());
     println!("entries: {}", report.entries().len());
+    println!("checks:");
+    println!("  link: {}", config.check.link);
     println!("links:");
     println!("  category: {}", config.links.category);
     println!("  clustee: {}", config.links.clustee);
@@ -284,6 +379,28 @@ fn print_status(
     } else {
         println!("check: ok");
     }
+}
+
+fn print_query_results(
+    report: &EntryDirectoryReport, entries: &[&Entry], format: CliQueryFormat,
+) -> Result<(), CliError> {
+    for entry in entries {
+        let path = report
+            .entry_path(&entry.id)
+            .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+        match format {
+            | CliQueryFormat::Summary => {
+                println!("{}\t{}\t{}", entry.id, path.display(), entry.metadata.name);
+            }
+            | CliQueryFormat::Id => {
+                println!("{}", entry.id);
+            }
+            | CliQueryFormat::Path => {
+                println!("{}", path.display());
+            }
+        }
+    }
+    Ok(())
 }
 
 fn print_entry_directory_report(report: &EntryDirectoryReport) {

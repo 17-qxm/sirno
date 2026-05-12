@@ -16,8 +16,8 @@ use crate::check::{CheckMode, CheckReport, CheckSeverity, check_entries};
 use crate::entry::{Entry, EntryParseError, EntryRenderError, default_seed_entries};
 use crate::id::EntryId;
 use crate::links::{
-    GeneratedLinkError, GeneratedLinkSettings, apply_generated_links, render_generated_links,
-    validate_generated_links,
+    GeneratedLinkError, GeneratedLinkSettings, apply_generated_links, generated_links_are_stale,
+    render_generated_links, validate_generated_links,
 };
 
 /// Check report for a public Markdown entry directory.
@@ -28,6 +28,21 @@ pub struct EntryDirectoryReport {
     paths_by_id: BTreeMap<EntryId, PathBuf>,
     file_diagnostics: Vec<EntryFileDiagnostic>,
     relation_report: CheckReport,
+}
+
+/// Settings for checking a public Markdown entry directory.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EntryDirectoryCheckSettings {
+    /// Check generated-link footer freshness.
+    pub link: bool,
+    /// Settings used to render expected generated links.
+    pub links: GeneratedLinkSettings,
+}
+
+impl Default for EntryDirectoryCheckSettings {
+    fn default() -> Self {
+        Self { link: true, links: GeneratedLinkSettings::default() }
+    }
 }
 
 impl EntryDirectoryReport {
@@ -117,9 +132,16 @@ impl EntryFileDiagnostic {
 pub fn check_entry_directory(
     root: impl Into<PathBuf>, mode: CheckMode,
 ) -> Result<EntryDirectoryReport, EntryDirectoryError> {
+    check_entry_directory_with_settings(root, mode, &EntryDirectoryCheckSettings::default())
+}
+
+/// Check one public Markdown entry directory with explicit settings.
+pub fn check_entry_directory_with_settings(
+    root: impl Into<PathBuf>, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+) -> Result<EntryDirectoryReport, EntryDirectoryError> {
     let root = root.into();
     trace!("check_entry_directory begin: root={}", root.display());
-    let loaded = load_entry_directory(&root, mode)?;
+    let loaded = load_entry_directory(&root, mode, settings)?;
     let relation_report = check_entries(&loaded.entries, mode);
     trace!(
         "check_entry_directory end: entries={} file_diagnostics={} relation_diagnostics={}",
@@ -175,7 +197,11 @@ pub fn gen_link_entry_directory(
 ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
     let root = root.into();
     trace!("gen_link_entry_directory begin: root={}", root.display());
-    let checked = check_entry_directory(&root, CheckMode::Review)?;
+    let checked = check_entry_directory_with_settings(
+        &root,
+        CheckMode::Review,
+        &EntryDirectoryCheckSettings { link: false, links: *settings },
+    )?;
     if checked.has_errors() {
         return Err(EntryDirectoryError::InvalidEntryDirectory(root));
     }
@@ -214,7 +240,7 @@ struct LoadedEntryDirectory {
 }
 
 fn load_entry_directory(
-    root: &Path, mode: CheckMode,
+    root: &Path, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
 ) -> Result<LoadedEntryDirectory, EntryDirectoryError> {
     if !root.exists() {
         return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
@@ -305,12 +331,25 @@ fn load_entry_directory(
                 continue;
             }
         };
-        if let Err(source) = validate_generated_links(&entry.body) {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                CheckSeverity::Error,
-                &path,
-                format!("malformed generated links: {source}"),
-            ));
+        match validate_generated_links(&entry.body) {
+            | Ok(()) if settings.link => {
+                let expected = render_generated_links(&entry, &settings.links);
+                if generated_links_are_stale(&entry.body, &expected)? {
+                    file_diagnostics.push(EntryFileDiagnostic::new(
+                        mode_severity(mode),
+                        &path,
+                        "generated links are stale; run `sirno gen-link`",
+                    ));
+                }
+            }
+            | Ok(()) => {}
+            | Err(source) => {
+                file_diagnostics.push(EntryFileDiagnostic::new(
+                    CheckSeverity::Error,
+                    &path,
+                    format!("malformed generated links: {source}"),
+                ));
+            }
         }
 
         seen_ids.insert(id.clone());
@@ -320,6 +359,13 @@ fn load_entry_directory(
 
     entries.sort_by(|left, right| left.id.cmp(&right.id));
     Ok(LoadedEntryDirectory { entries, paths_by_id, file_diagnostics })
+}
+
+fn mode_severity(mode: CheckMode) -> CheckSeverity {
+    match mode {
+        | CheckMode::Edit => CheckSeverity::Warning,
+        | CheckMode::Review => CheckSeverity::Error,
+    }
 }
 
 fn sorted_directory_paths(root: &Path) -> Result<Vec<PathBuf>, EntryDirectoryError> {
@@ -583,6 +629,63 @@ category:
         let report = gen_link_entry_directory(&root, &settings).unwrap();
 
         assert!(report.changed_paths().is_empty());
+    }
+
+    #[test]
+    fn check_reports_stale_generated_links_as_review_error() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        let old_settings = GeneratedLinkSettings { category: true, clustee: true, refiner: true };
+        gen_link_entry_directory(&root, &old_settings).unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &root,
+            CheckMode::Review,
+            &EntryDirectoryCheckSettings { link: true, links: GeneratedLinkSettings::default() },
+        )
+        .unwrap();
+
+        assert!(report.has_errors());
+        assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Error);
+        assert!(report.file_diagnostics()[0].message.contains("generated links are stale"));
+    }
+
+    #[test]
+    fn check_reports_stale_generated_links_as_edit_warning() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        let old_settings = GeneratedLinkSettings { category: true, clustee: true, refiner: true };
+        gen_link_entry_directory(&root, &old_settings).unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &root,
+            CheckMode::Edit,
+            &EntryDirectoryCheckSettings { link: true, links: GeneratedLinkSettings::default() },
+        )
+        .unwrap();
+
+        assert!(!report.has_errors());
+        assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Warning);
+    }
+
+    #[test]
+    fn check_can_skip_stale_generated_links() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        let old_settings = GeneratedLinkSettings { category: true, clustee: true, refiner: true };
+        gen_link_entry_directory(&root, &old_settings).unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &root,
+            CheckMode::Review,
+            &EntryDirectoryCheckSettings { link: false, links: GeneratedLinkSettings::default() },
+        )
+        .unwrap();
+
+        assert!(report.is_clean());
     }
 
     #[test]

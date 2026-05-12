@@ -1,6 +1,9 @@
 mono = "DESIGN.md"
 store = "docs"
 
+[check]
+link = true
+
 [links]
 category = false
 clustee = true
