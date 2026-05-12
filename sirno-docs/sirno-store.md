@@ -12,8 +12,7 @@ refiner:
 The Sirno store is the configured directory of Markdown entries.
 The usual convention is `docs/`.
 
-The configured project in this repository uses `sirno-docs/`.
-`Sirno.toml` records that path under `[store].path`.
+`Sirno.toml` records the store path under `[store].path`.
 
 The store is the human-readable intermediate representation:
 text first, structured enough for tools,

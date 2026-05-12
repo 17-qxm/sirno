@@ -60,10 +60,6 @@ It exits successfully only when no generated footer region would change.
 `sirno gen-link delete` removes them.
 The mutating commands leave prose outside the guard-bounded region under user ownership.
 
-In this repository, category links and clique-derived links are generated,
-while direct clustee and refiner links remain metadata-only.
-That choice shows entry kind and neighborhood navigation without duplicating clustee targets.
-
 Generated footers should stay boring.
 Their job is to make the edges of the page useful to tools,
 not to become another place for design prose.

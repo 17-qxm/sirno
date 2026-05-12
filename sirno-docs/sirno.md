@@ -7,6 +7,8 @@ category:
 
 Sirno is the Semantic Intermediate Representation of Nominal Objects.
 
+This store focuses on Sirno's general design as a tool and as a philosophical system for design work.
+
 It compiles between design forms for design-aware programming work.
 It moves among one long-form project narrative,
 a store of compact named Markdown entries,

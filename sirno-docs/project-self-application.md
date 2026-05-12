@@ -1,30 +1,26 @@
 ---
 name: Project Self-Application
-description: The way this repository uses its own Sirno model.
+description: The use of Sirno's own model to describe Sirno itself.
 category:
   - concept
 clustee:
   - sirno
 ---
 
-This repository uses Sirno's own model.
+Sirno can describe its own design through its own model.
 
-`DESIGN.md` is the monograph.
-The `sirno-docs/` directory is the Sirno store of compact entries for concepts,
-structural fields, interfaces, and implementation commitments described by the monograph.
-
-The codebase can witness entries through `mosaika`.
+A monograph can explain Sirno as one continuous document.
+A store can make the same design addressable in smaller pieces.
+Repository artifacts can witness entries through `mosaika`.
 
 The monograph may grow long,
 but it should remain ordered as one narrative.
 Local details that become dense should be lowered into entries,
 and raised back only when the monograph needs them.
 
-This self-application is useful because it exercises the design under its own constraints.
-The project can use `DESIGN.md` to explain Sirno as one continuous document,
-then use entries to make the same design addressable in smaller pieces.
+This self-application exercises the design under its own constraints.
 When implementation work changes the model,
-the repository can reflect that change into the store before the monograph is raised again.
+that change can be reflected into the store before the monograph is raised again.
 
 The store should not merely mirror the design document heading for heading.
 It should name the objects the project expects future work to cite:
@@ -32,14 +28,12 @@ forms, entries, structural fields, transforms, metadata,
 checks, generated footers, witnesses, and storage boundaries.
 Those names become the handles used by code work, documentation work, and review.
 
-The codebase will make this stronger as witnesses are added.
-When a Rust module realizes entry parsing,
-generated footer handling,
-or structural checks,
-that code can be marked through `mosaika` under the relevant entry id.
-Then the repository can answer both sides of the design question:
+Witnesses make self-application stronger.
+When code realizes entry parsing, generated footer handling, or structural checks,
+that code can be marked under the relevant entry id.
+Then Sirno can answer both sides of a design question:
 what does this entry mean,
-and where does the code witness it?
+and where is it witnessed?
 
 ---
 
