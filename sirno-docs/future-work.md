@@ -14,7 +14,7 @@ The `locked` field may later define how entries or generated regions resist acci
 `eter` versioning is reserved for later design.
 The current design depends only on durable storage and indexing.
 
-The direction names may still be refined.
+The transform names may still be refined.
 The current names are `lower`, `raise`, `realize`, and `reflect`.
 
 Planning skills are future work.
@@ -22,7 +22,7 @@ They may use entries to leave durable work artifacts without changing Sirno's co
 
 Future work should remain explicit without becoming speculative architecture.
 The current design is useful because its core is small:
-entries, metadata, structural fields, generated footers, surfaces, directions, checks, and witnesses.
+entries, metadata, structural fields, generated footers, forms, transforms, checks, and witnesses.
 New features should preserve that clarity.
 
 The `locked` field is one example.
@@ -34,10 +34,10 @@ Until then, leaving the field reserved is safer than accepting vague lock behavi
 
 Versioning is another example.
 `eter` may later provide history, snapshots, branching, or reviewable store states.
-Sirno should adopt only the versioning concepts that help design work move between surfaces.
+Sirno should adopt only the versioning concepts that help design work move between forms.
 It should not make the public entry model harder to read just to expose storage internals.
 
-Direction names may also evolve.
+Transform names may also evolve.
 The current names are compact and memorable,
 but they should remain subordinate to the model they describe.
 If the project learns a clearer vocabulary,
@@ -47,20 +47,11 @@ entries and manuals can reflect that deliberately.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
-- [mono](mono.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

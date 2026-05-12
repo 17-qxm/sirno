@@ -1,34 +1,34 @@
 ---
-name: Direction
-description: A concept that names movement between Sirno surfaces.
+name: Transform
+description: A concept that names movement between Sirno forms.
 category:
   - concept
 ---
 
-A direction names work between surfaces.
+A transform names a kind of work between Sirno forms.
 
-Sirno uses four direction names:
+Sirno uses four transform names:
 `lower`, `raise`, `realize`, and `reflect`.
 
 Their direct names are also useful:
 `mono-to-sirno`, `sirno-to-mono`, `sirno-to-code`, and `code-to-sirno`.
 
-Directions are vocabulary for humans, LLMs, skills, CLI surfaces, and MCP tools.
-They describe coherent work without requiring every direction to be a one-shot command.
+Transforms are vocabulary for humans, LLMs, skills, CLI interfaces, and MCP tools.
+They describe coherent work without requiring every transform to be a one-shot command.
 
-The direction names make design work easier to request and review.
+The transform names make design work easier to request and review.
 Instead of saying "split this document into smaller pieces" every time,
 a user can ask to lower a monograph into the store.
 Instead of saying "update the design notes based on this code change",
 a user can ask to reflect the code into entries.
 
-The four directions form a loop:
+The four transforms form a loop:
 `mono` lowers into `sirno`,
 `sirno` realizes into `code`,
 `code` reflects back into `sirno`,
 and `sirno` raises into `mono`.
 The loop is conceptual, not automatic authority.
-Each movement should still be performed with judgment about the current source of truth.
+Each transform should still be performed with judgment about the current source of truth.
 
 This vocabulary also helps skills stay focused.
 A lowering skill should preserve narrative intent while creating entries.
@@ -40,12 +40,15 @@ A raising skill should compose a readable monograph.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from)
+- [lower](lower.md)
+- [raise](raise.md)
+- [realize](realize.md)
+- [reflect](reflect.md)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to): (none)
 
-Clique
+Refiner (from)
 - [lower](lower.md)
 - [raise](raise.md)
 - [realize](realize.md)

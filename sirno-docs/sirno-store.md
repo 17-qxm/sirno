@@ -6,7 +6,7 @@ category:
 clustee:
   - sirno
 refiner:
-  - surface
+  - form
 ---
 
 The Sirno store is the configured directory of Markdown entries.
@@ -36,7 +36,7 @@ A person can edit an entry directly.
 A CLI can check its metadata and links.
 An agent can query a few related entries before changing code.
 An editor can use generated footers to expose navigation.
-All of those surfaces use the same filenames and metadata.
+All of those forms use the same filenames and metadata.
 
 Some files under a store root may belong to adjacent tools.
 `[store].ignore` lists store-root-relative paths that Sirno skips.
@@ -56,26 +56,17 @@ and where implementation evidence should be found when that evidence exists.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
-
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
+Clustee (from)
 - [entry](entry.md)
-- [future-work](future-work.md)
 - [generated-footer](generated-footer.md)
 - [metadata](metadata.md)
-- [mono](mono.md)
-- [planning](planning.md)
 - [project-config](project-config.md)
-- [project-self-application](project-self-application.md)
 - [query](query.md)
-- [sirno](sirno.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
 - [structural-check](structural-check.md)
-- [surface](surface.md)
+
+Clustee (to)
+- [sirno](sirno.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

@@ -9,7 +9,7 @@ clustee:
 
 Planning lives in skills built on top of Sirno.
 
-Entries are durable, named, and relationally structured.
+Entries are durable, named, and structured by metadata.
 That structure can support persistent planning without adding a planning primitive to Sirno.
 
 A skill may represent a worklist as ordinary entries.
@@ -38,20 +38,11 @@ not in ad hoc metadata that core tools silently ignore.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
-- [future-work](future-work.md)
-- [mono](mono.md)
-- [project-self-application](project-self-application.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

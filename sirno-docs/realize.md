@@ -4,9 +4,9 @@ description: The movement from Sirno entries into repository implementation.
 category:
   - concept
 clustee:
-  - direction
+  - transform
 refiner:
-  - direction
+  - transform
 ---
 
 `realize` moves from `sirno` to `code`.
@@ -43,15 +43,11 @@ and find the entry that gave the commitment a name.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to)
+- [transform](transform.md)
 
-Clique
-- [direction](direction.md)
-- [lower](lower.md)
-- [raise](raise.md)
-- [reflect](reflect.md)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

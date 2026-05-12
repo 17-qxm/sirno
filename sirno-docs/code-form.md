@@ -1,15 +1,15 @@
 ---
-name: Code Surface
+name: Code Form
 description: The repository artifacts that realize and witness design entries.
 category:
   - concept
 clustee:
   - sirno
 refiner:
-  - surface
+  - form
 ---
 
-The code surface is the repository implementation surface.
+The code form is the repository implementation form.
 
 It includes source files, tests, configuration, generated files, assets,
 and other artifacts that realize design decisions.
@@ -18,7 +18,7 @@ Repository artifacts can witness entries through `mosaika`.
 Sirno uses the entry id as the witness query key,
 keeping design names and repository marks connected without embedding mark syntax in entry prose.
 
-The code surface is where design becomes costly in the useful sense.
+The code form is where design becomes costly in the useful sense.
 Names, invariants, parser choices, storage boundaries, user interfaces,
 tests, and generated assets all make commitments that future work must honor or revise.
 Sirno does not ask every line of code to carry a design entry.
@@ -41,20 +41,11 @@ and which repository artifact witnesses an entry.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [concept-driven-development](concept-driven-development.md)
-- [future-work](future-work.md)
-- [mono](mono.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

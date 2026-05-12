@@ -2,7 +2,7 @@
 //!
 //! This module reads the human-facing Sirno store shape:
 //! a flat directory of `*.md` files whose filename stems are entry ids.
-//! Path-shaped ids remain outside this first file-surface implementation.
+//! Path-shaped ids remain outside this first flat-file implementation.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, OpenOptions};
@@ -95,7 +95,7 @@ impl EntryDirectoryReport {
     }
 }
 
-/// Diagnostic produced while loading the public Markdown entry surface.
+/// Diagnostic produced while loading the public Markdown entry store.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryFileDiagnostic {
     /// Diagnostic severity.

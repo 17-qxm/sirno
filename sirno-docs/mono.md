@@ -7,7 +7,7 @@ category:
 clustee:
   - sirno
 refiner:
-  - surface
+  - form
 ---
 
 `mono` is the configured long-form Markdown document.
@@ -48,21 +48,11 @@ not as a mechanical export of every known fact.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-- [narrative](narrative.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
-- [future-work](future-work.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

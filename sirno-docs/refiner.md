@@ -24,9 +24,8 @@ A low-level entry can refine a concept,
 a metadata rule can refine the entry model,
 and a testable behavior can refine a broad invariant.
 
-Refinement is directional.
 The more specific entry points back to the broader entry.
-That direction makes local work easier:
+This makes local work easier:
 from the local entry, a reader can climb back toward intent.
 From the broad entry, generated or queried metadata can reveal the entries that elaborate it.
 
@@ -39,11 +38,10 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to): (none)
 
-Clique: (none)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

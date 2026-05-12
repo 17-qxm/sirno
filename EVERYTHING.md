@@ -101,7 +101,7 @@ Sirno is now defined as:
 The `O` in Sirno is settled as `Objects`.
 The previous expansion involving `Obligations` is obsolete.
 
-Sirno is a bidirectional compiler for design-aware programming work.
+Sirno compiles between design forms for design-aware programming work.
 It moves between:
 
 - one long-form project narrative
@@ -123,15 +123,15 @@ It gives humans, LLMs, agents, skills, CLIs, MCP tools, and editors stable objec
 
 ---
 
-## The Three Surfaces
+## The Three Forms
 
-Sirno works through three surfaces:
+Sirno works through three forms:
 
 - `mono`
 - `sirno`
 - `code`
 
-These are official phase/surface names in the documentation, not merely CLI shorthand.
+These are official phase/form names in the documentation, not merely CLI shorthand.
 
 ### `mono`
 
@@ -165,7 +165,7 @@ Once the Sirno store exists and is maintained, it should be the preferred struct
 
 ### `code`
 
-`code` is the repository implementation surface.
+`code` is the repository implementation form.
 It contains source files, tests, configuration, generated files, assets,
 and any other artifacts that realize design decisions.
 
@@ -175,7 +175,7 @@ Repository artifacts can witness entries through `mosaika`.
 
 ## Canonical Authority
 
-There are three relevant surfaces:
+There are three relevant forms:
 
 - the `mono` document
 - the `sirno` store
@@ -193,9 +193,9 @@ This authority question is especially important before lower/reflect work.
 
 ---
 
-## The Four Directions
+## The Four Transforms
 
-Sirno names four directions:
+Sirno names four transforms:
 
 - `lower`: `mono -> sirno`
 - `raise`: `sirno -> mono`
@@ -209,14 +209,14 @@ Direct names are also useful:
 - `sirno-to-code`
 - `code-to-sirno`
 
-The direction names are conceptual operations.
-They are vocabulary for humans, LLMs, skills, CLI surfaces, and MCP tools.
+The transform names are conceptual operations.
+They are vocabulary for humans, LLMs, skills, CLI interfaces, and MCP tools.
 
 They are not necessarily one-shot commands that Sirno itself executes.
 The user specifically leaned toward making them terminology in skills and manuals,
 not necessarily actual Sirno commands.
 
-Each direction should be able to behave on its own.
+Each transform should be able to behave on its own.
 
 The names `lower`, `raise`, `realize`, and `reflect` are the current names.
 The user liked their feel.
@@ -460,7 +460,7 @@ It is not privileged by the system.
 
 A narrative records a cognitive route through concepts.
 
-The monograph is the primary narrative surface.
+The monograph is the primary narrative form.
 It is outside the store and remains normal Markdown.
 
 Materialized narratives may also live in the Sirno store as guides.
@@ -660,12 +660,12 @@ It belongs in skills or workflows built on top of Sirno.
 
 ## Document Roles
 
-The documentation set is now intended to have three distinct public surfaces.
+The documentation set is now intended to have three distinct public forms.
 
 ### `README.md`
 
 `README.md` is the first impression.
-It defines the project compactly, shows the visual asset, names the three surfaces, names the four directions,
+It defines the project compactly, shows the visual asset, names the three forms, names the four transforms,
 sketches the entry metadata shape, and points at deeper design.
 
 `README.md` should attract and orient.
@@ -673,9 +673,9 @@ It should not carry the full design.
 
 The current README includes:
 
-- Sirno as a bidirectional compiler
-- the `mono`, `sirno`, and `code` surfaces
-- the four directions
+- Sirno as a compiler between design forms
+- the `mono`, `sirno`, and `code` forms
+- the four transforms
 - entry id and metadata basics
 - `category`, `clustee`, `refiner`, and `witness:`
 - narrative basics
@@ -731,7 +731,7 @@ Its current section order is:
 6. Clustee Of A Clique
 7. Refinement
 8. Mirror Design With Witness
-9. Directions
+9. Transforms
 10. Metadata
 11. Generated Footers
 12. Storage And Interfaces
@@ -881,13 +881,13 @@ not the primary mechanism.
 
 Future work explicitly mentioned:
 
-- exact direction names may still be refined
+- exact transform names may still be refined
 - the `locked` field is reserved but undesigned
 - `eter` versioning is future work
 - planning skills may use Sirno entries
 - interactive narrative is likely a skill
 - materialized guide narratives may be entries
-- MCP, CLI, lightweight GUI, and Obsidian extension surfaces remain to be implemented
+- MCP, CLI, lightweight GUI, and Obsidian extension interfaces remain to be implemented
 
 Future work not yet ordered:
 
@@ -918,7 +918,7 @@ The scope and behavior of `eter` versioning are intentionally future work.
 
 The exact generated footer sentinel text is not yet specified.
 
-The exact CLI and MCP command surfaces are not yet specified.
+The exact CLI and MCP command shapes are not yet specified.
 
 The exact way `init` creates the initial `concept` and `narrative` entries is not yet specified.
 
@@ -945,7 +945,7 @@ The best flow is:
 3. introduce compression and concept-driven development
 4. introduce narrative
 5. introduce category, clustee, refiner, and witness
-6. introduce directions
+6. introduce transforms
 7. introduce metadata and mechanical details
 8. introduce storage, checks, and future work
 

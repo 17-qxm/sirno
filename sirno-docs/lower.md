@@ -4,9 +4,9 @@ description: The movement from the monograph into the Sirno store.
 category:
   - concept
 clustee:
-  - direction
+  - transform
 refiner:
-  - direction
+  - transform
 ---
 
 `lower` moves from `mono` to `sirno`.
@@ -42,15 +42,11 @@ That makes review and future reflection less dependent on remembering the origin
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to)
+- [transform](transform.md)
 
-Clique
-- [direction](direction.md)
-- [raise](raise.md)
-- [realize](realize.md)
-- [reflect](reflect.md)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

@@ -28,7 +28,7 @@ the repository can reflect that change into the store before the monograph is ra
 
 The store should not merely mirror the design document heading for heading.
 It should name the objects the project expects future work to cite:
-surfaces, entries, structural fields, directions, metadata,
+forms, entries, structural fields, transforms, metadata,
 checks, generated footers, witnesses, and storage boundaries.
 Those names become the handles used by code work, documentation work, and review.
 
@@ -45,20 +45,11 @@ and where does the code witness it?
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
-- [future-work](future-work.md)
-- [mono](mono.md)
-- [planning](planning.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

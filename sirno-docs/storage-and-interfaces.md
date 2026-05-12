@@ -1,6 +1,6 @@
 ---
 name: Storage And Interfaces
-description: The design commitment to eter storage and CLI or MCP access surfaces.
+description: The design commitment to eter storage and CLI or MCP access interfaces.
 category:
   - concept
 clustee:
@@ -11,13 +11,13 @@ The entry store is managed through `eter`.
 At this design stage, `eter` provides durable storage and indexing.
 Versioning is reserved for later design.
 
-Sirno exposes the store through a CLI and an MCP surface.
+Sirno exposes the store through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
 
 Repository witnesses are managed through `mosaika`.
 The entry id is the query key Sirno uses when locating marks.
 
-The storage design separates the public Markdown surface from the durable substrate.
+The storage design separates the public Markdown form from the durable substrate.
 Markdown entries are the human-facing form.
 They are easy to read, review, diff, and edit.
 `eter` provides the storage and indexing foundation beneath that form,
@@ -48,7 +48,7 @@ Both commands operate on the configured store unless an explicit entry directory
 Completion generation is a utility interface,
 not a store operation.
 
-The MCP surface serves interactive tooling.
+The MCP interface serves interactive tooling.
 It can expose the same store model to agents and editors without asking them to shell out for every action.
 Future GUI or Obsidian work should keep the same ownership rules:
 metadata is structural,
@@ -63,20 +63,13 @@ while Sirno keeps the entry id as the shared nominal handle.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
-- [concept-driven-development](concept-driven-development.md)
-- [future-work](future-work.md)
-- [mono](mono.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
+Clustee (to)
 - [sirno](sirno.md)
-- [sirno-store](sirno-store.md)
-- [surface](surface.md)
+
+Refiner (from)
+- [project-config](project-config.md)
+- [query](query.md)
 
 > **Sirno generated links end.**

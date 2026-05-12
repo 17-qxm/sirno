@@ -42,7 +42,7 @@ It makes the relevant objects easier to name, inspect, connect, and revise.
 
 ## Keep One Monograph
 
-Every Sirno project has one `mono` surface.
+Every Sirno project has one `mono` form.
 It is the configured long-form Markdown narrative,
 often `DESIGN.md`.
 
@@ -64,7 +64,7 @@ not as a directory of entries.
 
 ## Give Design A Nominal Form
 
-The Sirno store is the `sirno` surface.
+The Sirno store is the `sirno` form.
 It contains Markdown entries.
 Each entry is a nominal object:
 its filename stem is its id,
@@ -189,7 +189,7 @@ not privileged by the system.
 ## Use Narratives For Cognitive Routes
 
 A narrative is an entry that records a route through concepts.
-The monograph is the primary narrative surface.
+The monograph is the primary narrative form.
 
 Materialized narratives may also live in the store as guides.
 They can state prerequisites,

@@ -31,7 +31,7 @@ because malformed sentinels make Sirno ownership ambiguous.
 `[links]` controls which structural fields are projected into generated footers.
 `category`, `clustee`, and `refiner` each accept either a boolean
 or `{ to = boolean, from = boolean }`.
-A boolean applies to both directions.
+A boolean applies to both link sides.
 
 `to` links from the entry to metadata targets.
 `from` links from the entry to entries that name it as a metadata target.
@@ -41,17 +41,11 @@ A boolean applies to both directions.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [entry](entry.md)
-- [generated-footer](generated-footer.md)
-- [metadata](metadata.md)
-- [query](query.md)
+Clustee (to)
 - [sirno-store](sirno-store.md)
-- [structural-check](structural-check.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

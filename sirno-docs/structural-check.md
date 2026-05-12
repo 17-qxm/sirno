@@ -28,7 +28,7 @@ The check boundary matters because editing and review have different needs.
 During editing, a person may create an entry before creating every related target.
 Warnings keep that work visible without blocking movement.
 At review time, dangling references should be fixed,
-because the store is being treated as a coherent design surface.
+because the store is being treated as a coherent design form.
 
 File checks keep the public store shape predictable.
 An entry directory contains Markdown entry files with valid ids.
@@ -52,17 +52,11 @@ That distinction keeps Sirno useful without pretending to solve judgment.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [entry](entry.md)
-- [generated-footer](generated-footer.md)
-- [metadata](metadata.md)
-- [project-config](project-config.md)
-- [query](query.md)
+Clustee (to)
 - [sirno-store](sirno-store.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

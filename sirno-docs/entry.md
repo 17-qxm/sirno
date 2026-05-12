@@ -44,17 +44,11 @@ and the prose should explain the local meaning in ordinary language.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [generated-footer](generated-footer.md)
-- [metadata](metadata.md)
-- [project-config](project-config.md)
-- [query](query.md)
+Clustee (to)
 - [sirno-store](sirno-store.md)
-- [structural-check](structural-check.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

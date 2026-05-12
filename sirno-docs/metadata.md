@@ -56,17 +56,11 @@ because every accepted field becomes part of the public structure that readers a
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [entry](entry.md)
-- [generated-footer](generated-footer.md)
-- [project-config](project-config.md)
-- [query](query.md)
+Clustee (to)
 - [sirno-store](sirno-store.md)
-- [structural-check](structural-check.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

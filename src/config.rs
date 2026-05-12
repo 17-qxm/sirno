@@ -295,7 +295,7 @@ refiner = true
     }
 
     #[test]
-    fn parses_directional_link_settings() {
+    fn parses_link_side_settings() {
         let config: SirnoConfig = toml::from_str(
             r#"
 [mono]

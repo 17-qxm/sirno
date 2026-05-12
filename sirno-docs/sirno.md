@@ -7,8 +7,8 @@ category:
 
 Sirno is the Semantic Intermediate Representation of Nominal Objects.
 
-It is a bidirectional compiler for design-aware programming work.
-It moves between one long-form project narrative,
+It compiles between design forms for design-aware programming work.
+It moves among one long-form project narrative,
 a store of compact named Markdown entries,
 and the repository codebase.
 
@@ -42,26 +42,25 @@ The result should feel like a project with good names for its important ideas.
 The monograph gives the reader a route through the whole design.
 The store gives the project durable local objects.
 The codebase gives those objects consequences.
-Sirno keeps the edges between those surfaces explicit.
+Sirno keeps the edges between those forms explicit.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
-
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [code-surface](code-surface.md)
+Clustee (from)
+- [code-form](code-form.md)
 - [concept-driven-development](concept-driven-development.md)
+- [form](form.md)
 - [future-work](future-work.md)
 - [mono](mono.md)
 - [planning](planning.md)
 - [project-self-application](project-self-application.md)
 - [sirno-store](sirno-store.md)
 - [storage-and-interfaces](storage-and-interfaces.md)
-- [surface](surface.md)
+
+Clustee (to): (none)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

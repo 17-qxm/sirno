@@ -38,11 +38,10 @@ The category field is most useful when it tells the reader what kind of object t
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to): (none)
 
-Clique: (none)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

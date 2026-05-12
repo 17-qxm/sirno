@@ -2,7 +2,7 @@
 name: sirno-lowering
 description: >-
   Lower a Sirno monograph or design document into a Sirno entry store. Use when Codex transforms
-  DESIGN.md or another mono surface into compact Markdown entries, chooses entry ids and structural
+  DESIGN.md or another mono form into compact Markdown entries, chooses entry ids and structural
   metadata, expands lowered entries, or validates generated Sirno links.
 ---
 
@@ -29,7 +29,7 @@ Look for:
 - concepts that compress repeated project knowledge
 - categories that define project vocabulary
 - entries that explain `category`, `clustee`, `refiner`, and `witness:`
-- direction entries that explain movement between surfaces
+- transform entries that explain movement between forms
 - interface, storage, metadata, and checking commitments
 - witnessable claims that should connect to repository artifacts
 - narrative routes that help a reader traverse concepts
@@ -39,7 +39,7 @@ Avoid entries that only restate a paragraph without creating a useful handle.
 
 ## Authority
 
-Before lowering, decide which surface currently carries authority.
+Before lowering, decide which form currently carries authority.
 If the store is already established and maintained,
 treat it as the structured design source.
 If the store is absent or skeletal,
@@ -130,7 +130,7 @@ but more durable than a plan item.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
    ids, names, descriptions, categories, clustees, refiners, and witness markers.
-4. Create missing entries through Sirno's current entry-creation surface when available.
+4. Create missing entries through Sirno's current entry-creation command when available.
 5. Expand or revise bodies with direct, reader-friendly prose.
 6. Leave generated footer regions untouched.
 7. Run Sirno's generated-link command after metadata stabilizes.

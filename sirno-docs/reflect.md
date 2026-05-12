@@ -4,9 +4,9 @@ description: The movement from changed code back into Sirno entries.
 category:
   - concept
 clustee:
-  - direction
+  - transform
 refiner:
-  - direction
+  - transform
 ---
 
 `reflect` moves from `code` to `sirno`.
@@ -42,15 +42,11 @@ not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
+Clustee (to)
+- [transform](transform.md)
 
-Clique
-- [direction](direction.md)
-- [lower](lower.md)
-- [raise](raise.md)
-- [realize](realize.md)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

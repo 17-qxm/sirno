@@ -27,7 +27,7 @@ The generated footer is an interoperability layer.
 Some editors and documentation tools navigate Markdown links more naturally than metadata fields.
 Sirno can project selected fields into links so those tools can participate in the store.
 
-The generated body is grouped by configured structural relation.
+The generated body is grouped by configured structural field.
 Each enabled group appears in the region.
 A group with links begins with a plain label,
 such as `Category (from)`, `Clustee (to)`, or `Clique`.
@@ -43,8 +43,8 @@ The sentinels make that ownership boundary visible in the entry file itself.
 The configured link policy controls which structural fields appear.
 `category`, `clustee`, and `refiner` can each generate outgoing links to targets
 and incoming links from sources.
-A boolean setting enables or disables both directions.
-A `{ to = ..., from = ... }` setting chooses the two directions separately.
+A boolean setting enables or disables both link sides.
+A `{ to = ..., from = ... }` setting chooses the two link sides separately.
 
 `links.clique` adds separate clique-derived sections.
 It does not change direct clustee projection.
@@ -69,17 +69,11 @@ not to become another place for design prose.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from): (none)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-
-Clique
-- [entry](entry.md)
-- [metadata](metadata.md)
-- [project-config](project-config.md)
-- [query](query.md)
+Clustee (to)
 - [sirno-store](sirno-store.md)
-- [structural-check](structural-check.md)
+
+Refiner (from): (none)
 
 > **Sirno generated links end.**

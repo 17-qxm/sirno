@@ -8,7 +8,7 @@ category:
 
 A narrative records a cognitive route through concepts.
 
-The monograph is the primary narrative surface.
+The monograph is the primary narrative form.
 It introduces terms once and trusts them afterward.
 
 Materialized narratives may also live in the store as guides.
@@ -42,13 +42,10 @@ but they should still treat entries as the source of durable project knowledge.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Category (from)
-- [mono](mono.md)
+Clustee (from): (none)
 
-Category (to)
-- [concept](concept.md)
-- [meta](meta.md)
+Clustee (to): (none)
 
-Clique: (none)
+Refiner (from): (none)
 
 > **Sirno generated links end.**

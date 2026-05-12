@@ -12,35 +12,35 @@ use thiserror::Error;
 
 use crate::entry::Entry;
 
-/// Settings for one generated-link relation field.
+/// Settings for one generated-link structural field.
 ///
-/// `to` includes links from the current entry to relation targets.
+/// `to` includes links from the current entry to metadata targets.
 /// `from` includes links from the current entry to entries that point at it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GeneratedLinkFieldSettings {
-    /// Include outgoing relation targets.
+    /// Include outgoing metadata targets.
     pub to: bool,
-    /// Include incoming relation sources.
+    /// Include incoming metadata sources.
     pub from: bool,
 }
 
 impl GeneratedLinkFieldSettings {
-    /// Construct relation-field link settings from explicit directions.
+    /// Construct structural-field link settings from explicit sides.
     pub fn new(to: bool, from: bool) -> Self {
         Self { to, from }
     }
 
-    /// Construct relation-field link settings from one boolean applied to both directions.
+    /// Construct structural-field link settings from one boolean applied to both sides.
     pub fn from_bool(enabled: bool) -> Self {
         Self::new(enabled, enabled)
     }
 
-    /// Construct enabled relation-field link settings.
+    /// Construct enabled structural-field link settings.
     pub fn enabled() -> Self {
         Self::from_bool(true)
     }
 
-    /// Construct disabled relation-field link settings.
+    /// Construct disabled structural-field link settings.
     pub fn disabled() -> Self {
         Self::from_bool(false)
     }
@@ -92,9 +92,7 @@ impl<'de> Deserialize<'de> for GeneratedLinkFieldSettings {
         let value = GeneratedLinkFieldValue::deserialize(deserializer)?;
         Ok(match value {
             | GeneratedLinkFieldValue::Bool(enabled) => Self::from_bool(enabled),
-            | GeneratedLinkFieldValue::Directions(directions) => {
-                Self::new(directions.to, directions.from)
-            }
+            | GeneratedLinkFieldValue::Sides(sides) => Self::new(sides.to, sides.from),
         })
     }
 }
@@ -103,12 +101,12 @@ impl<'de> Deserialize<'de> for GeneratedLinkFieldSettings {
 #[serde(untagged)]
 enum GeneratedLinkFieldValue {
     Bool(bool),
-    Directions(GeneratedLinkDirections),
+    Sides(GeneratedLinkSides),
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct GeneratedLinkDirections {
+struct GeneratedLinkSides {
     to: bool,
     from: bool,
 }
@@ -589,7 +587,7 @@ mod tests {
     }
 
     #[test]
-    fn table_field_settings_can_choose_one_direction() {
+    fn table_field_settings_can_choose_one_side() {
         let settings = GeneratedLinkSettings {
             category: GeneratedLinkFieldSettings::new(false, true),
             clustee: false.into(),

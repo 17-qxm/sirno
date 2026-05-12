@@ -2,7 +2,7 @@
 
 *Semantic Intermediate Representation of Nominal Objects*
 
-Sirno is a bidirectional compiler for design-aware programming work.
+Sirno compiles between design forms for design-aware programming work.
 It lowers a single long-form project narrative into compact Markdown entries,
 helps users and agents realize those entries in code,
 and helps code changes reflect back into the entry store.
@@ -15,20 +15,20 @@ and helps code changes reflect back into the entry store.
   </picture>
 </p>
 
-Sirno works through three surfaces:
+Sirno works through three forms:
 
 - `mono`: one configured Markdown narrative, often `DESIGN.md`
 - `sirno`: a configured store of named Markdown entries, often `docs/`
-- `code`: the repository implementation surface
+- `code`: the repository implementation form
 
 The `sirno` store is the human-readable intermediate representation.
 It is readable as documentation,
 structured enough for tools,
 and small enough for agents and humans to manipulate without losing the project shape.
 
-## The Four Directions
+## The Four Transforms
 
-Sirno names four directions between its three surfaces.
+Sirno names four transforms between its three forms.
 
 - `lower`: `mono -> sirno`
 - `raise`: `sirno -> mono`
@@ -85,7 +85,7 @@ The entry id is the query key used by `mosaika`.
 ## Narratives
 
 A narrative records a cognitive route through concepts.
-The monograph is the primary narrative surface:
+The monograph is the primary narrative form:
 one readable document that states the project in a single pass.
 
 Other narratives may be materialized guides in the Sirno store.
@@ -111,7 +111,7 @@ This repository is the design and implementation workspace for Sirno.
 `DESIGN.md` is the current monograph for the project.
 `METHODOLOGY.md` is the compact working guide for the project model.
 
-The implementation is expected to expose CLI and MCP surfaces,
+The implementation is expected to expose CLI and MCP interfaces,
 with possible lightweight GUI or Obsidian integration later.
 Entry storage is built around `eter`.
 Repository witnesses are built around `mosaika`.

@@ -11,7 +11,7 @@ description: >-
 
 ## Purpose
 
-Use this skill to write three public documentation surfaces as a coherent set:
+Use this skill to write three public documentation forms as a coherent set:
 `README.md`, `DESIGN.md`, and `METHODOLOGY.md`.
 
 The documents should share one project model while serving different readers.
@@ -33,7 +33,7 @@ uses a stronger convention.
 
 The README should intrigue readers enough to continue.
 It should define the project compactly,
-name the main surfaces or components,
+name the main forms or components,
 and hint at the deeper design.
 It should not carry the full design.
 
@@ -66,7 +66,7 @@ Do not use it as a second design document.
 ## Project Model
 
 Extract the project model before rewriting.
-Identify the project's canonical nouns, surfaces, phases, structural fields,
+Identify the project's canonical nouns, forms, transforms, structural fields,
 metadata fields, and named operations from the current docs and user instructions.
 Use those terms consistently across all three documents.
 
@@ -87,7 +87,7 @@ Typical stable facts include:
 
 - the project's central definition
 - the intended audience
-- the main artifacts, stores, files, or runtime surfaces
+- the main artifacts, stores, files, or runtime interfaces
 - required metadata fields and their accepted shapes
 - named structural fields and their semantics
 - naming conventions

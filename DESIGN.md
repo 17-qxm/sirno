@@ -2,8 +2,8 @@
 
 *Semantic Intermediate Representation of Nominal Objects*
 
-Sirno is a bidirectional compiler for design-aware programming work,
-moving between one long-form project narrative, a store of compact named Markdown entries, and the repository codebase.
+Sirno compiles between design forms for design-aware programming work,
+moving among one long-form project narrative, a store of compact named Markdown entries, and the repository codebase.
 
 Design needs a form that humans can read, tools can index,
 and agents can manipulate without carrying a whole project in context.
@@ -22,7 +22,7 @@ and the resulting names are readable by humans, stable for tools, and small enou
 
 ## What Is Sirno?
 
-Sirno works through three surfaces.
+Sirno works through three forms.
 
 `mono` is one configured Markdown document, often `DESIGN.md`,
 and it serves as the project monograph:
@@ -31,14 +31,14 @@ a readable narrative for a person who wants the whole design in one sitting.
 `sirno` is one configured entry store, often `docs/`,
 holding named Markdown documents with metadata blocks and bodies of prose.
 
-`code` is the repository implementation surface,
+`code` is the repository implementation form,
 containing source files, tests, configuration, generated files, assets,
 and other artifacts that realize design decisions.
 
 The `sirno` store is the human-readable intermediate representation:
 text first, structured enough for tools, and compact enough for humans and agents to inspect locally.
 
-Before the store exists, the user chooses which surface currently carries more authority —
+Before the store exists, the user chooses which form currently carries more authority —
 the working codebase, or the monograph that best describes the intended project —
 and once the store exists, Sirno treats it as the structured intermediate form.
 
@@ -51,7 +51,7 @@ Judging design quality and proving that code satisfies a claim are left to the p
 ## Project Configuration
 
 A repository is Sirno-managed when it contains `Sirno.toml`.
-The file configures the surfaces and the operational policy that Sirno applies to them.
+The file configures the forms and the operational policy that Sirno applies to them.
 
 `[mono].path` names the monograph.
 `[store].path` names the public Markdown entry store.
@@ -70,7 +70,7 @@ because Sirno cannot safely identify its owned region when the sentinels are mal
 `[links]` controls generated-footer projection.
 The structural fields `category`, `clustee`, and `refiner` each accept either a boolean
 or a table shaped as `{ to = boolean, from = boolean }`.
-A boolean applies to both directions.
+A boolean applies to both link sides.
 `to` renders links from an entry to its metadata targets.
 `from` renders links from an entry to entries that name it as a metadata target.
 
@@ -142,7 +142,7 @@ Understanding is a process rather than a state,
 and a concept unfolds over time as the reader's mental model grows and refines;
 narrative shapes that unfolding.
 
-The monograph is the primary narrative surface.
+The monograph is the primary narrative form.
 It is the `mono` document — normal Markdown outside the store,
 configured by path with `DESIGN.md` as the usual convention —
 and it introduces terms once and trusts them afterward.
@@ -257,11 +257,11 @@ while the structural convention remains the marker plus the entry id.
 
 ---
 
-## Directions
+## Transforms
 
-Metadata is static. Work between surfaces moves.
+Metadata is static. Work between forms moves.
 
-Sirno names four directions between its surfaces:
+Sirno names four transforms between its forms:
 
 ```text
 mono ─────lower───▶ sirno ────realize──▶ code
@@ -271,7 +271,7 @@ mono ◀────raise──── sirno ◀───reflect─── code
 The direct names are also useful:
 `mono-to-sirno`, `sirno-to-mono`, `sirno-to-code`, and `code-to-sirno`.
 These names are conceptual operations —
-vocabulary for humans, LLMs, skills, CLI surfaces, and MCP tools —
+vocabulary for humans, LLMs, skills, CLI interfaces, and MCP tools —
 and they need not all be implemented as one-shot commands.
 
 Lowering gives broad design compact nominal form,
@@ -294,7 +294,7 @@ invalidates an old explanation, or reveals a clearer local design than the curre
 
 ## Metadata
 
-Structural fields and directions rest on a small, exact schema.
+Structural fields rest on a small, exact schema.
 Every entry has a YAML metadata block whose required fields are `name` and `description`, both plain strings.
 The optional structural fields are `category`, `clustee`, and `refiner`,
 always lists when present, and their values are entry ids.
@@ -351,7 +351,7 @@ so Markdown renderers do not nest the closing sentinel under the list.
 When Sirno appends a generated region to a non-empty entry body,
 it inserts a horizontal divider immediately before the region unless one is already present.
 
-The generated body is grouped by configured structural relation.
+The generated body is grouped by configured structural field.
 Each enabled group appears in the region.
 A group with links begins with a plain label such as `Category (from)`, `Clustee (to)`,
 or `Clique`, followed by a Markdown list of entry links.
@@ -375,7 +375,7 @@ The entry store is managed through `eter`,
 which at this design stage serves as the durable storage and indexing substrate;
 versioning is future work.
 
-Sirno exposes the store through a CLI and an MCP surface,
+Sirno exposes the store through CLI and MCP interfaces,
 and a lightweight GUI or Obsidian extension may later provide a direct editing experience.
 Repository witnesses are managed through `mosaika`,
 with the entry id serving as the query key Sirno uses when locating marks.
@@ -426,7 +426,7 @@ so local movement stays fast while the final state stays sound.
 
 Planning lives in skills built on top of Sirno.
 
-Entries are durable, named, and relationally structured,
+Entries are durable, named, and structured by metadata,
 so Sirno can support persistent planning as an application of its core primitives.
 A skill may use entries to represent a worklist,
 treating the worklist as ordinary entries with categories, refiners, clustees, and witnesses.
@@ -441,7 +441,7 @@ where it may define how entries or generated regions resist accidental edits.
 `eter` versioning is reserved for later design,
 and the current design depends only on durable storage and indexing.
 
-The exact naming of the four directions may be refined;
+The exact naming of the four transforms may be refined;
 the current names are `lower`, `raise`, `realize`, and `reflect`.
 
 Planning skills are future work;
