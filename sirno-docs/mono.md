@@ -3,6 +3,7 @@ name: Mono
 description: The configured monograph that carries the whole design narrative.
 category:
   - concept
+  - narrative
 clustee:
   - sirno
 refiner:
@@ -44,7 +45,5 @@ In both cases, it should read as a document written for a person,
 not as a mechanical export of every known fact.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

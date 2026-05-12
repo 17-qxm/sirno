@@ -3,6 +3,7 @@ name: Meta
 description: A category for entries that define project vocabulary.
 category:
   - meta
+  - concept
 ---
 
 `meta` classifies entries that define project vocabulary.
@@ -25,7 +26,5 @@ The same query, check, footer, and relation rules apply to entries about vocabul
 and to entries about implementation commitments.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
 - none
 > **Sirno generated links end.**

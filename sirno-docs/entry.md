@@ -41,7 +41,5 @@ the relation fields should carry the navigational structure,
 and the prose should explain the local meaning in ordinary language.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno-store](sirno-store.md)
+- [sirno-store](sirno-store.md)
 > **Sirno generated links end.**

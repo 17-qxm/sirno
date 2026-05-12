@@ -38,7 +38,5 @@ Review can move between them by asking which entry explains a code commitment,
 and which repository artifact witnesses an entry.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

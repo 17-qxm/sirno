@@ -1,5 +1,9 @@
-mono = "DESIGN.md"
-store = "sirno-docs"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "sirno-docs"
+ignore = [".obsidian"]
 
 [check]
 link = true

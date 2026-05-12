@@ -5,7 +5,7 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -15,6 +15,23 @@ use crate::links::GeneratedLinkSettings;
 
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
+
+/// Configured monograph settings.
+///
+/// Invariant: `path` points to the configured monograph.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MonoSettings {
+    /// Configured monograph path.
+    pub path: PathBuf,
+}
+
+impl MonoSettings {
+    /// Construct monograph settings from a path.
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into() }
+    }
+}
 
 /// Settings for structural checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,20 +47,59 @@ impl Default for CheckSettings {
     }
 }
 
+/// Configured public Markdown store settings.
+///
+/// Invariant: `path` points to the public Markdown entry store.
+/// `ignore` contains paths relative to the store root that Sirno does not read.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StoreSettings {
+    /// Configured public Markdown entry store path.
+    pub path: PathBuf,
+    /// Store-root-relative paths ignored by Sirno.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ignore: Vec<PathBuf>,
+}
+
+impl StoreSettings {
+    /// Construct store settings from a store path and no ignored paths.
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into(), ignore: Vec::new() }
+    }
+
+    fn validate(&self) -> Result<(), ConfigError> {
+        for path in &self.ignore {
+            if path.as_os_str().is_empty()
+                || path.is_absolute()
+                || path.components().any(|component| {
+                    matches!(
+                        component,
+                        Component::ParentDir | Component::RootDir | Component::Prefix(_)
+                    )
+                })
+            {
+                return Err(ConfigError::StoreIgnorePath(path.clone()));
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Sirno project configuration.
 ///
-/// Invariant: `mono` points to the configured monograph path.
-/// `store` points to the configured public Markdown entry store path.
+/// Invariant: `mono.path` points to the configured monograph path.
+/// `store.path` points to the configured public Markdown entry store path.
+/// `store.ignore` contains paths relative to the store root that Sirno skips.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SirnoConfig {
-    /// Configured monograph path.
-    pub mono: PathBuf,
-    /// Configured public Markdown entry store path.
-    pub store: PathBuf,
+    /// Configured monograph settings.
+    pub mono: MonoSettings,
+    /// Configured public Markdown entry store settings.
+    pub store: StoreSettings,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -56,8 +112,8 @@ impl SirnoConfig {
     /// Construct a config from explicit paths.
     pub fn new(mono: impl Into<PathBuf>, store: impl Into<PathBuf>) -> Self {
         Self {
-            mono: mono.into(),
-            store: store.into(),
+            mono: MonoSettings::new(mono),
+            store: StoreSettings::new(store),
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
@@ -74,8 +130,9 @@ impl SirnoConfig {
         trace!("sirno config load begin: path={}", path.display());
         let source = fs::read_to_string(path)
             .map_err(|source| ConfigError::Read { path: path.to_path_buf(), source })?;
-        let config = toml::from_str(&source)
+        let config: Self = toml::from_str(&source)
             .map_err(|source| ConfigError::Parse { path: path.to_path_buf(), source })?;
+        config.store.validate()?;
         trace!("sirno config load end");
         Ok(config)
     }
@@ -86,6 +143,7 @@ impl SirnoConfig {
     pub fn write_new(&self, path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let path = path.as_ref();
         trace!("sirno config write begin: path={}", path.display());
+        self.store.validate()?;
         let source = toml::to_string_pretty(self).map_err(ConfigError::Render)?;
         let mut file = OpenOptions::new()
             .write(true)
@@ -100,12 +158,12 @@ impl SirnoConfig {
 
     /// Resolve the monograph path relative to a config file path.
     pub fn resolve_mono(&self, config_path: impl AsRef<Path>) -> PathBuf {
-        resolve_config_relative(config_path.as_ref(), &self.mono)
+        resolve_config_relative(config_path.as_ref(), &self.mono.path)
     }
 
     /// Resolve the entry store path relative to a config file path.
     pub fn resolve_store(&self, config_path: impl AsRef<Path>) -> PathBuf {
-        resolve_config_relative(config_path.as_ref(), &self.store)
+        resolve_config_relative(config_path.as_ref(), &self.store.path)
     }
 }
 
@@ -140,6 +198,9 @@ pub enum ConfigError {
     /// The config file could not be rendered.
     #[error("failed to render config file")]
     Render(#[source] toml::ser::Error),
+    /// A store ignore path is not relative to the store root.
+    #[error("store.ignore path must be relative to the store root: {0}")]
+    StoreIgnorePath(PathBuf),
     /// The config file could not be created.
     #[error("failed to create config file {path}")]
     Create {
@@ -168,14 +229,18 @@ mod tests {
     fn parses_minimal_config() {
         let config: SirnoConfig = toml::from_str(
             r#"
-mono = "DESIGN.md"
-store = "docs"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
 "#,
         )
         .unwrap();
 
-        assert_eq!(config.mono, PathBuf::from("DESIGN.md"));
-        assert_eq!(config.store, PathBuf::from("docs"));
+        assert_eq!(config.mono.path, PathBuf::from("DESIGN.md"));
+        assert_eq!(config.store.path, PathBuf::from("docs"));
+        assert!(config.store.ignore.is_empty());
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
     }
@@ -184,8 +249,11 @@ store = "docs"
     fn parses_check_settings() {
         let config: SirnoConfig = toml::from_str(
             r#"
-mono = "DESIGN.md"
-store = "docs"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
 
 [check]
 link = false
@@ -200,8 +268,11 @@ link = false
     fn parses_link_settings() {
         let config: SirnoConfig = toml::from_str(
             r#"
-mono = "DESIGN.md"
-store = "docs"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
 
 [links]
 category = true
@@ -218,11 +289,32 @@ refiner = true
     }
 
     #[test]
+    fn parses_store_ignore_settings() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+ignore = [".obsidian", "drafts"]
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.store.path, PathBuf::from("docs"));
+        assert_eq!(config.store.ignore, vec![PathBuf::from(".obsidian"), PathBuf::from("drafts")]);
+    }
+
+    #[test]
     fn rejects_unknown_fields() {
         let error = toml::from_str::<SirnoConfig>(
             r#"
-mono = "DESIGN.md"
-store = "docs"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
 extra = "no"
 "#,
         )
@@ -238,6 +330,28 @@ extra = "no"
 
         assert_eq!(config.resolve_mono(config_path), PathBuf::from("/tmp/project/DESIGN.md"));
         assert_eq!(config.resolve_store(config_path), PathBuf::from("/tmp/project/docs"));
+    }
+
+    #[test]
+    fn rejects_ignore_paths_outside_store_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+ignore = ["../outside"]
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(error, ConfigError::StoreIgnorePath(_)));
     }
 
     #[test]

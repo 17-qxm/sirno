@@ -41,7 +41,5 @@ That lets repository marks evolve with code navigation needs
 while Sirno keeps the entry id as the shared nominal handle.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

@@ -35,7 +35,5 @@ that behavior belongs in the skill or in future Sirno design,
 not in ad hoc metadata that core tools silently ignore.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

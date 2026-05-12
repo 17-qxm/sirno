@@ -2,7 +2,7 @@
 name: Realize
 description: The movement from Sirno entries into repository implementation.
 category:
-  - direction
+  - concept
 clustee:
   - direction
 refiner:
@@ -39,7 +39,5 @@ Future readers should be able to ask why a piece of code exists
 and find the entry that gave the commitment a name.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [direction](direction.md)
+- [direction](direction.md)
 > **Sirno generated links end.**

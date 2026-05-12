@@ -16,8 +16,8 @@ use crate::check::{CheckMode, CheckReport, CheckSeverity, check_entries};
 use crate::entry::{Entry, EntryParseError, EntryRenderError, default_seed_entries};
 use crate::id::EntryId;
 use crate::links::{
-    GeneratedLinkError, GeneratedLinkSettings, apply_generated_links, generated_links_are_stale,
-    render_generated_links, validate_generated_links,
+    GeneratedLinkError, GeneratedLinkSettings, apply_generated_links, delete_generated_links,
+    generated_links_are_stale, render_generated_links, validate_generated_links,
 };
 
 /// Check report for a public Markdown entry directory.
@@ -31,17 +31,29 @@ pub struct EntryDirectoryReport {
 }
 
 /// Settings for checking a public Markdown entry directory.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryDirectoryCheckSettings {
     /// Check generated-link footer freshness.
     pub link: bool,
     /// Settings used to render expected generated links.
     pub links: GeneratedLinkSettings,
+    /// Store-root-relative paths ignored by Sirno.
+    pub ignore: Vec<PathBuf>,
 }
 
 impl Default for EntryDirectoryCheckSettings {
     fn default() -> Self {
-        Self { link: true, links: GeneratedLinkSettings::default() }
+        Self { link: true, links: GeneratedLinkSettings::default(), ignore: Vec::new() }
+    }
+}
+
+impl EntryDirectoryCheckSettings {
+    /// Return true when a root-relative path is ignored.
+    pub fn ignores(&self, relative_path: &Path) -> bool {
+        self.ignore.iter().any(|ignored| {
+            !ignored.as_os_str().is_empty()
+                && (relative_path == ignored || relative_path.starts_with(ignored))
+        })
     }
 }
 
@@ -195,13 +207,24 @@ pub fn create_entry_file(
 pub fn gen_link_entry_directory(
     root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
 ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    gen_link_entry_directory_with_ignored_paths(root, settings, Vec::<PathBuf>::new())
+}
+
+/// Generate Markdown link footers for one public entry directory with ignored paths.
+///
+/// Ignored paths are relative to the entry directory root.
+pub fn gen_link_entry_directory_with_ignored_paths(
+    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
+    ignore: impl IntoIterator<Item = PathBuf>,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
     let root = root.into();
     trace!("gen_link_entry_directory begin: root={}", root.display());
-    let checked = check_entry_directory_with_settings(
-        &root,
-        CheckMode::Review,
-        &EntryDirectoryCheckSettings { link: false, links: *settings },
-    )?;
+    let check_settings = EntryDirectoryCheckSettings {
+        link: false,
+        links: *settings,
+        ignore: ignore.into_iter().collect(),
+    };
+    let checked = check_entry_directory_with_settings(&root, CheckMode::Review, &check_settings)?;
     if checked.has_errors() {
         return Err(EntryDirectoryError::InvalidEntryDirectory(root));
     }
@@ -226,6 +249,58 @@ pub fn gen_link_entry_directory(
 
     trace!(
         "gen_link_entry_directory end: entries={} changed={}",
+        checked.entries().len(),
+        changed_paths.len()
+    );
+    Ok(GenLinkDirectoryReport { root, entry_count: checked.entries().len(), changed_paths })
+}
+
+/// Delete generated Markdown link footers from one public entry directory.
+///
+/// The directory must parse cleanly before any file is written.
+pub fn delete_gen_link_entry_directory(
+    root: impl Into<PathBuf>,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    delete_gen_link_entry_directory_with_ignored_paths(root, Vec::<PathBuf>::new())
+}
+
+/// Delete generated Markdown link footers from one public entry directory with ignored paths.
+///
+/// Ignored paths are relative to the entry directory root.
+pub fn delete_gen_link_entry_directory_with_ignored_paths(
+    root: impl Into<PathBuf>, ignore: impl IntoIterator<Item = PathBuf>,
+) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+    let root = root.into();
+    trace!("delete_gen_link_entry_directory begin: root={}", root.display());
+    let check_settings = EntryDirectoryCheckSettings {
+        link: false,
+        links: GeneratedLinkSettings::default(),
+        ignore: ignore.into_iter().collect(),
+    };
+    let checked = check_entry_directory_with_settings(&root, CheckMode::Edit, &check_settings)?;
+    if checked.has_errors() {
+        return Err(EntryDirectoryError::InvalidEntryDirectory(root));
+    }
+
+    let mut changed_paths = Vec::new();
+    for entry in checked.entries() {
+        let path = checked
+            .entry_path(&entry.id)
+            .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+        let source = fs::read_to_string(path)?;
+        let body = delete_generated_links(&entry.body)?;
+        let rendered = Entry::replace_markdown_body(&source, &body)?;
+        if rendered != source {
+            fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
+                path: path.to_path_buf(),
+                source,
+            })?;
+            changed_paths.push(path.to_path_buf());
+        }
+    }
+
+    trace!(
+        "delete_gen_link_entry_directory end: entries={} changed={}",
         checked.entries().len(),
         changed_paths.len()
     );
@@ -259,6 +334,13 @@ fn load_entry_directory(
     let mut file_diagnostics = Vec::new();
 
     for path in sorted_directory_paths(root)? {
+        let relative_path = path.strip_prefix(root).map_err(|source| {
+            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
+        })?;
+        if settings.ignores(relative_path) {
+            continue;
+        }
+
         let file_type = fs::symlink_metadata(&path)?.file_type();
         if file_type.is_dir() {
             file_diagnostics.push(EntryFileDiagnostic::new(
@@ -401,6 +483,17 @@ pub enum EntryDirectoryError {
     /// Reading the directory or one of its files failed.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    /// A discovered path could not be made relative to the entry directory.
+    #[error("entry path {path} is not inside entry directory {root}")]
+    StripRoot {
+        /// Path discovered while loading the entry directory.
+        path: PathBuf,
+        /// Entry directory root.
+        root: PathBuf,
+        /// Underlying path-prefix error.
+        #[source]
+        source: std::path::StripPrefixError,
+    },
     /// An entry could not be parsed or constructed.
     #[error(transparent)]
     EntryParse(#[from] EntryParseError),
@@ -410,8 +503,8 @@ pub enum EntryDirectoryError {
     /// Generated-link footer boundaries were malformed while writing.
     #[error(transparent)]
     GeneratedLink(#[from] GeneratedLinkError),
-    /// Generated-link writing requires a clean review-mode entry directory.
-    #[error("entry directory must pass review checks before generating links: {0}")]
+    /// Generated-link operations require a clean enough entry directory.
+    #[error("entry directory must pass checks before changing generated links: {0}")]
     InvalidEntryDirectory(PathBuf),
     /// A parsed entry had no file path in the directory report.
     #[error("entry `{0}` has no source file path")]
@@ -518,6 +611,38 @@ Body.
     }
 
     #[test]
+    fn ignores_configured_store_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        fs::create_dir(temp.path().join(".obsidian")).unwrap();
+        fs::write(temp.path().join("note.txt"), "text").unwrap();
+        write_entry(
+            temp.path(),
+            "meta.md",
+            "\
+---
+name: Meta
+description: A category for categories.
+---
+
+Body.
+",
+        );
+
+        let report = check_entry_directory_with_settings(
+            temp.path(),
+            CheckMode::Review,
+            &EntryDirectoryCheckSettings {
+                ignore: vec![PathBuf::from(".obsidian"), PathBuf::from("note.txt")],
+                ..EntryDirectoryCheckSettings::default()
+            },
+        )
+        .unwrap();
+
+        assert!(report.is_clean());
+        assert_eq!(report.entries().len(), 1);
+    }
+
+    #[test]
     fn reports_relation_diagnostics_from_loaded_entries() {
         let temp = tempfile::tempdir().unwrap();
         write_entry(
@@ -615,7 +740,10 @@ category:
         assert_eq!(report.entry_count(), 3);
         assert_eq!(report.changed_paths().len(), 3);
         assert!(concept.contains(crate::links::BEGIN_LINKS_GUARD));
-        assert!(concept.contains("- category: [meta](meta.md)"));
+        assert!(concept.contains("\n---\n\n> **Sirno generated links begin."));
+        assert!(concept.contains("- [meta](meta.md)"));
+        assert!(!concept.contains("## Sirno Links"));
+        assert!(!concept.contains("category: [meta](meta.md)"));
     }
 
     #[test]
@@ -632,6 +760,33 @@ category:
     }
 
     #[test]
+    fn delete_gen_link_removes_generated_footers() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        gen_link_entry_directory(&root, &GeneratedLinkSettings::default()).unwrap();
+
+        let report = delete_gen_link_entry_directory(&root).unwrap();
+        let concept = fs::read_to_string(root.join("concept.md")).unwrap();
+
+        assert_eq!(report.entry_count(), 3);
+        assert_eq!(report.changed_paths().len(), 3);
+        assert!(!concept.contains(crate::links::BEGIN_LINKS_GUARD));
+    }
+
+    #[test]
+    fn delete_gen_link_is_idempotent() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+
+        let report = delete_gen_link_entry_directory(&root).unwrap();
+
+        assert_eq!(report.entry_count(), 3);
+        assert!(report.changed_paths().is_empty());
+    }
+
+    #[test]
     fn check_reports_stale_generated_links_as_review_error() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
@@ -642,7 +797,11 @@ category:
         let report = check_entry_directory_with_settings(
             &root,
             CheckMode::Review,
-            &EntryDirectoryCheckSettings { link: true, links: GeneratedLinkSettings::default() },
+            &EntryDirectoryCheckSettings {
+                link: true,
+                links: GeneratedLinkSettings::default(),
+                ..EntryDirectoryCheckSettings::default()
+            },
         )
         .unwrap();
 
@@ -662,7 +821,11 @@ category:
         let report = check_entry_directory_with_settings(
             &root,
             CheckMode::Edit,
-            &EntryDirectoryCheckSettings { link: true, links: GeneratedLinkSettings::default() },
+            &EntryDirectoryCheckSettings {
+                link: true,
+                links: GeneratedLinkSettings::default(),
+                ..EntryDirectoryCheckSettings::default()
+            },
         )
         .unwrap();
 
@@ -681,7 +844,11 @@ category:
         let report = check_entry_directory_with_settings(
             &root,
             CheckMode::Review,
-            &EntryDirectoryCheckSettings { link: false, links: GeneratedLinkSettings::default() },
+            &EntryDirectoryCheckSettings {
+                link: false,
+                links: GeneratedLinkSettings::default(),
+                ..EntryDirectoryCheckSettings::default()
+            },
         )
         .unwrap();
 

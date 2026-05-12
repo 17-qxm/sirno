@@ -10,7 +10,9 @@ use sirno::{
     EntryDirectoryError, EntryDirectoryReport, EntryId, EntryIdError, EntryMetadata,
     EntryParseError, EntryQuery, GeneratedLinkSettings, SirnoConfig, SirnoStore, StoreError,
     VagueEntryQuery, WitnessMarker, check_entry_directory_with_settings, create_entry_file,
-    gen_link_entry_directory, init_entry_directory, query_entries, vague_query_entries,
+    delete_gen_link_entry_directory_with_ignored_paths,
+    gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
+    vague_query_entries,
 };
 use thiserror::Error;
 
@@ -108,6 +110,9 @@ enum Command {
     /// Generate Markdown links in entry footers.
     #[command(name = "gen-link")]
     GenLink {
+        /// Generated-link command.
+        #[command(subcommand)]
+        command: Option<GenLinkCommand>,
         /// Public Markdown entry directory.
         #[arg(long)]
         entries: Option<PathBuf>,
@@ -166,6 +171,17 @@ enum UtilCommand {
         /// Shell whose completion script should be generated.
         #[arg(value_enum)]
         shell: CliCompletionShell,
+    },
+}
+
+/// Supported generated-link commands.
+#[derive(Debug, Subcommand)]
+enum GenLinkCommand {
+    /// Delete generated Markdown link footers.
+    Delete {
+        /// Public Markdown entry directory.
+        #[arg(long)]
+        entries: Option<PathBuf>,
     },
 }
 
@@ -262,21 +278,10 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             format,
             entries,
         } => {
-            let entries = match entries {
-                | Some(entries) => entries,
-                | None => {
-                    let config = SirnoConfig::from_file(&config_path)?;
-                    config.resolve_store(&config_path)
-                }
-            };
-            let report = check_entry_directory_with_settings(
-                &entries,
-                CheckMode::Edit,
-                &EntryDirectoryCheckSettings {
-                    link: false,
-                    links: GeneratedLinkSettings::default(),
-                },
-            )?;
+            let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
+            settings.link = false;
+            settings.links = GeneratedLinkSettings::default();
+            let report = check_entry_directory_with_settings(&entries, CheckMode::Edit, &settings)?;
             if report.has_errors() {
                 print_entry_directory_report(&report);
                 return Ok(ExitCode::FAILURE);
@@ -335,34 +340,46 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
-        | Command::GenLink { entries } => {
-            let (entries, link_settings) = match entries {
-                | Some(entries) => (entries, explicit_entries_link_settings(&config_path)?),
-                | None => {
-                    let config = SirnoConfig::from_file(&config_path)?;
-                    (config.resolve_store(&config_path), config.links)
+        | Command::GenLink { command, entries } => match command {
+            | None => {
+                let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
+                settings.link = false;
+
+                let check =
+                    check_entry_directory_with_settings(&entries, CheckMode::Review, &settings)?;
+                if check.has_errors() {
+                    print_entry_directory_report(&check);
+                    return Ok(ExitCode::FAILURE);
                 }
-            };
 
-            let check = check_entry_directory_with_settings(
-                &entries,
-                CheckMode::Review,
-                &EntryDirectoryCheckSettings { link: false, links: link_settings },
-            )?;
-            if check.has_errors() {
-                print_entry_directory_report(&check);
-                return Ok(ExitCode::FAILURE);
+                let report = gen_link_entry_directory_with_ignored_paths(
+                    &entries,
+                    &settings.links,
+                    settings.ignore.clone(),
+                )?;
+                println!(
+                    "generated links for {} entries in {} ({} changed)",
+                    report.entry_count(),
+                    report.root().display(),
+                    report.changed_paths().len()
+                );
+                Ok(ExitCode::SUCCESS)
             }
+            | Some(GenLinkCommand::Delete { entries: delete_entries }) => {
+                let (entries, settings) =
+                    resolve_entry_directory(delete_entries.or(entries), &config_path)?;
 
-            let report = gen_link_entry_directory(&entries, &link_settings)?;
-            println!(
-                "generated links for {} entries in {} ({} changed)",
-                report.entry_count(),
-                report.root().display(),
-                report.changed_paths().len()
-            );
-            Ok(ExitCode::SUCCESS)
-        }
+                let report =
+                    delete_gen_link_entry_directory_with_ignored_paths(&entries, settings.ignore)?;
+                println!(
+                    "deleted generated links from {} entries in {} ({} changed)",
+                    report.entry_count(),
+                    report.root().display(),
+                    report.changed_paths().len()
+                );
+                Ok(ExitCode::SUCCESS)
+            }
+        },
         | Command::Status => {
             let config = SirnoConfig::from_file(&config_path)?;
             let mono = config.resolve_mono(&config_path);
@@ -403,16 +420,6 @@ fn default_store_path() -> PathBuf {
     PathBuf::from("docs")
 }
 
-fn explicit_entries_link_settings(
-    config_path: &std::path::Path,
-) -> Result<GeneratedLinkSettings, CliError> {
-    if config_path.exists() {
-        Ok(SirnoConfig::from_file(config_path)?.links)
-    } else {
-        Ok(GeneratedLinkSettings::default())
-    }
-}
-
 fn explicit_entries_check_settings(
     config_path: &std::path::Path,
 ) -> Result<EntryDirectoryCheckSettings, CliError> {
@@ -425,7 +432,22 @@ fn explicit_entries_check_settings(
 }
 
 fn entry_directory_check_settings(config: &SirnoConfig) -> EntryDirectoryCheckSettings {
-    EntryDirectoryCheckSettings { link: config.check.link, links: config.links }
+    EntryDirectoryCheckSettings {
+        link: config.check.link,
+        links: config.links,
+        ignore: config.store.ignore.clone(),
+    }
+}
+
+fn resolve_entry_directory(
+    entries: Option<PathBuf>, config_path: &std::path::Path,
+) -> Result<(PathBuf, EntryDirectoryCheckSettings), CliError> {
+    if let Some(entries) = entries {
+        return Ok((entries, explicit_entries_check_settings(config_path)?));
+    }
+
+    let config = SirnoConfig::from_file(config_path)?;
+    Ok((config.resolve_store(config_path), entry_directory_check_settings(&config)))
 }
 
 fn parse_entry_ids(raw: Vec<String>) -> Result<Vec<EntryId>, CliError> {

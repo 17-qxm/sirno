@@ -44,7 +44,5 @@ what relation it has to broader design,
 and where implementation evidence should be found when that evidence exists.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

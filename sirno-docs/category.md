@@ -2,7 +2,7 @@
 name: Category
 description: A relation that classifies an entry by other entries.
 category:
-  - relation
+  - concept
 clustee:
   - relation
 refiner:
@@ -22,8 +22,8 @@ The reserved `locked` field may later protect entries or regions that a project 
 
 Use `category` when the classified entry should be read as an instance of a named kind.
 An entry categorized by `concept` should define a compressed idea.
-An entry categorized by `relation` should explain a structural connection.
-An entry categorized by `direction` should explain movement between surfaces.
+An entry categorized by `narrative` should record or name a route through concepts.
+An entry categorized by `meta` should define project vocabulary.
 
 Because categories are entries,
 their meanings can be documented in the same store they classify.
@@ -39,7 +39,5 @@ If an entry makes another entry more concrete,
 The category field is most useful when it tells the reader what kind of object they are looking at.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [relation](relation.md)
+- [relation](relation.md)
 > **Sirno generated links end.**

@@ -37,7 +37,5 @@ Their job is to make the edges of the page useful to tools,
 not to become another place for design prose.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno-store](sirno-store.md)
+- [sirno-store](sirno-store.md)
 > **Sirno generated links end.**

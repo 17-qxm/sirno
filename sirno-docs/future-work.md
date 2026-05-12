@@ -2,7 +2,7 @@
 name: Future Work
 description: Reserved design areas that may be refined later.
 category:
-  - narrative
+  - concept
 clustee:
   - sirno
 ---
@@ -44,7 +44,5 @@ If the project learns a clearer vocabulary,
 entries and manuals can reflect that deliberately.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

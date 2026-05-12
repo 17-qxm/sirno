@@ -44,7 +44,5 @@ It cannot say that the witnessed code is a good implementation of the claim.
 That distinction keeps Sirno useful without pretending to solve judgment.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno-store](sirno-store.md)
+- [sirno-store](sirno-store.md)
 > **Sirno generated links end.**

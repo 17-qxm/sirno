@@ -44,7 +44,5 @@ then work locally without carrying the whole monograph.
 The concept becomes a compact bridge between broad intent and detailed code.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

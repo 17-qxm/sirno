@@ -2,7 +2,7 @@
 name: Raise
 description: The movement from Sirno entries into a readable monograph.
 category:
-  - direction
+  - concept
 clustee:
   - direction
 refiner:
@@ -38,7 +38,5 @@ that may reveal missing entries, duplicated concepts, or unclear relations.
 The fix may belong in the store before the monograph can be made elegant.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [direction](direction.md)
+- [direction](direction.md)
 > **Sirno generated links end.**

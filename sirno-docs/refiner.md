@@ -2,7 +2,7 @@
 name: Refiner
 description: A relation from a specific entry to the broader entries it refines.
 category:
-  - relation
+  - concept
 clustee:
   - relation
 refiner:
@@ -40,7 +40,5 @@ not when the author wants extra cross-links.
 The prose should explain the combined responsibility so a future reader can tell why the relation is present.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [relation](relation.md)
+- [relation](relation.md)
 > **Sirno generated links end.**

@@ -3,6 +3,8 @@
 //! Sirno owns only the guard-bounded generated-link region.
 //! Prose outside the region remains user-owned.
 
+use std::collections::BTreeSet;
+
 use thiserror::Error;
 
 use crate::entry::Entry;
@@ -30,22 +32,24 @@ pub const BEGIN_LINKS_GUARD: &str = "> **Sirno generated links begin. Do not edi
 /// Closing guard for Sirno-owned generated links.
 pub const END_LINKS_GUARD: &str = "> **Sirno generated links end.**";
 
+const GENERATED_LINK_DIVIDER: &str = "---";
+
 /// Render the generated-link footer for one entry.
 pub fn render_generated_links(entry: &Entry, settings: &GeneratedLinkSettings) -> String {
     let mut out = String::new();
     out.push_str(BEGIN_LINKS_GUARD);
     out.push('\n');
-    out.push_str("## Sirno Links\n\n");
 
     let mut rendered = 0_usize;
+    let mut seen = BTreeSet::new();
     if settings.category {
-        rendered += render_relation(&mut out, "category", &entry.metadata.category);
+        rendered += render_links(&mut out, &entry.metadata.category, &mut seen);
     }
     if settings.clustee {
-        rendered += render_relation(&mut out, "clustee", &entry.metadata.clustee);
+        rendered += render_links(&mut out, &entry.metadata.clustee, &mut seen);
     }
     if settings.refiner {
-        rendered += render_relation(&mut out, "refiner", &entry.metadata.refiner);
+        rendered += render_links(&mut out, &entry.metadata.refiner, &mut seen);
     }
     if rendered == 0 {
         out.push_str("- none\n");
@@ -123,22 +127,47 @@ pub fn apply_generated_links(body: &str, footer: &str) -> Result<String, Generat
     Ok(out)
 }
 
-fn render_relation(out: &mut String, label: &str, ids: &[crate::EntryId]) -> usize {
-    if ids.is_empty() {
-        return 0;
-    }
+/// Delete generated links from an entry body.
+///
+/// If no generated-link region exists, the body is returned unchanged.
+pub fn delete_generated_links(body: &str) -> Result<String, GeneratedLinkError> {
+    let Some(bounds) = validate_generated_link_bounds(body)? else {
+        return Ok(body.to_owned());
+    };
+    let region_end = next_line_start(body, bounds.region_end);
+    let before = body[..bounds.region_start].trim_end_matches('\n');
+    let after = body[region_end..].trim_start_matches('\n');
 
-    let links = ids
-        .iter()
-        .map(|id| format!("[{}]({}.md)", id.as_str(), id.as_str()))
-        .collect::<Vec<_>>()
-        .join(", ");
-    out.push_str("- ");
-    out.push_str(label);
-    out.push_str(": ");
-    out.push_str(&links);
-    out.push('\n');
-    ids.len()
+    let mut out = String::new();
+    if !before.is_empty() {
+        out.push_str(before);
+    }
+    if !before.is_empty() && !after.is_empty() {
+        out.push_str("\n\n");
+    }
+    if !after.is_empty() {
+        out.push_str(after);
+    }
+    if after.is_empty() && body.ends_with('\n') && !out.is_empty() {
+        out.push('\n');
+    }
+    Ok(out)
+}
+
+fn render_links(
+    out: &mut String, ids: &[crate::EntryId], seen: &mut BTreeSet<crate::EntryId>,
+) -> usize {
+    let mut rendered = 0_usize;
+    for id in ids {
+        if !seen.insert(id.clone()) {
+            continue;
+        }
+        out.push_str("- ");
+        out.push_str(&format!("[{}]({}.md)", id.as_str(), id.as_str()));
+        out.push('\n');
+        rendered += 1;
+    }
+    rendered
 }
 
 fn append_footer(body: &str, footer: &str) -> String {
@@ -147,10 +176,21 @@ fn append_footer(body: &str, footer: &str) -> String {
     if !before.is_empty() {
         out.push_str(before);
         out.push_str("\n\n");
+        if !ends_with_divider(before) {
+            out.push_str(GENERATED_LINK_DIVIDER);
+            out.push_str("\n\n");
+        }
     }
     out.push_str(footer);
     out.push('\n');
     out
+}
+
+fn ends_with_divider(body: &str) -> bool {
+    body.lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .is_some_and(|line| line.trim() == GENERATED_LINK_DIVIDER)
 }
 
 fn guard_positions(body: &str, guard: &str) -> Vec<usize> {
@@ -211,9 +251,11 @@ mod tests {
     fn default_settings_render_only_clustee_links() {
         let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
 
-        assert!(!footer.contains("- category: [meta](meta.md)"));
-        assert!(footer.contains("- clustee: [core](core.md)"));
-        assert!(!footer.contains("- refiner: [relation](relation.md)"));
+        assert!(!footer.contains("[meta](meta.md)"));
+        assert!(footer.contains("- [core](core.md)"));
+        assert!(!footer.contains("[relation](relation.md)"));
+        assert!(!footer.contains("## Sirno Links"));
+        assert!(!footer.contains("clustee:"));
         assert!(footer.contains(BEGIN_LINKS_GUARD));
         assert!(footer.contains(END_LINKS_GUARD));
         assert!(footer.contains("> **Sirno generated links begin."));
@@ -224,9 +266,23 @@ mod tests {
         let settings = GeneratedLinkSettings { category: true, clustee: true, refiner: true };
         let footer = render_generated_links(&entry(), &settings);
 
-        assert!(footer.contains("- category: [meta](meta.md)"));
-        assert!(footer.contains("- clustee: [core](core.md)"));
-        assert!(footer.contains("- refiner: [relation](relation.md)"));
+        assert!(footer.contains("- [meta](meta.md)"));
+        assert!(footer.contains("- [core](core.md)"));
+        assert!(footer.contains("- [relation](relation.md)"));
+        assert!(!footer.contains("category:"));
+        assert!(!footer.contains("clustee:"));
+        assert!(!footer.contains("refiner:"));
+    }
+
+    #[test]
+    fn repeated_targets_render_once() {
+        let mut entry = entry();
+        entry.metadata.category.push(EntryId::new("core").unwrap());
+        let settings = GeneratedLinkSettings { category: true, clustee: true, refiner: false };
+
+        let footer = render_generated_links(&entry, &settings);
+
+        assert_eq!(footer.matches("[core](core.md)").count(), 1);
     }
 
     #[test]
@@ -245,8 +301,17 @@ mod tests {
 
         let body = apply_generated_links("Body.\n", &footer).unwrap();
 
+        assert_eq!(body, format!("Body.\n\n---\n\n{footer}\n"));
         assert_eq!(body.matches(BEGIN_LINKS_GUARD).count(), 1);
-        assert!(body.starts_with("Body.\n\n"));
+    }
+
+    #[test]
+    fn appends_footer_without_duplicate_divider() {
+        let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
+
+        let body = apply_generated_links("Body.\n\n---\n", &footer).unwrap();
+
+        assert_eq!(body, format!("Body.\n\n---\n\n{footer}\n"));
     }
 
     #[test]
@@ -261,6 +326,34 @@ mod tests {
         assert!(body.ends_with("After.\n"));
         assert!(!body.contains("old"));
         assert_eq!(body.matches(BEGIN_LINKS_GUARD).count(), 1);
+    }
+
+    #[test]
+    fn deletes_existing_footer_region() {
+        let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
+        let body = apply_generated_links("Body.\n", &footer).unwrap();
+
+        let body = delete_generated_links(&body).unwrap();
+
+        assert_eq!(body, "Body.\n\n---\n");
+        assert!(!body.contains(BEGIN_LINKS_GUARD));
+    }
+
+    #[test]
+    fn deletes_footer_without_touching_following_body() {
+        let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
+        let body = format!("Before.\n\n{footer}\nAfter.\n");
+
+        let body = delete_generated_links(&body).unwrap();
+
+        assert_eq!(body, "Before.\n\nAfter.\n");
+    }
+
+    #[test]
+    fn delete_is_noop_when_footer_is_missing() {
+        let body = delete_generated_links("Body.\n").unwrap();
+
+        assert_eq!(body, "Body.\n");
     }
 
     #[test]

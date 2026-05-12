@@ -2,7 +2,7 @@
 name: Lower
 description: The movement from the monograph into the Sirno store.
 category:
-  - direction
+  - concept
 clustee:
   - direction
 refiner:
@@ -39,7 +39,5 @@ With entries, the next edit can point to the design object that explains it.
 That makes review and future reflection less dependent on remembering the original conversation.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [direction](direction.md)
+- [direction](direction.md)
 > **Sirno generated links end.**

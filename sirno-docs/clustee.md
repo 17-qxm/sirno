@@ -2,7 +2,7 @@
 name: Clustee
 description: A relation that groups an entry by a named clique closure.
 category:
-  - relation
+  - concept
 clustee:
   - relation
 refiner:
@@ -39,7 +39,5 @@ If the group helps a reader enter a complicated region of the store,
 then the closure gives that region a stable front door.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [relation](relation.md)
+- [relation](relation.md)
 > **Sirno generated links end.**

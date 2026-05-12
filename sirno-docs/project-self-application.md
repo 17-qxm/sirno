@@ -2,7 +2,7 @@
 name: Project Self-Application
 description: The way this repository uses its own Sirno model.
 category:
-  - narrative
+  - concept
 clustee:
   - sirno
 ---
@@ -42,7 +42,5 @@ what does this entry mean,
 and where does the code witness it?
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

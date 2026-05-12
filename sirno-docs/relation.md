@@ -1,8 +1,8 @@
 ---
 name: Relation
-description: A category for entries that define structural entry connections.
+description: A concept that names structural entry connections.
 category:
-  - meta
+  - concept
 ---
 
 Relations connect entries through metadata.
@@ -42,7 +42,5 @@ They should be used when they help a reader or tool find the right context,
 not to satisfy a taxonomy for its own sake.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
 - none
 > **Sirno generated links end.**

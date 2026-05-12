@@ -55,7 +55,5 @@ Adding fields is future design work,
 because every accepted field becomes part of the public structure that readers and tools may rely on.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno-store](sirno-store.md)
+- [sirno-store](sirno-store.md)
 > **Sirno generated links end.**

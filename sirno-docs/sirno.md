@@ -45,7 +45,5 @@ The codebase gives those objects consequences.
 Sirno keeps the edges between those surfaces explicit.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
 - none
 > **Sirno generated links end.**

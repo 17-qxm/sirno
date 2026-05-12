@@ -1,8 +1,8 @@
 ---
 name: Direction
-description: A category for entries that define movement between Sirno surfaces.
+description: A concept that names movement between Sirno surfaces.
 category:
-  - meta
+  - concept
 ---
 
 A direction names work between surfaces.
@@ -37,7 +37,5 @@ A reflection skill should record durable design facts learned from implementatio
 A raising skill should compose a readable monograph.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
 - none
 > **Sirno generated links end.**

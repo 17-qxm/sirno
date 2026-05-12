@@ -43,7 +43,5 @@ Entries can stay compact and named.
 Code can stay focused on behavior while still having a place to point for intent.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [sirno](sirno.md)
+- [sirno](sirno.md)
 > **Sirno generated links end.**

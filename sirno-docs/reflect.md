@@ -2,7 +2,7 @@
 name: Reflect
 description: The movement from changed code back into Sirno entries.
 category:
-  - direction
+  - concept
 clustee:
   - direction
 refiner:
@@ -39,7 +39,5 @@ It gives implementation a way to improve the design model,
 not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [direction](direction.md)
+- [direction](direction.md)
 > **Sirno generated links end.**

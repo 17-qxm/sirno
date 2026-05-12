@@ -2,7 +2,7 @@
 name: Witness
 description: A marker relation from a design entry to repository evidence.
 category:
-  - relation
+  - concept
 clustee:
   - relation
 refiner:
@@ -41,7 +41,5 @@ The structural key remains simple:
 presence of `witness:` means the entry id is the query key.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
-- clustee: [relation](relation.md)
+- [relation](relation.md)
 > **Sirno generated links end.**

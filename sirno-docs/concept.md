@@ -3,6 +3,7 @@ name: Concept
 description: A named idea that compresses project knowledge.
 category:
   - meta
+  - concept
 ---
 
 A concept is a named idea that compresses project knowledge.
@@ -33,7 +34,5 @@ Sirno supplies the relation fields and id rules.
 The project supplies the vocabulary that makes its own design legible.
 
 > **Sirno generated links begin. Do not edit this section.**
-## Sirno Links
-
 - none
 > **Sirno generated links end.**
