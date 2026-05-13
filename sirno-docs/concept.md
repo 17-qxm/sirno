@@ -4,6 +4,7 @@ description: A named idea that compresses project knowledge.
 category:
   - meta
   - concept
+witness:
 ---
 
 A concept is a named idea that compresses project knowledge.

@@ -7,6 +7,7 @@ clustee:
   - sirno-store
 refiner:
   - storage-and-interfaces
+witness:
 ---
 
 `Sirno.toml` marks a repository as Sirno-managed.
@@ -19,7 +20,7 @@ It may also configure a private history root.
 `[mono].path` names the monograph.
 `[store].path` names the Markdown entry store.
 `[history].path` optionally names the private `eter` history root.
-`[code].members` lists repository paths or globs scanned for witness markers.
+`[code].members` lists repository paths or globs scanned for witness blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
 A project can use Sirno without history.

@@ -3,6 +3,7 @@ name: Refiner
 description: A structural field from a specific entry to the broader entries it refines.
 category:
   - concept
+witness:
 ---
 
 `refiner` points from a more specific entry to the broader entries it refines.

@@ -82,6 +82,7 @@ impl CheckReport {
     }
 }
 
+// sirno:witness:start structural-check
 /// Check structural metadata targets for a set of entries.
 ///
 /// Parsing already enforces required fields, accepted field shapes,
@@ -112,6 +113,7 @@ pub fn check_entries<'a>(
     }
     report
 }
+// sirno:witness:end
 
 #[cfg(test)]
 mod tests {

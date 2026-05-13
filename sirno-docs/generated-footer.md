@@ -5,6 +5,7 @@ category:
   - concept
 clustee:
   - sirno-store
+witness:
 ---
 
 Sirno may generate and maintain a footer at the bottom of entries.

@@ -21,6 +21,7 @@ const LOCK_FILE_HEADER: &str = "\
 
 ";
 
+// sirno:witness:start sirno-lock
 /// Project-local history state.
 ///
 /// Invariant: `history.version` names the `eter` snapshot represented by the public store.
@@ -83,7 +84,9 @@ impl SirnoLock {
         Ok(source)
     }
 }
+// sirno:witness:end
 
+// sirno:witness:start versioning
 /// History state recorded in `Sirno.lock`.
 ///
 /// Invariant: `mutable` is true only for checked-out snapshots created with `--unsafe-mutable`.
@@ -142,6 +145,7 @@ pub enum HistoryLockStatus {
     /// The public store is a materialized historical snapshot.
     CheckedOut,
 }
+// sirno:witness:end
 
 /// Resolve the lock path next to the config file.
 pub fn resolve_lock_path(config_path: impl AsRef<Path>) -> PathBuf {

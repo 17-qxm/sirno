@@ -234,14 +234,14 @@ They should not smuggle in unstated rules.
 Use `witness:` when the repository contains evidence for an entry.
 
 The witness may be source code, tests, configuration, generated files, assets,
-or any artifact that `mosaika` can mark and query.
+or any artifact that `mosaika` can delimit and query.
 Sirno queries witnesses by entry id.
-Repository markers use `sirno:witness:<entry-id>` inside paths selected by
-`[code].members`.
+Repository witness blocks open with `sirno:witness:start <entry-id>` and close
+with `sirno:witness:end` inside paths selected by `[code].members`.
 
 The entry body may explain how to interpret the evidence.
 That prose is helpful,
-but the structural convention is the marker and the id.
+but the structural convention is the metadata marker and the witness block.
 
 Witnesses make review concrete.
 They let a reader move from a named design claim to the repository artifacts

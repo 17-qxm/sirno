@@ -7,6 +7,7 @@ clustee:
   - sirno
 refiner:
   - form
+witness:
 ---
 
 The Sirno store is the configured directory of Markdown entries.

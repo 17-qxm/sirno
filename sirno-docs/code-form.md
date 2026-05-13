@@ -7,6 +7,7 @@ clustee:
   - sirno
 refiner:
   - form
+witness:
 ---
 
 The code form is the repository implementation form.
@@ -16,11 +17,12 @@ and other artifacts that realize design decisions.
 
 Repository artifacts can witness entries through `mosaika`.
 Sirno uses the entry id as the witness query key,
-keeping design names and repository marks connected without embedding mark syntax in entry prose.
+keeping design names and witness blocks connected without embedding block syntax in entry prose.
 `[code].members` defines the repository artifact surface that Sirno scans.
 File members are scanned directly,
 and directory members are scanned recursively.
-The marker shape is `sirno:witness:<entry-id>`.
+Witness blocks open with `sirno:witness:start <entry-id>`
+and close with `sirno:witness:end`.
 
 The code form is where design becomes costly in the useful sense.
 Names, invariants, parser choices, storage boundaries, user interfaces,
@@ -30,8 +32,8 @@ It asks important commitments to have a name that can survive beyond the edit th
 
 Witnesses make that name concrete.
 An entry can state a claim,
-and repository marks can show where the claim is implemented, tested, configured, or generated.
-The mark belongs to the repository artifact.
+and witness blocks can show where the claim is implemented, tested, configured, or generated.
+The witness block belongs to the repository artifact.
 The entry keeps the design language.
 The shared key is the entry id.
 

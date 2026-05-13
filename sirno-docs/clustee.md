@@ -3,6 +3,7 @@ name: Clustee
 description: A structural field that groups an entry by a named clique closure.
 category:
   - concept
+witness:
 ---
 
 `clustee` groups an entry into a named clique.

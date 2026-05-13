@@ -7,6 +7,7 @@ clustee:
   - sirno
 refiner:
   - storage-and-interfaces
+witness:
 ---
 
 When history is configured,

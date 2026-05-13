@@ -7,6 +7,7 @@ clustee:
   - sirno-store
 refiner:
   - versioning
+witness:
 ---
 
 `Sirno.lock` records the public store's state relative to the configured history root.

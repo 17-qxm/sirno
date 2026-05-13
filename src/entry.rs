@@ -19,6 +19,7 @@ const CLUSTEE_FIELD: &str = "clustee";
 const REFINER_FIELD: &str = "refiner";
 const WITNESS_FIELD: &str = "witness";
 
+// sirno:witness:start entry
 /// One Sirno entry.
 ///
 /// Invariant: `id` is a valid entry id.
@@ -60,6 +61,7 @@ impl Entry {
         Ok(format!("{}{}", &source[..body_start], body))
     }
 }
+// sirno:witness:end
 
 /// Metadata for one Sirno entry.
 ///
@@ -71,16 +73,23 @@ pub struct EntryMetadata {
     pub name: String,
     /// Short prose description of the entry.
     pub description: String,
+    // sirno:witness:start category
     /// Categories that classify this entry.
     pub category: Vec<EntryId>,
+    // sirno:witness:end
+    // sirno:witness:start clustee
     /// Clique closures that group this entry.
     pub clustee: Vec<EntryId>,
+    // sirno:witness:end
+    // sirno:witness:start refiner
     /// Broader entries refined by this entry.
     pub refiner: Vec<EntryId>,
+    // sirno:witness:end
     /// Witness marker declaring that this entry has repository evidence.
     pub witness: Option<WitnessMarker>,
 }
 
+// sirno:witness:start metadata
 impl EntryMetadata {
     /// Construct metadata with required fields and no structural field values.
     pub fn new(
@@ -150,6 +159,7 @@ impl EntryMetadata {
             .chain(self.refiner.iter().map(|id| (REFINER_FIELD, id)))
     }
 }
+// sirno:witness:end
 
 /// Marker for the canonical `witness:` metadata field.
 ///
@@ -167,17 +177,23 @@ pub enum WitnessMarker {
 /// The entries are normal entries.
 /// Later operations do not privilege them.
 pub fn default_seed_entries() -> Result<Vec<Entry>, EntryParseError> {
+    // sirno:witness:start meta
     let mut meta =
         EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
     meta.category.push(seed_id("meta"));
     meta.witness = None;
+    // sirno:witness:end
 
+    // sirno:witness:start concept
     let mut concept =
         EntryMetadata::new("Concept", "A named idea that compresses project knowledge.")?;
     concept.category.push(seed_id("meta"));
+    // sirno:witness:end
 
+    // sirno:witness:start narrative
     let mut narrative = EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
     narrative.category.push(seed_id("meta"));
+    // sirno:witness:end
 
     Ok(vec![
         Entry::new(seed_id("meta"), meta, "Defines entries that classify other entries.\n"),

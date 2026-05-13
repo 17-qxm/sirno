@@ -7,6 +7,7 @@ clustee:
   - sirno-store
 refiner:
   - versioning
+witness:
 ---
 
 The history store is the private `eter` root for committed Sirno snapshots.

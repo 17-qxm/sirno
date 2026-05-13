@@ -33,6 +33,7 @@ struct Cli {
     command: Command,
 }
 
+// sirno:witness:start storage-and-interfaces
 /// Supported Sirno commands.
 #[derive(Debug, Subcommand)]
 enum Command {
@@ -145,6 +146,7 @@ enum Command {
         command: UtilCommand,
     },
 }
+// sirno:witness:end
 
 /// CLI representation of check boundaries.
 #[derive(Clone, Copy, Debug, ValueEnum)]

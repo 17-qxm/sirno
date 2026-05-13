@@ -51,7 +51,7 @@ Each entry has a YAML metadata block and a prose body.
 The required fields are `name` and `description`.
 The optional structural fields are list-valued `category`, `clustee`, and
 `refiner`.
-The optional `witness:` marker tells Sirno to query repository marks by the
+The optional `witness:` marker tells Sirno to query repository witness blocks by the
 entry id through `mosaika`.
 
 ```yaml
@@ -81,8 +81,8 @@ or testable behavior.
 `witness:` marks an entry whose claim is evidenced by repository artifacts.
 Sirno does not store a separate witness query.
 The entry id is the query key used by `mosaika`.
-Repository markers use `sirno:witness:<entry-id>` inside paths selected by
-`[code].members`.
+Repository witness blocks open with `sirno:witness:start <entry-id>` and close
+with `sirno:witness:end` inside paths selected by `[code].members`.
 
 ## Narratives
 

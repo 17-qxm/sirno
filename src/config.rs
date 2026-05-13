@@ -17,6 +17,7 @@ use crate::links::GeneratedLinkSettings;
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
 
+// sirno:witness:start mono
 /// Configured monograph settings.
 ///
 /// Invariant: `path` points to the configured monograph.
@@ -33,6 +34,7 @@ impl MonoSettings {
         Self { path: path.into() }
     }
 }
+// sirno:witness:end
 
 /// Settings for structural checks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,6 +105,7 @@ impl HistorySettings {
     }
 }
 
+// sirno:witness:start code-form
 /// One repository member that Sirno scans through `mosaika`.
 ///
 /// Invariant: `pattern` is a non-empty config-relative path or glob.
@@ -162,7 +165,9 @@ impl CodeSettings {
         Ok(())
     }
 }
+// sirno:witness:end
 
+// sirno:witness:start project-config
 /// Sirno project configuration.
 ///
 /// Invariant: `mono.path` points to the configured monograph path.
@@ -301,6 +306,7 @@ impl SirnoConfig {
         Ok(())
     }
 }
+// sirno:witness:end
 
 fn resolve_config_relative(config_path: &Path, configured_path: &Path) -> PathBuf {
     if configured_path.is_absolute() {

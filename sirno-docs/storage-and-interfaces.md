@@ -5,6 +5,7 @@ category:
   - concept
 clustee:
   - sirno
+witness:
 ---
 
 Sirno uses one required storage surface and one optional surface.
@@ -18,7 +19,7 @@ Sirno exposes the store through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
 
 Repository witnesses are managed through `mosaika`.
-The entry id is the query key Sirno uses when locating marks.
+The entry id is the query key Sirno uses when locating witness blocks.
 
 The storage design separates the public Markdown form from the durable substrate.
 Markdown entries are the human-facing form.
@@ -52,7 +53,7 @@ Its default mode is vague text query.
 Exact structural predicates live behind explicit exact flags.
 
 `sirno witness ENTRY_ID` scans configured code members through `mosaika`
-and reports repository markers for the selected entry id.
+and reports repository witness blocks for the selected entry id.
 
 `sirno gen-link` creates or replaces Sirno-owned generated footer regions.
 `sirno gen-link --dry` reports generated footer regions that would change without writing files.
@@ -71,7 +72,7 @@ generated footer regions are Sirno-owned,
 and prose outside generated regions remains user-owned.
 
 Witness lookup stays separate through `mosaika`.
-That lets repository marks evolve with code navigation needs
+That lets witness blocks evolve with code navigation needs
 while Sirno keeps the entry id as the shared nominal handle.
 
 ---

@@ -12,19 +12,20 @@ The marker is canonical and has no value.
 Sirno queries witnesses through `mosaika` by entry id.
 
 The witness may be source code, tests, configuration, generated files, assets,
-or any repository artifact that `mosaika` can mark and query.
+or any repository artifact that `mosaika` can delimit and query.
 A test may witness an entry when the test itself is the relevant code.
 
 Repository artifacts are selected by `[code].members`.
 Directory members are scanned recursively.
-The repository marker is `sirno:witness:<entry-id>`.
+The repository witness block opens with `sirno:witness:start <entry-id>`
+and closes with `sirno:witness:end`.
 
 The entry body may explain how to find or interpret evidence as fallback guidance.
-The structural convention remains the marker plus the entry id.
+The structural convention remains the metadata marker plus the witness block.
 
 Witnesses connect prose to artifacts without merging the two.
 The entry states the design claim in project language.
-The repository mark identifies the artifact that should be inspected.
+The witness block identifies the artifact region that should be inspected.
 The entry id ties them together.
 
 This marker is useful when a claim should be reviewable in code.

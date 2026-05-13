@@ -8,6 +8,7 @@ clustee:
   - sirno
 refiner:
   - form
+witness:
 ---
 
 `mono` is the configured long-form Markdown document.

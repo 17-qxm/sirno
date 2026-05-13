@@ -4,6 +4,7 @@ description: A route through concepts for a reader.
 category:
   - meta
   - concept
+witness:
 ---
 
 A narrative records a cognitive route through concepts.

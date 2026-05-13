@@ -10,6 +10,7 @@ use tracing::trace;
 use crate::entry::Entry;
 use crate::id::EntryId;
 
+// sirno:witness:start query
 /// Case-insensitive text term for an entry query.
 ///
 /// Empty terms are ignored when a query stores text terms.
@@ -163,6 +164,7 @@ pub fn vague_query_entries<'a>(entries: &'a [Entry], query: &VagueEntryQuery) ->
     trace!("vague_query_entries end: matches={}", matches.len());
     matches
 }
+// sirno:witness:end
 
 fn matches_targets(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
     query_targets.is_empty() || query_targets.iter().any(|target| entry_targets.contains(target))

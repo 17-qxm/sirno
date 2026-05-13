@@ -5,6 +5,7 @@ category:
   - concept
 clustee:
   - sirno-store
+witness:
 ---
 
 Metadata is the exact schema that carries Sirno structure.

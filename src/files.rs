@@ -30,6 +30,7 @@ const READONLY_CHECKOUT_WARNING: &str = "\
 
 ";
 
+// sirno:witness:start sirno-store
 /// Check report for a public Markdown entry directory.
 #[derive(Debug)]
 pub struct EntryDirectoryReport {
@@ -246,6 +247,7 @@ pub fn write_entry_directory(
     trace!("write_entry_directory end: entries={}", paths.len());
     Ok(paths)
 }
+// sirno:witness:end
 
 /// Mark the public Markdown entry directory as read-only.
 ///
@@ -613,7 +615,7 @@ fn add_witness_diagnostics(
                 severity,
                 path,
                 format!(
-                    "entry `{}` declares `witness:` but no repository marker was found",
+                    "entry `{}` declares `witness:` but no repository witness block was found",
                     entry.id
                 ),
             ));
@@ -628,7 +630,7 @@ fn add_witness_diagnostics(
             file_diagnostics.push(EntryFileDiagnostic::new(
                 severity,
                 &record.path,
-                format!("repository witness marker references missing entry `{witness_id}`"),
+                format!("repository witness block references missing entry `{witness_id}`"),
             ));
         }
     }
@@ -916,8 +918,8 @@ mod tests {
         }
     }
 
-    fn witness_marker(id: &str) -> String {
-        format!("// {}:{id}\n", "sirno:witness")
+    fn witness_block(id: &str) -> String {
+        format!("// sirno:witness:start {id}\nbody\n// sirno:witness:end\n")
     }
 
     #[test]
@@ -1047,7 +1049,7 @@ category:
     }
 
     #[test]
-    fn check_accepts_witness_marker_found_by_mosaika() {
+    fn check_accepts_witness_block_found_by_mosaika() {
         let temp = tempfile::tempdir().unwrap();
         let docs = temp.path().join("docs");
         let src = temp.path().join("src");
@@ -1066,7 +1068,7 @@ witness:
 Body.
 ",
         );
-        fs::write(src.join("lib.rs"), witness_marker("witnessed")).unwrap();
+        fs::write(src.join("lib.rs"), witness_block("witnessed")).unwrap();
 
         let report = check_entry_directory_with_settings(
             &docs,
@@ -1079,7 +1081,7 @@ Body.
     }
 
     #[test]
-    fn check_reports_missing_witness_marker() {
+    fn check_reports_missing_witness_block() {
         let temp = tempfile::tempdir().unwrap();
         let docs = temp.path().join("docs");
         let src = temp.path().join("src");
@@ -1108,11 +1110,11 @@ Body.
         .unwrap();
 
         assert!(report.has_errors());
-        assert!(report.file_diagnostics()[0].message.contains("no repository marker"));
+        assert!(report.file_diagnostics()[0].message.contains("no repository witness block"));
     }
 
     #[test]
-    fn check_reports_witness_marker_for_missing_entry() {
+    fn check_reports_witness_block_for_missing_entry() {
         let temp = tempfile::tempdir().unwrap();
         let docs = temp.path().join("docs");
         let src = temp.path().join("src");
@@ -1130,7 +1132,7 @@ description: A concept.
 Body.
 ",
         );
-        fs::write(src.join("lib.rs"), witness_marker("ghost-entry")).unwrap();
+        fs::write(src.join("lib.rs"), witness_block("ghost-entry")).unwrap();
 
         let report = check_entry_directory_with_settings(
             &docs,

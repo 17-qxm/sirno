@@ -68,6 +68,7 @@ impl Field for WitnessField {
     type Content = WitnessMarker;
 }
 
+// sirno:witness:start history-store
 /// Store facade for Sirno entries.
 ///
 /// Invariant: all entries written through this type are represented through
@@ -228,6 +229,7 @@ impl SirnoStore {
         Ok(txn.commit()?)
     }
 }
+// sirno:witness:end
 
 fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, StoreError> {
     entries

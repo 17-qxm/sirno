@@ -5,6 +5,7 @@ category:
   - concept
 clustee:
   - sirno-store
+witness:
 ---
 
 Sirno checks structure.
@@ -13,8 +14,8 @@ Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
 When `[code].members` is configured,
-review checks require each `witness:` entry to have at least one repository marker.
-They also report repository markers that name missing entries.
+review checks require each `witness:` entry to have at least one repository witness block.
+They also report repository witness blocks that name missing entries.
 
 Generated-link checking has two parts.
 Sentinel shape is always checked.
@@ -47,8 +48,8 @@ that target should exist by the time the store is reviewed.
 This lets query results, generated footers, and reader navigation agree about the same set of entries.
 
 Semantic review remains human and agent work.
-The checker can say that a witness marker is shaped correctly.
-It can also say whether a configured repository marker exists for the entry id.
+The checker can say that a witness block is shaped correctly.
+It can also say whether a configured repository witness block exists for the entry id.
 It cannot say that the witnessed code is a good implementation of the claim.
 That distinction keeps Sirno useful without pretending to solve judgment.
 

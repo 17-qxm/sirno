@@ -7,6 +7,7 @@ clustee:
   - sirno-store
 refiner:
   - storage-and-interfaces
+witness:
 ---
 
 Query selects parsed entries from the public store or,

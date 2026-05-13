@@ -3,6 +3,7 @@ name: Category
 description: A structural field that classifies an entry by other entries.
 category:
   - concept
+witness:
 ---
 
 `category` classifies an entry by other entries.

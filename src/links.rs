@@ -111,6 +111,7 @@ struct GeneratedLinkSides {
     from: bool,
 }
 
+// sirno:witness:start generated-footer
 /// Settings that choose which metadata fields become generated links.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -477,6 +478,7 @@ pub enum GeneratedLinkError {
     #[error("generated-link footer boundaries are malformed")]
     Malformed,
 }
+// sirno:witness:end
 
 #[cfg(test)]
 mod tests {

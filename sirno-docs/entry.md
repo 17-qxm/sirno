@@ -5,6 +5,7 @@ category:
   - concept
 clustee:
   - sirno-store
+witness:
 ---
 
 An entry is a Markdown file in the Sirno store.

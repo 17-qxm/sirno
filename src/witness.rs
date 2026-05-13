@@ -3,7 +3,6 @@
 //! Sirno keeps witness intent in entry metadata and delegates repository scans to
 //! `mosaika`. The Sirno layer owns member selection because `[code].members`
 //! accepts recursive directory members in addition to glob patterns.
-//! sirno:witness:witness
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -23,7 +22,8 @@ use crate::config::CodeMember;
 use crate::id::{EntryId, EntryIdError};
 
 const WITNESS_TRANSFORM: &str = "sirno-witness";
-const WITNESS_REGEX: &str = r"sirno:witness:([A-Za-z0-9_-]+)";
+const WITNESS_START_REGEX: &str = r"sirno:witness:start ([A-Za-z0-9_-]+)";
+const WITNESS_END: &str = "sirno:witness:end";
 
 /// Settings for a witness scan.
 ///
@@ -82,25 +82,26 @@ impl WitnessIndex {
     }
 }
 
-/// One repository witness marker resolved by `mosaika`.
+/// One repository witness block resolved by `mosaika`.
 ///
-/// Invariant: `entry` is the parsed id captured from the marker.
-/// `path`, `line`, and `column` identify the marker location.
+/// Invariant: `entry` is the parsed id captured from the opening delimiter.
+/// `path`, `line`, and `column` identify the opening delimiter location.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WitnessRecord {
-    /// Entry id captured from `sirno:witness:<entry-id>`.
+    /// Entry id captured from `sirno:witness:start <entry-id>`.
     pub entry: EntryId,
-    /// Repository file that contains the marker.
+    /// Repository file that contains the witness block.
     pub path: PathBuf,
-    /// One-based line of the marker.
+    /// One-based line of the opening delimiter.
     pub line: usize,
-    /// One-based column of the marker.
+    /// One-based column of the opening delimiter.
     pub column: usize,
-    /// Matched marker text.
+    /// Matched opening delimiter text.
     pub marker: String,
 }
 
-/// Scan configured repository members for Sirno witness markers.
+// sirno:witness:start witness
+/// Scan configured repository members for Sirno witness blocks.
 pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, WitnessError> {
     trace!(
         root = %settings.root.display(),
@@ -214,7 +215,10 @@ fn witness_projection(files: &[PathBuf]) -> syn::Projection {
     syn::Projection {
         transforms: vec![Transform {
             name: WITNESS_TRANSFORM.to_owned(),
-            delimiters: vec![Delimiter::Regex(RegexDelimiter { regex: WITNESS_REGEX.to_owned() })],
+            delimiters: vec![
+                Delimiter::Regex(RegexDelimiter { regex: WITNESS_START_REGEX.to_owned() }),
+                Delimiter::String(WITNESS_END.to_owned()),
+            ],
             effects: vec![Effect::Log { log: true }],
         }],
         transactions: files
@@ -260,6 +264,7 @@ fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
     }
     Ok(index)
 }
+// sirno:witness:end
 
 fn has_glob_meta(value: &str) -> bool {
     value.contains('*') || value.contains('?') || value.contains('[')
@@ -354,8 +359,8 @@ pub enum WitnessError {
         /// Raw JSONL line.
         line: String,
     },
-    /// A witness marker captured an invalid Sirno entry id.
-    #[error("witness marker `{marker}` in {path} is not a valid Sirno entry id")]
+    /// A witness block captured an invalid Sirno entry id.
+    #[error("witness block `{marker}` in {path} is not a valid Sirno entry id")]
     InvalidEntryId {
         /// Repository path containing the marker.
         path: PathBuf,
@@ -371,8 +376,8 @@ pub enum WitnessError {
 mod tests {
     use super::*;
 
-    fn marker(id: &str) -> String {
-        format!("// {}:{id}\n", "sirno:witness")
+    fn witness_block(id: &str) -> String {
+        format!("// sirno:witness:start {id}\nbody\n// sirno:witness:end\n")
     }
 
     #[test]
@@ -380,7 +385,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let src = temp.path().join("src/nested");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(src.join("lib.rs"), marker("witness-lookup")).unwrap();
+        std::fs::write(src.join("lib.rs"), witness_block("witness-lookup")).unwrap();
         let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
 
         let index = scan_witnesses(&settings).unwrap();
@@ -392,7 +397,8 @@ mod tests {
     fn scans_glob_members_with_mosaika() {
         let temp = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(temp.path().join("crates/core/src")).unwrap();
-        std::fs::write(temp.path().join("crates/core/src/lib.rs"), marker("code-member")).unwrap();
+        std::fs::write(temp.path().join("crates/core/src/lib.rs"), witness_block("code-member"))
+            .unwrap();
         let settings =
             WitnessCheckSettings::new(temp.path(), [CodeMember::new("crates/*/src").unwrap()]);
 

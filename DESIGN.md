@@ -262,16 +262,17 @@ The marker is canonical and has no value.
 
 Sirno queries witnesses through `mosaika` by entry id.
 The witness may be source code, tests, configuration, generated files, assets,
-or any repository artifact that `mosaika` can mark and query,
+or any repository artifact that `mosaika` can delimit and query,
 and a test may witness an entry when the test itself is the relevant code.
 Repository artifacts are selected by `[code].members`.
 Directory members are scanned recursively.
-The repository marker is `sirno:witness:<entry-id>`.
+The repository witness block opens with `sirno:witness:start <entry-id>`
+and closes with `sirno:witness:end`.
 
 Sirno uses the entry id itself as the witness query key,
-which keeps the witness convention nominal and the repository marking separate from entry prose and metadata.
+which keeps the witness convention nominal and the witness block separate from entry prose and metadata.
 The entry body may describe how to search for or interpret an artifact as fallback guidance,
-while the structural convention remains the marker plus the entry id.
+while the structural convention remains the metadata marker plus the witness block.
 
 ---
 
@@ -485,7 +486,7 @@ field history, version retirement, and garbage collection.
 Sirno exposes the store through CLI and MCP interfaces,
 and a lightweight GUI or Obsidian extension may later provide a direct editing experience.
 Repository witnesses are managed through `mosaika`,
-with the entry id serving as the query key Sirno uses when locating marks.
+with the entry id serving as the query key Sirno uses when locating witness blocks.
 
 The CLI is the first operational interface.
 It can initialize stores, create entries, query entries, report status,
@@ -511,7 +512,7 @@ The checkout is immutable unless `--unsafe-mutable` is supplied.
 It defaults to vague text query and keeps exact structural predicates behind explicit exact flags.
 
 `sirno witness ENTRY_ID` scans the configured code members
-and reports repository markers for the selected entry id.
+and reports repository witness blocks for the selected entry id.
 
 `sirno util completion` emits shell completion scripts.
 Utility commands do not read or mutate the store unless their own subcommand says so.
@@ -525,8 +526,8 @@ Sirno checks structure, not semantic truth.
 Structural checks include required metadata fields, accepted field shapes, reference existence,
 generated footer boundaries, and witness lookup validity when requested.
 When `[code].members` is configured,
-review checks require each `witness:` entry to have at least one repository marker.
-They also report repository markers that name missing entries.
+review checks require each `witness:` entry to have at least one repository witness block.
+They also report repository witness blocks that name missing entries.
 
 Generated-link checking has two layers.
 Sentinel structure is always checked.
