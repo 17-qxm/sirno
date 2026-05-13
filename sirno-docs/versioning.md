@@ -14,6 +14,9 @@ When history is configured,
 Sirno versions the `sirno` form by committing the public Markdown store
 into a separate `eter` history root.
 
+The versioning entry is the module closure for history behavior.
+Its local entries define the private history store and public lock file.
+
 A Sirno version is an `Eterator`:
 an immutable global snapshot of the entry store.
 It identifies the whole store state,

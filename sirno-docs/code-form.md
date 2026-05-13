@@ -4,7 +4,8 @@ description: The repository artifacts that realize and witness design entries.
 category:
   - concept
 clustee:
-  - sirno
+  - form
+  - witness
 refiner:
   - form
 witness:
@@ -48,6 +49,7 @@ and which repository artifact witnesses an entry.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to)
-- [sirno](sirno.md)
+- [form](form.md)
+- [witness](witness.md)
 
 > **Sirno generated links end.**

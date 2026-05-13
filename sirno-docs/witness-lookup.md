@@ -1,0 +1,36 @@
+---
+name: Witness Lookup
+description: The mosaika-backed scan that resolves witness blocks by entry id.
+category:
+  - concept
+clustee:
+  - witness
+refiner:
+  - witness
+witness:
+---
+
+Witness lookup resolves repository evidence by scanning configured code members with `mosaika`.
+
+`[code].members` defines the repository artifact surface.
+File members are scanned directly.
+Directory members are scanned recursively.
+Glob members expand to matching files.
+
+Sirno projects each member file into a `mosaika` transform that logs witness blocks.
+The opening delimiter captures the entry id.
+The closing delimiter bounds the evidence block.
+Sirno parses the log stream into witness records keyed by entry id.
+
+The lookup path keeps witness syntax out of entry prose.
+Entries remain design claims.
+Repository artifacts carry the precise source spans that witness those claims.
+
+---
+
+> **Sirno generated links begin. Do not edit this section.**
+
+Clustee (to)
+- [witness](witness.md)
+
+> **Sirno generated links end.**

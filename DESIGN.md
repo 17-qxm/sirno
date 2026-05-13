@@ -192,6 +192,7 @@ The first three fields refer to entries by id and are list-valued.
 `witness:` is a canonical marker without a value.
 Operational structure is formed only from metadata,
 and although Markdown links in prose may help readers and external tools, they do not define Sirno structure.
+The store names this field set with the `structural-field` clique closure.
 
 The next four sections introduce the fields in turn.
 
@@ -207,6 +208,8 @@ Categories are themselves entries, so entry kinds form an open, project-defined 
 Meta-classification reuses the same mechanism:
 the category id `meta` classifies entries that themselves define categories,
 and the `concept` and `narrative` entries may be categorized by `meta` in this way.
+The store also clusters `concept` and `narrative` under `meta`,
+because they form a vocabulary review unit.
 
 The `locked` field is reserved for later design.
 It may eventually protect entries or regions that a project wants to treat as controlled.
@@ -228,11 +231,17 @@ an ordinary entry that gives the group a name and a place for explanation.
 The clique closure is a module-like review unit.
 A local design or program change should often be reviewable by visiting that closure,
 its members, their refiners, and their witnesses.
+The field is list-valued and not exclusive.
+An entry may belong to several clustees when that makes its structural position clearer.
 Splitting an entry should preserve the same `clustee` when the new entries remain in that unit.
 Creating a new clique closure means creating a new review boundary,
 not just a smaller tag.
 The mechanism can describe a two-member clique,
 whose entry records why the two members belong together.
+
+The store uses this rule to keep broad facilities local.
+`versioning`, `generated-footer`, and `witness` are module closures inside the wider `sirno` design.
+Their member entries hold the smaller policies, storage details, and lookup paths that can be reviewed together.
 
 ---
 
@@ -267,6 +276,8 @@ declaring that the entry's claim is evidenced in the repository.
 The marker is canonical and has no value.
 
 Sirno queries witnesses through `mosaika` by entry id.
+The `witness` entry is also a module closure for repository evidence.
+Its member entries cover lookup behavior and the code artifact surface where witnesses live.
 The witness may be source code, tests, configuration, generated files, assets,
 or any repository artifact that `mosaika` can delimit and query,
 and a test may witness an entry when the test itself is the relevant code.
@@ -386,6 +397,8 @@ If no generated-link group is enabled, the region contains `(none)`.
 
 The footer format is a projection of metadata-derived structure,
 maintained for external tools that navigate links.
+The `generated-footer` entry is the module closure for this projection.
+Its local entries define ownership boundaries and link selection policy.
 Changing a generated link by hand does not change metadata.
 Changing metadata and regenerating the footer is the correct edit path.
 History commits remove generated regions before writing entry snapshots,

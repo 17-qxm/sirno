@@ -4,7 +4,7 @@ description: The private eter store that records immutable snapshots of the publ
 category:
   - concept
 clustee:
-  - sirno-store
+  - versioning
 refiner:
   - versioning
 witness:
@@ -52,6 +52,6 @@ or use version-aware Sirno interfaces.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to)
-- [sirno-store](sirno-store.md)
+- [versioning](versioning.md)
 
 > **Sirno generated links end.**

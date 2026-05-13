@@ -3,6 +3,8 @@ name: Refiner
 description: A structural field from a specific entry to the broader entries it refines.
 category:
   - concept
+clustee:
+  - structural-field
 witness:
 ---
 
@@ -39,6 +41,7 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to): (none)
+Clustee (to)
+- [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

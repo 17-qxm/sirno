@@ -87,11 +87,14 @@ An entry categorized by `concept` should define a compressed idea.
 An entry categorized by `narrative` should record a route through concepts.
 An entry categorized by `meta` should define project vocabulary.
 
-Use `clustee` for a module-like review unit.
+Use `clustee` for structural clearness.
 The target is a clique closure entry that gives a shared subject or design region a front door.
 Use it when entries of different kinds should be visited and reviewed together.
+The field is list-valued and not exclusive.
+An entry may belong to several clustees when that makes its structural position clearer.
+Prefer the smallest set of clustees that improves navigation, review, or accountability.
 Keep split entries in the same clustee when a small design change should be checked inside that unit.
-Create a new clustee only when there is a real new module boundary.
+Create a new clustee only when there is a real new review boundary.
 
 Use `refiner` for specificity.
 The more specific entry points to the broader entry it makes local or concrete.

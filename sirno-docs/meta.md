@@ -9,6 +9,10 @@ witness:
 
 `meta` classifies entries that define project vocabulary.
 
+It is also the clique closure for initialized vocabulary entries.
+`concept` and `narrative` belong to it because changes to those entries
+affect how the store vocabulary is read.
+
 Entries categorized by `meta` are ordinary entries.
 They are not privileged built-ins.
 They give the store a documented way to name categories and structural concepts.

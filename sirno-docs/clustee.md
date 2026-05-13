@@ -3,6 +3,8 @@ name: Clustee
 description: A structural field that groups an entry by a named clique closure.
 category:
   - concept
+clustee:
+  - structural-field
 witness:
 ---
 
@@ -13,6 +15,8 @@ It gives the shared subject, local vocabulary, or design neighborhood a place to
 The closure acts as a module-like review unit.
 A local design or program change should often be reviewable by visiting that closure,
 its members, their refiners, and their witnesses.
+The field is list-valued and not exclusive.
+An entry may belong to several clustees when that makes its structural position clearer.
 
 This field covers the useful part of tags, scopes, namespaces, and domains.
 The member entries keep their own ids while the clique entry provides a route into the group.
@@ -28,6 +32,7 @@ and each member links to the closure and the other members.
 Use `clustee` when several entries should be visited together.
 The field says that the member belongs to a named neighborhood,
 not that it is an instance of a kind and not that it refines the clique entry.
+It also does not name an exclusive owner.
 The clique closure can explain the shared theme,
 the local vocabulary,
 or the reason the entries should be considered as a review unit.
@@ -45,12 +50,14 @@ If the group helps a reader enter a complicated region of the store,
 then the closure gives that region a stable front door.
 When splitting an entry,
 keep the new entries in the same clustee if they belong to the same module.
+Add clustees only when they improve structural clearness.
 Create a new clique closure only when the split creates a real new review boundary.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to): (none)
+Clustee (to)
+- [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

@@ -14,10 +14,12 @@ use crate::id::{EntryId, EntryIdError};
 
 const NAME_FIELD: &str = "name";
 const DESCRIPTION_FIELD: &str = "description";
+// sirno:witness:start structural-field
 const CATEGORY_FIELD: &str = "category";
 const CLUSTEE_FIELD: &str = "clustee";
 const REFINER_FIELD: &str = "refiner";
 const WITNESS_FIELD: &str = "witness";
+// sirno:witness:end
 
 // sirno:witness:start entry
 /// One Sirno entry.

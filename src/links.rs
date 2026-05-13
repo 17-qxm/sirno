@@ -16,6 +16,7 @@ use crate::entry::Entry;
 ///
 /// `to` includes links from the current entry to metadata targets.
 /// `from` includes links from the current entry to entries that point at it.
+// sirno:witness:start generated-link-policy
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GeneratedLinkFieldSettings {
     /// Include outgoing metadata targets.
@@ -23,7 +24,9 @@ pub struct GeneratedLinkFieldSettings {
     /// Include incoming metadata sources.
     pub from: bool,
 }
+// sirno:witness:end
 
+// sirno:witness:start generated-link-policy
 impl GeneratedLinkFieldSettings {
     /// Construct structural-field link settings from explicit sides.
     pub fn new(to: bool, from: bool) -> Self {
@@ -45,6 +48,7 @@ impl GeneratedLinkFieldSettings {
         Self::from_bool(false)
     }
 }
+// sirno:witness:end
 
 impl Default for GeneratedLinkFieldSettings {
     fn default() -> Self {
@@ -68,6 +72,7 @@ impl fmt::Display for GeneratedLinkFieldSettings {
     }
 }
 
+// sirno:witness:start generated-link-policy
 impl Serialize for GeneratedLinkFieldSettings {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -110,11 +115,12 @@ struct GeneratedLinkSides {
     to: bool,
     from: bool,
 }
+// sirno:witness:end
 
 /// Settings that choose which metadata fields become generated links.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, deny_unknown_fields)]
-// sirno:witness:start generated-footer
+// sirno:witness:start generated-link-policy
 pub struct GeneratedLinkSettings {
     /// Include `category` targets.
     pub category: GeneratedLinkFieldSettings,
@@ -307,7 +313,7 @@ impl GeneratedLinkSection {
 }
 
 /// Opening guard for Sirno-owned generated links.
-// sirno:witness:start generated-footer
+// sirno:witness:start generated-footer-ownership
 pub const BEGIN_LINKS_GUARD: &str = "> **Sirno generated links begin. Do not edit this section.**";
 /// Closing guard for Sirno-owned generated links.
 pub const END_LINKS_GUARD: &str = "> **Sirno generated links end.**";
@@ -325,7 +331,7 @@ pub fn render_generated_links(entry: &Entry, settings: &GeneratedLinkSettings) -
 // sirno:witness:end
 
 /// Validate generated-link guard boundaries in an entry body.
-// sirno:witness:start generated-footer
+// sirno:witness:start generated-footer-ownership
 pub fn validate_generated_links(body: &str) -> Result<(), GeneratedLinkError> {
     validate_generated_link_bounds(body).map(|_| ())
 }
@@ -343,7 +349,7 @@ pub fn generated_links_are_stale(body: &str, expected: &str) -> Result<bool, Gen
 }
 // sirno:witness:end
 
-// sirno:witness:start generated-footer
+// sirno:witness:start generated-footer-ownership
 fn validate_generated_link_bounds(
     body: &str,
 ) -> Result<Option<GeneratedLinkBounds>, GeneratedLinkError> {

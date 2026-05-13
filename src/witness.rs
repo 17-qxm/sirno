@@ -125,7 +125,7 @@ pub struct WitnessSpan {
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 /// Scan configured repository members for Sirno witness blocks.
 pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, WitnessError> {
     trace!(
@@ -141,7 +141,7 @@ pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, W
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn resolve_member_files(settings: &WitnessCheckSettings) -> Result<Vec<PathBuf>, WitnessError> {
     let mut files = BTreeSet::new();
     for member in &settings.members {
@@ -160,7 +160,7 @@ fn resolve_member_files(settings: &WitnessCheckSettings) -> Result<Vec<PathBuf>,
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn collect_glob_member(
     root: &Path, member: &CodeMember, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
@@ -183,7 +183,7 @@ fn collect_glob_member(
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn collect_path_member(
     member: &CodeMember, path: &Path, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
@@ -205,7 +205,7 @@ fn collect_path_member(
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn collect_directory_files(
     member: &CodeMember, root: &Path, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
@@ -231,7 +231,7 @@ fn collect_directory_files(
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn run_mosaika_witness_scan(root: &Path, files: &[PathBuf]) -> Result<String, WitnessError> {
     if files.is_empty() {
         return Ok(String::new());
@@ -247,7 +247,7 @@ fn run_mosaika_witness_scan(root: &Path, files: &[PathBuf]) -> Result<String, Wi
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn witness_projection(files: &[PathBuf]) -> syn::Projection {
     syn::Projection {
         transforms: vec![Transform {
@@ -275,7 +275,7 @@ fn witness_projection(files: &[PathBuf]) -> syn::Projection {
 }
 // sirno:witness:end
 
-// sirno:witness:start witness
+// sirno:witness:start witness-lookup
 fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
     let mut index = WitnessIndex::new();
     for line in output.lines().filter(|line| !line.trim().is_empty()) {

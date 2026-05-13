@@ -10,6 +10,9 @@ witness:
 
 Sirno may generate and maintain a footer at the bottom of entries.
 
+The generated footer entry is the module closure for generated navigation regions.
+Its local refinements define ownership boundaries and link selection policy.
+
 The footer is bounded by sentinels that state Sirno owns the region.
 Humans and tools should leave that region untouched.
 
@@ -45,17 +48,6 @@ The history store keeps canonical metadata and prose,
 not navigation projections.
 
 The configured link policy controls which structural fields appear.
-`category`, `clustee`, and `refiner` can each generate outgoing links to targets
-and incoming links from sources.
-A boolean setting enables or disables both link sides.
-A `{ to = ..., from = ... }` setting chooses the two link sides separately.
-
-`links.clique` adds separate clique-derived sections.
-It does not change direct clustee projection.
-When enabled, each clustee closure induces clique edges:
-the closure links to its members,
-and members link to the closure and to one another.
-When disabled, only configured structural field sections are rendered.
 
 `sirno check` reports stale generated footer regions when link checking is enabled.
 `sirno gen-link` creates or replaces generated footer regions.

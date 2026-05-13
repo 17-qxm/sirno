@@ -4,7 +4,7 @@ description: The TOML file that records the history state of the public store.
 category:
   - concept
 clustee:
-  - sirno-store
+  - versioning
 refiner:
   - versioning
 witness:
@@ -35,6 +35,6 @@ Sirno refuses to commit an immutable checkout.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to)
-- [sirno-store](sirno-store.md)
+- [versioning](versioning.md)
 
 > **Sirno generated links end.**

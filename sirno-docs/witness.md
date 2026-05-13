@@ -3,10 +3,16 @@ name: Witness
 description: A structural marker from a design entry to repository evidence.
 category:
   - concept
+clustee:
+  - sirno
+  - structural-field
 witness:
 ---
 
 `witness:` declares that an entry's claim is evidenced in the repository.
+
+The witness entry is the module closure for repository evidence.
+Its member entries cover lookup behavior and the code artifact surface where witnesses live.
 
 The marker is canonical and has no value.
 Sirno queries witnesses through `mosaika` by entry id.
@@ -46,6 +52,8 @@ presence of `witness:` means the entry id is the query key.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to): (none)
+Clustee (to)
+- [sirno](sirno.md)
+- [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

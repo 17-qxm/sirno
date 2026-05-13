@@ -3,6 +3,8 @@ name: Category
 description: A structural field that classifies an entry by other entries.
 category:
   - concept
+clustee:
+  - structural-field
 witness:
 ---
 
@@ -39,6 +41,7 @@ The category field is most useful when it tells the reader what kind of object t
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to): (none)
+Clustee (to)
+- [structural-field](structural-field.md)
 
 > **Sirno generated links end.**
