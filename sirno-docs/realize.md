@@ -3,6 +3,7 @@ name: Realize
 description: The movement from Sirno entries into repository implementation.
 category:
   - concept
+  - narrative
 clustee:
   - transform
 refiner:

@@ -3,6 +3,7 @@ name: Raise
 description: The movement from Sirno entries into a readable monograph.
 category:
   - concept
+  - narrative
 clustee:
   - transform
 refiner:

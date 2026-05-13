@@ -3,6 +3,7 @@ name: Concept-Driven Development
 description: A working style that uses named concepts to compress project knowledge.
 category:
   - concept
+  - narrative
 clustee:
   - sirno
 refiner:

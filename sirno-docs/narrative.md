@@ -1,6 +1,6 @@
 ---
 name: Narrative
-description: A route through concepts for a reader.
+description: A route, story, or motivation through concepts for a reader.
 category:
   - meta
   - concept
@@ -9,7 +9,7 @@ clustee:
 witness:
 ---
 
-A narrative records a cognitive route through concepts.
+A narrative records a cognitive route, story, or motivation through concepts.
 
 The monograph is the primary narrative form.
 It introduces terms once and trusts them afterward.
@@ -26,6 +26,8 @@ A concept can be accurate and still arrive too early for the reader.
 A narrative chooses what must be understood first,
 what can be named and deferred,
 and what local detail should be saved for later.
+It may also explain why a route matters,
+so the reader sees the pressure that makes the concepts useful.
 
 This matters for onboarding and review.
 An experienced maintainer may query directly for an entry.

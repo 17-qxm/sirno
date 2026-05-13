@@ -2,7 +2,7 @@
 name: Future Work
 description: Reserved design areas that may be refined later.
 category:
-  - concept
+  - narrative
 clustee:
   - sirno
 ---

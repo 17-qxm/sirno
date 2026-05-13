@@ -152,7 +152,7 @@ The initialized `concept` entry is ordinary, created by `init` and not privilege
 
 Concepts alone are inert. A reader follows a route.
 
-A *narrative* records a cognitive route through concepts.
+A *narrative* records a cognitive route, story, or motivation through concepts.
 Understanding is a process rather than a state,
 and a concept unfolds over time as the reader's mental model grows and refines;
 narrative shapes that unfolding.

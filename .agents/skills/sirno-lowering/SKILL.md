@@ -84,7 +84,7 @@ Use human-readable names and concise descriptions.
 
 Use `category` for kind.
 An entry categorized by `concept` should define a compressed idea.
-An entry categorized by `narrative` should record a route through concepts.
+An entry categorized by `narrative` should record a route, story, or motivation through project ideas.
 An entry categorized by `meta` should define project vocabulary.
 
 Use `clustee` for structural clearness.

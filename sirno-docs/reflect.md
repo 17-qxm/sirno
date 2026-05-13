@@ -3,6 +3,7 @@ name: Reflect
 description: The movement from changed code back into Sirno entries.
 category:
   - concept
+  - narrative
 clustee:
   - transform
 refiner:

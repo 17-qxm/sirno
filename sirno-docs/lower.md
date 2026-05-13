@@ -3,6 +3,7 @@ name: Lower
 description: The movement from the monograph into the Sirno store.
 category:
   - concept
+  - narrative
 clustee:
   - transform
 refiner:
