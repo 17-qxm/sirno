@@ -19,7 +19,7 @@ and other artifacts that realize design decisions.
 Repository artifacts can witness entries through `mosaika`.
 Sirno uses the entry id as the witness query key,
 keeping design names and witness blocks connected without embedding block syntax in entry prose.
-`[code].members` defines the repository artifact surface that Sirno scans.
+`[code].members` defines the repository artifact surface that Sirno scans when configured.
 File members are scanned directly,
 and directory members are scanned recursively.
 Witness blocks open with `sirno:witness:start <entry-id>`

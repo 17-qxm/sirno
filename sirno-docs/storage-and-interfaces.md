@@ -8,9 +8,11 @@ clustee:
 witness:
 ---
 
-Sirno uses one required storage surface and one optional surface.
+Sirno uses one required storage surface and several optional surfaces.
 
 The public Markdown store is the editable working form.
+The configured monograph is optional.
+Configured code members are optional and enable witness lookup.
 The private history root is optional and managed through `eter`.
 `eter` provides durable storage, indexing, immutable snapshots,
 field history, version retirement, and garbage collection.
@@ -18,7 +20,7 @@ field history, version retirement, and garbage collection.
 Sirno exposes the store through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
 
-Repository witnesses are managed through `mosaika`.
+Repository witnesses are managed through `mosaika` when code members are configured.
 The entry id is the query key Sirno uses when locating witness blocks.
 
 The storage design separates the public Markdown form from the durable substrate.

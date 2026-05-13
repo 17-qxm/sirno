@@ -10,7 +10,7 @@ clustee:
 
 Sirno works through three forms.
 
-`mono` is one configured Markdown document.
+`mono` is one optional configured Markdown document.
 It carries the whole project design as a readable monograph.
 
 `sirno` is one configured entry store.
@@ -21,6 +21,7 @@ so one store version names one immutable entry set.
 `code` is the repository implementation form.
 It contains source, tests, configuration, generated files, assets,
 and any artifact that can realize or witness design.
+Sirno scans code witnesses only when `[code].members` is configured.
 
 The forms are not just storage locations.
 They are roles in a design workflow.

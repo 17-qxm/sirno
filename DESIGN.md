@@ -24,7 +24,7 @@ and the resulting names are readable by humans, stable for tools, and small enou
 
 Sirno works through three forms.
 
-`mono` is one configured Markdown document, often `DESIGN.md`,
+`mono` is one optional configured Markdown document, often `DESIGN.md`,
 and it serves as the project monograph:
 a readable narrative for a person who wants the whole design in one sitting.
 
@@ -34,6 +34,7 @@ holding named Markdown documents with metadata blocks and bodies of prose.
 `code` is the repository implementation form,
 containing source files, tests, configuration, generated files, assets,
 and other artifacts that realize design decisions.
+Sirno scans code witnesses only when `[code].members` is configured.
 
 The `sirno` store is the human-readable intermediate representation:
 text first, structured enough for tools, and compact enough for humans and agents to inspect locally.
@@ -55,14 +56,15 @@ Judging design quality and proving that code satisfies a claim are left to the p
 A repository is Sirno-managed when it contains `Sirno.toml`.
 The file configures the forms and the operational policy that Sirno applies to them.
 
-`[mono].path` names the monograph.
+`[mono].path` optionally names the monograph.
 `[store].path` names the public Markdown entry store.
 `[history].path` optionally names the private `eter` history root,
 with `sirno-history` as the default convention when history is initialized.
-`[code].members` lists config-relative repository paths or globs that Sirno scans through `mosaika`.
+`[code].members` optionally lists config-relative repository paths or globs
+that Sirno scans through `mosaika`.
 All configured paths are resolved relative to the config file when they are not absolute.
 
-A project can use Sirno without history.
+A project can use Sirno without a configured monograph, code members, or history.
 `sirno init` creates the config and public entry store.
 `sirno history init` adds the history config and commits the current public store
 into the private history root.

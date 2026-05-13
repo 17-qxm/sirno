@@ -48,7 +48,7 @@ use the configured monograph as the source of intended design unless the user sa
 Preserve stable facts from the current project model:
 
 - central definition and scope
-- configured `mono` and `store` paths
+- configured `store` path and optional `mono` path
 - entry id rules and metadata schema
 - `category`, `clustee`, `refiner`, and `witness:` meanings
 - generated footer ownership
@@ -132,7 +132,7 @@ but more durable than a plan item.
 
 ## Workflow
 
-1. Read repository instructions, `Sirno.toml`, the monograph, and the existing store.
+1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing store.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
    ids, names, descriptions, categories, clustees, refiners, and witness markers.

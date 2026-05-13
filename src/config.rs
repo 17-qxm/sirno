@@ -1,8 +1,8 @@
 //! Project configuration for a Sirno-managed repository.
 //!
 //! A repository is Sirno-managed when it contains `Sirno.toml`.
-//! The config names the monograph and public Markdown entry store.
-//! It may also opt into a private `eter` history store.
+//! The config names the public Markdown entry store.
+//! It may also opt into a monograph, repository witness members, and private `eter` history store.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -18,7 +18,7 @@ use crate::links::GeneratedLinkSettings;
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
 
 // sirno:witness:start mono
-/// Configured monograph settings.
+/// Optional configured monograph settings.
 ///
 /// Invariant: `path` points to the configured monograph.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,6 +156,7 @@ impl CodeMember {
 // sirno:witness:start code-form
 pub struct CodeSettings {
     /// Config-relative paths or globs scanned through `mosaika`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub members: Vec<CodeMember>,
 }
 // sirno:witness:end
@@ -171,11 +172,11 @@ impl CodeSettings {
 
 /// Sirno project configuration.
 ///
-/// Invariant: `mono.path` points to the configured monograph path.
 /// `store.path` points to the configured public Markdown entry store path.
+/// `mono.path`, when present, points to the configured monograph path.
 /// `history.path`, when present, points to the configured private `eter` history root.
 /// `store.ignore` contains paths relative to the store root that Sirno skips.
-/// `code.members` contains relative member paths or globs for witness lookup.
+/// `code.members`, when present, contains relative member paths or globs for witness lookup.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
@@ -184,15 +185,16 @@ impl CodeSettings {
 // sirno:witness:start project-config
 pub struct SirnoConfig {
     /// Configured monograph settings.
-    pub mono: MonoSettings,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mono: Option<MonoSettings>,
     /// Configured public Markdown entry store settings.
     pub store: StoreSettings,
     /// Configured private history store settings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub history: Option<HistorySettings>,
     /// Configured repository artifact members.
-    #[serde(default)]
-    pub code: CodeSettings,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<CodeSettings>,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -203,19 +205,25 @@ pub struct SirnoConfig {
 // sirno:witness:end
 
 impl SirnoConfig {
-    /// Construct a config from explicit paths.
+    /// Construct a config from the required store path.
     // sirno:witness:start project-config
-    pub fn new(mono: impl Into<PathBuf>, store: impl Into<PathBuf>) -> Self {
+    pub fn new(store: impl Into<PathBuf>) -> Self {
         Self {
-            mono: MonoSettings::new(mono),
+            mono: None,
             store: StoreSettings::new(store),
             history: None,
-            code: CodeSettings::default(),
+            code: None,
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
     }
     // sirno:witness:end
+
+    /// Return this config with a configured monograph path.
+    pub fn with_mono(mut self, mono: impl Into<PathBuf>) -> Self {
+        self.mono = Some(MonoSettings::new(mono));
+        self
+    }
 
     /// Return this config with a configured history root.
     pub fn with_history(mut self, history: impl Into<PathBuf>) -> Self {
@@ -225,7 +233,7 @@ impl SirnoConfig {
 
     /// Default config for a new Sirno-managed repository.
     pub fn default_project() -> Self {
-        Self::new("DESIGN.md", "docs")
+        Self::new("docs")
     }
 
     /// Load a config from a specific file path.
@@ -284,10 +292,10 @@ impl SirnoConfig {
     }
     // sirno:witness:end
 
-    /// Resolve the monograph path relative to a config file path.
+    /// Resolve the monograph path relative to a config file path when configured.
     // sirno:witness:start project-config
-    pub fn resolve_mono(&self, config_path: impl AsRef<Path>) -> PathBuf {
-        resolve_config_relative(config_path.as_ref(), &self.mono.path)
+    pub fn resolve_mono(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
+        self.mono.as_ref().map(|mono| resolve_config_relative(config_path.as_ref(), &mono.path))
     }
 
     /// Resolve the entry store path relative to a config file path.
@@ -308,7 +316,9 @@ impl SirnoConfig {
     pub fn validate_for_file(&self, config_path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let config_path = config_path.as_ref();
         self.store.validate()?;
-        self.code.validate()?;
+        if let Some(code) = &self.code {
+            code.validate()?;
+        }
         if self.history.is_some() {
             let store = self.resolve_store(config_path);
             let history =
@@ -397,6 +407,25 @@ mod tests {
     fn parses_minimal_config() {
         let config: SirnoConfig = toml::from_str(
             r#"
+[store]
+path = "docs"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.mono, None);
+        assert_eq!(config.store.path, PathBuf::from("docs"));
+        assert_eq!(config.history, None);
+        assert!(config.store.ignore.is_empty());
+        assert_eq!(config.code, None);
+        assert_eq!(config.check, CheckSettings::default());
+        assert_eq!(config.links, GeneratedLinkSettings::default());
+    }
+
+    #[test]
+    fn parses_optional_mono_settings() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
 [mono]
 path = "DESIGN.md"
 
@@ -406,13 +435,7 @@ path = "docs"
         )
         .unwrap();
 
-        assert_eq!(config.mono.path, PathBuf::from("DESIGN.md"));
-        assert_eq!(config.store.path, PathBuf::from("docs"));
-        assert_eq!(config.history, None);
-        assert!(config.store.ignore.is_empty());
-        assert_eq!(config.code, CodeSettings::default());
-        assert_eq!(config.check, CheckSettings::default());
-        assert_eq!(config.links, GeneratedLinkSettings::default());
+        assert_eq!(config.mono, Some(MonoSettings { path: PathBuf::from("DESIGN.md") }));
     }
 
     #[test]
@@ -471,13 +494,13 @@ members = ["src", "Cargo.toml", "crates/*/src"]
 
         assert_eq!(
             config.code,
-            CodeSettings {
+            Some(CodeSettings {
                 members: vec![
                     CodeMember::new("src").unwrap(),
                     CodeMember::new("Cargo.toml").unwrap(),
                     CodeMember::new("crates/*/src").unwrap(),
                 ],
-            }
+            })
         );
     }
 
@@ -577,10 +600,10 @@ extra = "no"
 
     #[test]
     fn resolves_relative_paths_against_config_directory() {
-        let config = SirnoConfig::default_project();
+        let config = SirnoConfig::default_project().with_mono("DESIGN.md");
         let config_path = Path::new("/tmp/project/Sirno.toml");
 
-        assert_eq!(config.resolve_mono(config_path), PathBuf::from("/tmp/project/DESIGN.md"));
+        assert_eq!(config.resolve_mono(config_path), Some(PathBuf::from("/tmp/project/DESIGN.md")));
         assert_eq!(config.resolve_store(config_path), PathBuf::from("/tmp/project/docs"));
         assert_eq!(config.resolve_history(config_path), None);
         assert_eq!(
@@ -646,6 +669,15 @@ members = ["../outside"]
 
         assert_eq!(read, config);
         assert!(matches!(config.write_new(&path), Err(ConfigError::Create { .. })));
+    }
+
+    #[test]
+    fn default_project_omits_optional_tables_when_rendered() {
+        let source = toml::to_string_pretty(&SirnoConfig::default_project()).unwrap();
+
+        assert!(source.contains("[store]"));
+        assert!(!source.contains("[mono]"));
+        assert!(!source.contains("[code]"));
     }
 
     #[test]

@@ -282,10 +282,10 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
     let config_path = cli.config.unwrap_or_else(default_config_path);
     match cli.command {
         | Command::Init { mono, store } => {
-            let config = SirnoConfig::new(
-                mono.unwrap_or_else(default_mono_path),
-                store.unwrap_or_else(default_store_path),
-            );
+            let mut config = SirnoConfig::new(store.unwrap_or_else(default_store_path));
+            if let Some(mono) = mono {
+                config = config.with_mono(mono);
+            }
             let store_path = config.resolve_store(&config_path);
             config.write_new(&config_path)?;
             let paths = init_entry_directory(&store_path)?;
@@ -460,7 +460,14 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 CheckMode::Review,
                 &entry_directory_check_settings(&config_path, &config),
             )?;
-            print_status(&config_path, &mono, history.as_deref(), lock.as_ref(), &config, &report);
+            print_status(
+                &config_path,
+                mono.as_deref(),
+                history.as_deref(),
+                lock.as_ref(),
+                &config,
+                &report,
+            );
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
         | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
@@ -705,10 +712,6 @@ fn default_config_path() -> PathBuf {
     PathBuf::from(CONFIG_FILE_NAME)
 }
 
-fn default_mono_path() -> PathBuf {
-    PathBuf::from("DESIGN.md")
-}
-
 fn default_store_path() -> PathBuf {
     PathBuf::from("docs")
 }
@@ -742,12 +745,13 @@ fn entry_directory_check_settings(
 fn witness_check_settings(
     config_path: &Path, config: &SirnoConfig,
 ) -> Option<WitnessCheckSettings> {
-    if config.code.members.is_empty() {
+    let code = config.code.as_ref()?;
+    if code.members.is_empty() {
         return None;
     }
     Some(WitnessCheckSettings::new(
         config_path.parent().unwrap_or_else(|| Path::new(".")),
-        config.code.members.clone(),
+        code.members.clone(),
     ))
 }
 
@@ -783,11 +787,16 @@ fn title_name_from_id(id: &EntryId) -> String {
 }
 
 fn print_status(
-    config_path: &std::path::Path, mono: &std::path::Path, history: Option<&std::path::Path>,
-    lock: Option<&SirnoLock>, config: &SirnoConfig, report: &EntryDirectoryReport,
+    config_path: &std::path::Path, mono: Option<&std::path::Path>,
+    history: Option<&std::path::Path>, lock: Option<&SirnoLock>, config: &SirnoConfig,
+    report: &EntryDirectoryReport,
 ) {
     println!("config: {}", config_path.display());
-    println!("mono: {}", mono.display());
+    if let Some(mono) = mono {
+        println!("mono: {}", mono.display());
+    } else {
+        println!("mono: (not configured)");
+    }
     println!("store: {}", report.root().display());
     if let Some(history) = history {
         println!("history: {}", history.display());

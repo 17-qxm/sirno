@@ -12,18 +12,19 @@ witness:
 
 `Sirno.toml` marks a repository as Sirno-managed.
 
-The file configures the monograph,
-the public entry store,
+The file configures the public entry store
 and the operational policies that Sirno applies to the store.
-It may also configure a private history root.
+It may also configure a monograph,
+repository witness members,
+and a private history root.
 
-`[mono].path` names the monograph.
+`[mono].path` optionally names the monograph.
 `[store].path` names the Markdown entry store.
 `[history].path` optionally names the private `eter` history root.
-`[code].members` lists repository paths or globs scanned for witness blocks.
+`[code].members` optionally lists repository paths or globs scanned for witness blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
-A project can use Sirno without history.
+A project can use Sirno without a configured monograph, code members, or history.
 `sirno init` creates the config and public entry store.
 `sirno history init` adds the history config and commits the current public store.
 
@@ -37,7 +38,7 @@ Sirno skips those paths and their descendants while reading, checking,
 querying, and changing generated links.
 Ignored paths are for adjacent tool state, not for entries.
 
-`[code].members` lists paths and globs relative to `Sirno.toml`.
+`[code].members` lists paths and globs relative to `Sirno.toml` when code witnesses are enabled.
 File members are scanned directly.
 Directory members are scanned recursively.
 Glob members may match files or directories.

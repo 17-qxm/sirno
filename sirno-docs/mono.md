@@ -11,7 +11,7 @@ refiner:
 witness:
 ---
 
-`mono` is the configured long-form Markdown document.
+`mono` is the optional configured long-form Markdown document.
 The usual convention is `DESIGN.md`.
 
 It is the project monograph:
