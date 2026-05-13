@@ -936,6 +936,6 @@ mod tests {
     fn format_gen_link_report_summarizes_no_changes() {
         let report = format_gen_link_report(Path::new("sirno-docs"), 31, &[]);
 
-        assert_eq!(report, "No changes in sirno-docs.");
+        assert_eq!(report, "No changes in sirno-docs");
     }
 }
