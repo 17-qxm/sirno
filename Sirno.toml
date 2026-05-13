@@ -5,11 +5,14 @@ path = "DESIGN.md"
 path = "sirno-docs"
 ignore = [".obsidian"]
 
+[history]
+path = "sirno-history"
+
 [check]
 link = true
 
 [links]
 category = false
-clustee = true
+clustee = { from = false, to = true }
 clique = false
 refiner = { from = true, to = false }

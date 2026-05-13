@@ -11,12 +11,24 @@ refiner:
 
 `Sirno.toml` marks a repository as Sirno-managed.
 
-The file configures the monograph, the public entry store,
-and the operational policies that Sirno applies to that store.
+The file configures the monograph,
+the public entry store,
+and the operational policies that Sirno applies to the store.
+It may also configure a private history root.
 
 `[mono].path` names the monograph.
 `[store].path` names the Markdown entry store.
+`[history].path` optionally names the private `eter` history root.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
+
+A project can use Sirno without history.
+`sirno init` creates the config and public entry store.
+`sirno history init` adds the history config and commits the current public store.
+
+`Sirno.lock` records the public store's history state when history is configured.
+It lives next to `Sirno.toml`.
+The lock says whether the store is current
+or checked out to a historical version.
 
 `[store].ignore` lists paths relative to the store root.
 Sirno skips those paths and their descendants while reading, checking,
@@ -40,8 +52,6 @@ A boolean applies to both link sides.
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno-store](sirno-store.md)

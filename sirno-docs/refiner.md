@@ -38,8 +38,6 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
-
 Clustee (to): (none)
 
 Refiner (from): (none)

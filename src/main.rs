@@ -1,18 +1,22 @@
 //! Command-line interface for Sirno.
 
-use std::path::PathBuf;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
+use eter::Eterator;
 use sirno::{
     CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
-    EntryDirectoryError, EntryDirectoryReport, EntryId, EntryIdError, EntryMetadata,
-    EntryParseError, EntryQuery, GenLinkDirectoryReport, GeneratedLinkSettings, SirnoConfig,
-    SirnoStore, StoreError, VagueEntryQuery, WitnessMarker, check_entry_directory_with_settings,
+    EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
+    EntryMetadata, EntryParseError, EntryQuery, GenLinkDirectoryReport, GeneratedLinkSettings,
+    HistoryLockStatus, LockError, SirnoConfig, SirnoLock, SirnoStore, StoreError, VagueEntryQuery,
+    WitnessMarker, add_readonly_checkout_warnings, check_entry_directory_with_settings,
     check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
     delete_gen_link_entry_directory_with_ignored_paths,
     gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
+    resolve_lock_path, set_entry_directory_readonly, set_entry_directory_writable,
     vague_query_entries,
 };
 use thiserror::Error;
@@ -123,6 +127,12 @@ enum Command {
     },
     /// Show the current Sirno project status.
     Status,
+    /// Manage optional eter-backed history.
+    History {
+        /// History command.
+        #[command(subcommand)]
+        command: HistoryCommand,
+    },
     /// Utility commands.
     Util {
         /// Utility command.
@@ -175,6 +185,27 @@ enum UtilCommand {
         /// Shell whose completion script should be generated.
         #[arg(value_enum)]
         shell: CliCompletionShell,
+    },
+}
+
+/// Supported history commands.
+#[derive(Debug, Subcommand)]
+enum HistoryCommand {
+    /// Configure history and commit the current public Markdown store.
+    Init {
+        /// Private eter history store path written to Sirno.toml.
+        #[arg(long)]
+        history: Option<PathBuf>,
+    },
+    /// Commit the current public Markdown store into history.
+    Commit,
+    /// Check out one history version into the public Markdown store.
+    Checkout {
+        /// Raw Eterator version to materialize.
+        version: u64,
+        /// Leave the checked-out version writable.
+        #[arg(long)]
+        unsafe_mutable: bool,
     },
 }
 
@@ -405,17 +436,150 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
         | Command::Status => {
             let config = SirnoConfig::from_file(&config_path)?;
             let mono = config.resolve_mono(&config_path);
+            let history = config.resolve_history(&config_path);
+            let lock_path = resolve_lock_path(&config_path);
+            let lock = if history.is_some() { read_lock_if_exists(&lock_path)? } else { None };
             let store = config.resolve_store(&config_path);
             let report = check_entry_directory_with_settings(
                 &store,
                 CheckMode::Review,
                 &entry_directory_check_settings(&config),
             )?;
-            print_status(&config_path, &mono, &config, &report);
+            print_status(&config_path, &mono, history.as_deref(), lock.as_ref(), &config, &report);
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
+        | Command::History { command } => run_history_command(command, &config_path),
         | Command::Util { command } => run_util_command(command),
     }
+}
+
+fn run_history_command(
+    command: HistoryCommand, config_path: &std::path::Path,
+) -> Result<ExitCode, CliError> {
+    match command {
+        | HistoryCommand::Init { history } => {
+            let config = SirnoConfig::from_file(config_path)?;
+            let existing_history = config.history.as_ref().map(|settings| settings.path.clone());
+            let history_path =
+                history.or_else(|| existing_history.clone()).unwrap_or_else(default_history_path);
+            if let Some(existing_history) = existing_history
+                && existing_history != history_path
+            {
+                return Err(CliError::HistoryAlreadyConfigured(existing_history));
+            }
+
+            let needs_config_write = config.history.is_none();
+            let config =
+                if needs_config_write { config.with_history(history_path) } else { config };
+            config.validate_for_file(config_path)?;
+
+            let history_root =
+                config.resolve_history(config_path).expect("history path configured by init");
+            let store_path = config.resolve_store(config_path);
+            let mut store = SirnoStore::open(&history_root)?;
+            let version = store
+                .commit_entry_directory(&store_path, &entry_directory_check_settings(&config))?;
+            if needs_config_write {
+                config.write(config_path)?;
+            }
+            SirnoLock::current(version).write(resolve_lock_path(config_path))?;
+            println!(
+                "initialized history {} at version {} from {}",
+                history_root.display(),
+                version.version(),
+                store_path.display()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+        | HistoryCommand::Commit => {
+            let context = HistoryContext::load(config_path)?;
+            reject_immutable_checkout(&context.lock_path)?;
+            let mut store = SirnoStore::open(&context.history_root)?;
+            let version = store.commit_entry_directory(&context.store_path, &context.settings)?;
+            set_entry_directory_writable(&context.store_path, &context.settings)?;
+            SirnoLock::current(version).write(&context.lock_path)?;
+            println!(
+                "committed history version {} from {}",
+                version.version(),
+                context.store_path.display()
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+        | HistoryCommand::Checkout { version, unsafe_mutable } => {
+            let context = HistoryContext::load(config_path)?;
+            let version = history_version(version)?;
+            let store = SirnoStore::open(&context.history_root)?;
+            let paths = store.checkout_entry_directory(
+                version,
+                &context.store_path,
+                EntryDirectoryWritePolicy::ReplaceDirectory {
+                    ignore: context.settings.ignore.clone(),
+                },
+            )?;
+            if unsafe_mutable {
+                set_entry_directory_writable(&context.store_path, &context.settings)?;
+            } else {
+                add_readonly_checkout_warnings(&paths)?;
+                set_entry_directory_readonly(&context.store_path, &context.settings)?;
+            }
+            SirnoLock::checked_out(version, unsafe_mutable).write(&context.lock_path)?;
+            println!(
+                "checked out history version {} into {} ({} entries, {})",
+                version.version(),
+                context.store_path.display(),
+                paths.len(),
+                if unsafe_mutable { "unsafe mutable" } else { "immutable" }
+            );
+            Ok(ExitCode::SUCCESS)
+        }
+    }
+}
+
+struct HistoryContext {
+    history_root: PathBuf,
+    lock_path: PathBuf,
+    settings: EntryDirectoryCheckSettings,
+    store_path: PathBuf,
+}
+
+impl HistoryContext {
+    fn load(config_path: &Path) -> Result<Self, CliError> {
+        let config = SirnoConfig::from_file(config_path)?;
+        let Some(history_root) = config.resolve_history(config_path) else {
+            return Err(CliError::HistoryNotConfigured);
+        };
+        Ok(Self {
+            history_root,
+            lock_path: resolve_lock_path(config_path),
+            settings: entry_directory_check_settings(&config),
+            store_path: config.resolve_store(config_path),
+        })
+    }
+}
+
+fn read_lock_if_exists(lock_path: &Path) -> Result<Option<SirnoLock>, CliError> {
+    match SirnoLock::from_file(lock_path) {
+        | Ok(lock) => Ok(Some(lock)),
+        | Err(LockError::Read { source, .. }) if source.kind() == ErrorKind::NotFound => Ok(None),
+        | Err(source) => Err(CliError::Lock(source)),
+    }
+}
+
+fn reject_immutable_checkout(lock_path: &Path) -> Result<(), CliError> {
+    let Some(lock) = read_lock_if_exists(lock_path)? else {
+        return Ok(());
+    };
+    if lock.history.is_checked_out() && !lock.history.is_unsafe_mutable_checkout() {
+        return Err(CliError::ImmutableHistoryCheckout(lock.history.version));
+    }
+    Ok(())
+}
+
+fn history_version(version: u64) -> Result<Eterator, CliError> {
+    if version == Eterator::EMPTY.version() {
+        return Err(CliError::InvalidHistoryVersion(version));
+    }
+    Ok(Eterator(version))
 }
 
 fn run_util_command(command: UtilCommand) -> Result<ExitCode, CliError> {
@@ -440,6 +604,10 @@ fn default_mono_path() -> PathBuf {
 
 fn default_store_path() -> PathBuf {
     PathBuf::from("docs")
+}
+
+fn default_history_path() -> PathBuf {
+    PathBuf::from("sirno-history")
 }
 
 fn explicit_entries_check_settings(
@@ -493,12 +661,18 @@ fn title_name_from_id(id: &EntryId) -> String {
 }
 
 fn print_status(
-    config_path: &std::path::Path, mono: &std::path::Path, config: &SirnoConfig,
-    report: &EntryDirectoryReport,
+    config_path: &std::path::Path, mono: &std::path::Path, history: Option<&std::path::Path>,
+    lock: Option<&SirnoLock>, config: &SirnoConfig, report: &EntryDirectoryReport,
 ) {
     println!("config: {}", config_path.display());
     println!("mono: {}", mono.display());
     println!("store: {}", report.root().display());
+    if let Some(history) = history {
+        println!("history: {}", history.display());
+        println!("history-state: {}", history_state_label(lock));
+    } else {
+        println!("history: (not configured)");
+    }
     println!("entries: {}", report.entries().len());
     println!("checks:");
     println!("  link: {}", config.check.link);
@@ -512,6 +686,21 @@ fn print_status(
         print_entry_directory_report(report);
     } else {
         println!("check: ok");
+    }
+}
+
+fn history_state_label(lock: Option<&SirnoLock>) -> String {
+    let Some(lock) = lock else {
+        return "(unlocked)".to_owned();
+    };
+    match lock.history.status {
+        | HistoryLockStatus::Current => format!("current version {}", lock.history.version),
+        | HistoryLockStatus::CheckedOut if lock.history.mutable => {
+            format!("checked-out version {} (unsafe mutable)", lock.history.version)
+        }
+        | HistoryLockStatus::CheckedOut => {
+            format!("checked-out version {} (immutable)", lock.history.version)
+        }
     }
 }
 
@@ -591,9 +780,24 @@ enum CliError {
     /// A command-line flag was used with the wrong command shape.
     #[error("`--no-check` only applies to `sirno gen-link` without a subcommand")]
     NoCheckWithGenLinkSubcommand,
+    /// History has already been configured at another path.
+    #[error("history is already configured at {0}")]
+    HistoryAlreadyConfigured(PathBuf),
+    /// History is required for a history command but is not configured.
+    #[error("history is not configured; run `sirno history init` first")]
+    HistoryNotConfigured,
+    /// Immutable history checkouts cannot be committed.
+    #[error("history version {0} is checked out immutably; use checkout --unsafe-mutable first")]
+    ImmutableHistoryCheckout(u64),
+    /// Empty history cannot be checked out as a version.
+    #[error("history version {0} is not a check-outable snapshot")]
+    InvalidHistoryVersion(u64),
     /// Config-backed command failed.
     #[error(transparent)]
     Config(#[from] ConfigError),
+    /// Lock-backed command failed.
+    #[error(transparent)]
+    Lock(#[from] LockError),
     /// Store-backed command failed.
     #[error(transparent)]
     Store(#[from] StoreError),
@@ -606,4 +810,41 @@ enum CliError {
     /// Entry metadata construction failed.
     #[error(transparent)]
     EntryParse(#[from] EntryParseError),
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use crate::{Cli, Command, HistoryCommand};
+
+    #[test]
+    fn init_does_not_accept_history_path() {
+        let error =
+            Cli::try_parse_from(["sirno", "init", "--history", "sirno-history"]).unwrap_err();
+
+        assert!(error.to_string().contains("unexpected argument"));
+    }
+
+    #[test]
+    fn history_init_accepts_history_path() {
+        let cli = Cli::parse_from(["sirno", "history", "init", "--history", "sirno-history"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::History { command: HistoryCommand::Init { history: Some(_) } }
+        ));
+    }
+
+    #[test]
+    fn history_checkout_accepts_unsafe_mutable_flag() {
+        let cli = Cli::parse_from(["sirno", "history", "checkout", "3", "--unsafe-mutable"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::History {
+                command: HistoryCommand::Checkout { version: 3, unsafe_mutable: true }
+            }
+        ));
+    }
 }

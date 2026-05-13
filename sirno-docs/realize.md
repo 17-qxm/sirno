@@ -43,8 +43,6 @@ and find the entry that gave the commitment a name.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
-
 Clustee (to)
 - [transform](transform.md)
 

@@ -11,8 +11,11 @@ Several design areas are reserved for later refinement.
 
 The `locked` field may later define how entries or generated regions resist accidental edits.
 
-`eter` versioning is reserved for later design.
-The current design depends only on durable storage and indexing.
+Long-term version retention policy is reserved for later design.
+The core model already treats versions as `eter` snapshots.
+Future work decides which snapshots Sirno keeps by default,
+which snapshots can be named,
+and how review interfaces expose them.
 
 The transform names may still be refined.
 The current names are `lower`, `raise`, `realize`, and `reflect`.
@@ -32,10 +35,10 @@ or generated regions that a project treats as controlled.
 That design needs a clear ownership model before it becomes part of the schema.
 Until then, leaving the field reserved is safer than accepting vague lock behavior.
 
-Versioning is another example.
-`eter` may later provide history, snapshots, branching, or reviewable store states.
-Sirno should adopt only the versioning concepts that help design work move between forms.
-It should not make the public entry model harder to read just to expose storage internals.
+Version retention is another example.
+`eter` provides history, snapshots, retirement, and garbage collection.
+Sirno still needs policy for which snapshots stay live.
+That policy should preserve reviewable store states without making entry metadata harder to read.
 
 Transform names may also evolve.
 The current names are compact and memorable,
@@ -46,8 +49,6 @@ entries and manuals can reflect that deliberately.
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno](sirno.md)

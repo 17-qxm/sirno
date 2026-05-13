@@ -37,6 +37,8 @@ and other artifacts that realize design decisions.
 
 The `sirno` store is the human-readable intermediate representation:
 text first, structured enough for tools, and compact enough for humans and agents to inspect locally.
+When history is configured, committed store state is versioned through a separate `eter` history root,
+so one version names one immutable snapshot of the whole entry set.
 
 Before the store exists, the user chooses which form currently carries more authority —
 the working codebase, or the monograph that best describes the intended project —
@@ -55,7 +57,19 @@ The file configures the forms and the operational policy that Sirno applies to t
 
 `[mono].path` names the monograph.
 `[store].path` names the public Markdown entry store.
-Both paths are resolved relative to the config file when they are not absolute.
+`[history].path` optionally names the private `eter` history root,
+with `sirno-history` as the default convention when history is initialized.
+All configured paths are resolved relative to the config file when they are not absolute.
+
+A project can use Sirno without history.
+`sirno init` creates the config and public entry store.
+`sirno history init` adds the history config and commits the current public store
+into the private history root.
+
+`Sirno.lock` records the public store's history state when history is configured.
+It is TOML and lives next to `Sirno.toml`.
+The lock says whether the public store is the current history version
+or a checked-out historical version.
 
 `[store].ignore` is a list of store-root-relative paths that Sirno does not read.
 An ignored path excludes that path and its descendants from store checks and generated-link operations.
@@ -318,9 +332,10 @@ and Markdown links in prose may help readers and external tools without defining
 
 ## Query
 
-Query selects parsed entries from the Markdown store.
+Query selects parsed entries from the public store or from one history version.
 It reads entry ids, metadata, and bodies;
 it does not read generated footers as structural truth.
+When no version is supplied, query reads the public store.
 
 The default CLI query is vague.
 Vague query matches text against an entry's id, name, description, and body,
@@ -362,6 +377,8 @@ The footer format is a projection of metadata-derived structure,
 maintained for external tools that navigate links.
 Changing a generated link by hand does not change metadata.
 Changing metadata and regenerating the footer is the correct edit path.
+History commits remove generated regions before writing entry snapshots,
+so history stores canonical metadata and prose rather than navigation projections.
 
 `sirno gen-link` checks generated regions.
 It reports how many entry files would change and lists those files.
@@ -372,11 +389,95 @@ Deleting generated links does not edit prose outside the guard-bounded region.
 
 ---
 
+## Versioning
+
+When history is configured,
+Sirno versions the `sirno` form by committing the public Markdown store
+into a separate `eter` history root.
+
+A Sirno version is an `Eterator`:
+an immutable global snapshot of the entry store.
+It identifies the whole store state, not a single entry revision.
+The value is a storage handle with ordering;
+entry metadata does not store it,
+and entry ids remain stable across versions.
+
+The public store is always the editable working form.
+The history root is private storage,
+conventionally `sirno-history`.
+It is not read as part of the entry store,
+and it must not be placed where store discovery can treat it as entries.
+`Sirno.lock` is the project-local state file for this relation.
+It records one `[history]` table with `status`, `version`, and an optional `mutable` flag.
+
+`sirno history init` configures the history root and creates the first history commit.
+A history commit imports the selected public entry set and writes one `eter` transaction.
+The transaction may touch one entry or many entries,
+and all changed rows receive the same version.
+Before writing the transaction,
+Sirno removes every guard-bounded generated-link region from the committed entry bodies.
+Generated links remain a public-store projection;
+history stores metadata and prose without generated navigation regions.
+A successful commit returns the new `Eterator`.
+If the public store matches the current history snapshot,
+the commit returns the current version without writing a new snapshot.
+If an entry exists in the current history snapshot but is absent from the public store,
+the commit writes an `eter` lifecycle deletion marker for that entry.
+After a commit, `Sirno.lock` records `status = "current"`
+and the committed `Eterator` version.
+
+Direct edits to the public store are working-state edits.
+They become history only after a commit.
+Reading interfaces without a version selector read the public store.
+A version selector reads from the history root and changes the observed store state
+without changing query or check semantics.
+
+Checkout materializes one history version into a public Markdown directory.
+It resolves live entries at the selected `Eterator` and renders canonical entry files.
+Checkout uses an explicit conflict policy;
+the conservative policy writes only into an absent or empty target directory.
+CLI checkout replaces managed Markdown entry files in the configured public store
+while preserving ignored paths.
+After checkout, `Sirno.lock` records `status = "checked-out"` and the selected version.
+
+A normal checkout is immutable.
+Sirno removes write permission from the public store root and managed entry files
+so ordinary file edits fail at the filesystem boundary.
+It also writes a visible Markdown blockquote at the start of each checked-out entry body
+that marks the file as read-only and says not to edit it by hand.
+`sirno history checkout VERSION --unsafe-mutable` leaves the checkout writable
+and records `mutable = true` in `Sirno.lock`.
+Committing an unsafe mutable checkout creates a new current history version
+and rewrites the lock to `status = "current"`.
+Sirno refuses to commit an immutable checkout.
+
+History is field-level in `eter` and entry-level in Sirno.
+Sirno may expose entry history, diffs, and restore operations by reading fields at successive snapshots,
+but it presents those results as changes to entries and structural fields.
+The public entry schema remains unchanged.
+
+Restoring a version writes a snapshot back to the public store.
+Committing the restored public store creates a new current history snapshot,
+so later work stays ordered and old snapshots remain immutable.
+Undo-tree branching belongs to git or another outer repository mechanism;
+Sirno's own version line is linear.
+
+Retention is policy.
+Sirno may keep named versions, recent versions, versions tied to exported reviews, or all versions.
+Unkept versions can be retired and garbage-collected through `eter`
+only when no retained version needs their rows.
+The filesystem backend does not persist retired-version state,
+so Sirno must provide the live set when it performs collection.
+
+---
+
 ## Storage And Interfaces
 
-The entry store is managed through `eter`,
-which at this design stage serves as the durable storage and indexing substrate;
-versioning is future work.
+The entry storage model has one required surface and one optional surface.
+The public Markdown store is the required working form.
+The private history root is optional.
+When configured, it uses `eter` for durable storage, indexing, immutable snapshots,
+field history, version retirement, and garbage collection.
 
 Sirno exposes the store through CLI and MCP interfaces,
 and a lightweight GUI or Obsidian extension may later provide a direct editing experience.
@@ -391,11 +492,17 @@ The commands operate on the configured store by default
 and accept explicit paths where a local operation needs a different entry directory.
 
 `sirno status` summarizes the configured project.
-It reports the config file, monograph, store, entry count, check policy, link policy,
-and current check result.
+It reports the config file, monograph, store, optional history root, entry count,
+check policy, link policy, and current check result.
+When history is configured, it also reports the `Sirno.lock` state.
 
 `sirno new` creates one entry file from typed command-line metadata.
 It refuses to overwrite an existing entry file.
+
+`sirno history commit` commits the current public store into the configured history root.
+It updates `Sirno.lock` to the resulting current version.
+`sirno history checkout VERSION` materializes one version into the configured public store.
+The checkout is immutable unless `--unsafe-mutable` is supplied.
 
 `sirno query` is the reading interface over the Markdown store.
 It defaults to vague text query and keeps exact structural predicates behind explicit exact flags.
@@ -441,8 +548,11 @@ treating the worklist as ordinary entries with categories, refiners, clustees, a
 The `locked` field is reserved for later design,
 where it may define how entries or generated regions resist accidental edits.
 
-`eter` versioning is reserved for later design,
-and the current design depends only on durable storage and indexing.
+Long-term version retention policy is reserved for later design.
+The core model already treats versions as `eter` snapshots;
+future work decides which snapshots Sirno keeps by default,
+which snapshots can be named,
+and how review interfaces expose them.
 
 The exact naming of the four transforms may be refined;
 the current names are `lower`, `raise`, `realize`, and `reflect`.
@@ -457,7 +567,8 @@ they may use Sirno entries to leave durable work artifacts without changing Sirn
 This repository uses Sirno's own model.
 
 `DESIGN.md` is the monograph,
-and `sirno-docs/` is the configured store.
+`sirno-docs/` is the configured public store,
+and `sirno-history/` is the configured history root.
 The store contains compact entries for the concepts, structural fields, interfaces,
 and implementation commitments described here.
 The codebase will witness those entries through `mosaika`.

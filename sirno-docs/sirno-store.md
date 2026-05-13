@@ -17,6 +17,9 @@ The usual convention is `docs/`.
 The store is the human-readable intermediate representation:
 text first, structured enough for tools,
 and compact enough for humans and agents to inspect locally.
+When history is configured,
+its committed state is versioned through a separate `eter` history root,
+so one version names one immutable set of entries.
 
 Each entry is an ordinary Markdown file with a YAML metadata block and prose body.
 The filename stem is the stable id used by structural fields, generated footers, and witness lookup.
@@ -37,6 +40,10 @@ An agent can query a few related entries before changing code.
 An editor can use generated footers to expose navigation.
 All of those forms use the same filenames and metadata.
 
+The store is a working form.
+Direct edits become versioned history only when history is configured
+and Sirno commits the store into the history root.
+
 Some files under a store root may belong to adjacent tools.
 `[store].ignore` lists store-root-relative paths that Sirno skips.
 An ignored path covers the path itself and its descendants.
@@ -54,14 +61,6 @@ and where implementation evidence should be found when that evidence exists.
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from)
-- [entry](entry.md)
-- [generated-footer](generated-footer.md)
-- [metadata](metadata.md)
-- [project-config](project-config.md)
-- [query](query.md)
-- [structural-check](structural-check.md)
 
 Clustee (to)
 - [sirno](sirno.md)

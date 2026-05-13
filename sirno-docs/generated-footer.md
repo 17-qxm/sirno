@@ -39,6 +39,9 @@ The footer is derived from metadata.
 Changing a generated link by hand does not change the metadata.
 Changing the metadata and regenerating the footer is the correct path.
 The sentinels make that ownership boundary visible in the entry file itself.
+History commits remove the generated footer before writing the entry snapshot.
+The history store keeps canonical metadata and prose,
+not navigation projections.
 
 The configured link policy controls which structural fields appear.
 `category`, `clustee`, and `refiner` can each generate outgoing links to targets
@@ -67,8 +70,6 @@ not to become another place for design prose.
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno-store](sirno-store.md)

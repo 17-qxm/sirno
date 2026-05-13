@@ -42,8 +42,6 @@ not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
-
 Clustee (to)
 - [transform](transform.md)
 

@@ -48,8 +48,6 @@ not as a mechanical export of every known fact.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
-
 Clustee (to)
 - [sirno](sirno.md)
 

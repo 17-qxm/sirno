@@ -9,6 +9,9 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use thiserror::Error;
 use tracing::trace;
 
@@ -19,6 +22,12 @@ use crate::links::{
     GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links,
     delete_generated_links, generated_links_are_stale, validate_generated_links,
 };
+
+const READONLY_CHECKOUT_WARNING: &str = "\
+> This file is a read-only Sirno history checkout.
+> Do not edit it by hand.
+
+";
 
 /// Check report for a public Markdown entry directory.
 #[derive(Debug)]
@@ -131,6 +140,18 @@ impl GenLinkDirectoryReport {
     }
 }
 
+/// Conflict policy for writing a complete public entry directory.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EntryDirectoryWritePolicy {
+    /// Require the target directory to be absent or empty before writing entries.
+    EmptyDirectory,
+    /// Replace managed Markdown entries while preserving ignored paths.
+    ReplaceDirectory {
+        /// Store-root-relative paths preserved by checkout.
+        ignore: Vec<PathBuf>,
+    },
+}
+
 impl EntryFileDiagnostic {
     /// Construct a diagnostic for one path.
     pub fn new(
@@ -199,6 +220,54 @@ pub fn create_entry_file(
     let path = write_new_entry_file(&root, entry)?;
     trace!("create_entry_file end: path={}", path.display());
     Ok(path)
+}
+
+/// Write a complete public Markdown entry directory.
+///
+/// The write policy controls how existing target contents are handled.
+pub fn write_entry_directory(
+    root: impl Into<PathBuf>, entries: &[Entry], policy: EntryDirectoryWritePolicy,
+) -> Result<Vec<PathBuf>, EntryDirectoryError> {
+    let root = root.into();
+    trace!("write_entry_directory begin: root={} entries={}", root.display(), entries.len());
+    prepare_entry_directory_target(&root, policy)?;
+    let mut paths = Vec::new();
+    for entry in entries {
+        paths.push(write_new_entry_file(&root, entry)?);
+    }
+    trace!("write_entry_directory end: entries={}", paths.len());
+    Ok(paths)
+}
+
+/// Mark the public Markdown entry directory as read-only.
+///
+/// Ignored paths are left untouched.
+pub fn set_entry_directory_readonly(
+    root: impl AsRef<Path>, settings: &EntryDirectoryCheckSettings,
+) -> Result<(), EntryDirectoryError> {
+    set_entry_directory_writability(root.as_ref(), settings, false)
+}
+
+/// Mark the public Markdown entry directory as writable.
+///
+/// Ignored paths are left untouched.
+pub fn set_entry_directory_writable(
+    root: impl AsRef<Path>, settings: &EntryDirectoryCheckSettings,
+) -> Result<(), EntryDirectoryError> {
+    set_entry_directory_writability(root.as_ref(), settings, true)
+}
+
+/// Add read-only checkout warnings to rendered entry files.
+///
+/// The warning is written as a Markdown blockquote at the beginning of the body.
+pub fn add_readonly_checkout_warnings(paths: &[PathBuf]) -> Result<(), EntryDirectoryError> {
+    for path in paths {
+        let source = fs::read_to_string(path)?;
+        let source = add_readonly_checkout_warning(path, &source)?;
+        fs::write(path, source)
+            .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+    }
+    Ok(())
 }
 
 /// Generate Markdown link footers for one public entry directory.
@@ -537,6 +606,174 @@ fn write_new_entry_file(root: &Path, entry: &Entry) -> Result<PathBuf, EntryDire
     Ok(path)
 }
 
+fn add_readonly_checkout_warning(path: &Path, source: &str) -> Result<String, EntryDirectoryError> {
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return Err(EntryDirectoryError::CheckoutConflict(path.to_path_buf()));
+    };
+    let id = EntryId::new(stem)
+        .map_err(|_| EntryDirectoryError::CheckoutConflict(path.to_path_buf()))?;
+    let entry = Entry::from_markdown(id, source)?;
+    if entry.body.starts_with(READONLY_CHECKOUT_WARNING) {
+        return Ok(source.to_owned());
+    }
+    let body = format!("{READONLY_CHECKOUT_WARNING}{}", entry.body);
+    Ok(Entry::replace_markdown_body(source, &body)?)
+}
+
+fn prepare_entry_directory_target(
+    root: &Path, policy: EntryDirectoryWritePolicy,
+) -> Result<(), EntryDirectoryError> {
+    match policy {
+        | EntryDirectoryWritePolicy::EmptyDirectory => {
+            if root.exists() {
+                if !root.is_dir() {
+                    return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
+                }
+                if fs::read_dir(root)?.next().is_some() {
+                    return Err(EntryDirectoryError::DirectoryNotEmpty(root.to_path_buf()));
+                }
+            } else {
+                fs::create_dir_all(root)?;
+            }
+        }
+        | EntryDirectoryWritePolicy::ReplaceDirectory { ignore } => {
+            if root.exists() {
+                if !root.is_dir() {
+                    return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
+                }
+                set_path_writable(root)?;
+                let settings = EntryDirectoryCheckSettings {
+                    ignore,
+                    ..EntryDirectoryCheckSettings::default()
+                };
+                remove_managed_entry_files(root, &settings)?;
+            } else {
+                fs::create_dir_all(root)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn remove_managed_entry_files(
+    root: &Path, settings: &EntryDirectoryCheckSettings,
+) -> Result<(), EntryDirectoryError> {
+    for path in sorted_directory_paths(root)? {
+        let relative_path = path.strip_prefix(root).map_err(|source| {
+            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
+        })?;
+        if settings.ignores(relative_path) {
+            continue;
+        }
+
+        let file_type = fs::symlink_metadata(&path)?.file_type();
+        if file_type.is_file()
+            && path.extension().and_then(|extension| extension.to_str()) == Some("md")
+            && is_managed_entry_file(&path)?
+        {
+            set_path_writable(&path)?;
+            fs::remove_file(&path)?;
+            continue;
+        }
+
+        return Err(EntryDirectoryError::CheckoutConflict(path));
+    }
+    Ok(())
+}
+
+fn is_managed_entry_file(path: &Path) -> Result<bool, EntryDirectoryError> {
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return Ok(false);
+    };
+    let Ok(id) = EntryId::new(stem) else {
+        return Ok(false);
+    };
+    let source = fs::read_to_string(path)?;
+    Ok(Entry::from_markdown(id, &source).is_ok())
+}
+
+fn set_entry_directory_writability(
+    root: &Path, settings: &EntryDirectoryCheckSettings, writable: bool,
+) -> Result<(), EntryDirectoryError> {
+    if !root.exists() {
+        return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
+    }
+    if !root.is_dir() {
+        return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
+    }
+
+    if writable {
+        set_path_writable(root)?;
+    }
+    set_child_writability(root, root, settings, writable)?;
+    if !writable {
+        set_path_readonly(root)?;
+    }
+    Ok(())
+}
+
+fn set_child_writability(
+    root: &Path, directory: &Path, settings: &EntryDirectoryCheckSettings, writable: bool,
+) -> Result<(), EntryDirectoryError> {
+    for path in sorted_directory_paths(directory)? {
+        let relative_path = path.strip_prefix(root).map_err(|source| {
+            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
+        })?;
+        if settings.ignores(relative_path) {
+            continue;
+        }
+
+        let file_type = fs::symlink_metadata(&path)?.file_type();
+        if writable {
+            set_path_writable(&path)?;
+        }
+        if file_type.is_dir() {
+            set_child_writability(root, &path, settings, writable)?;
+        }
+        if !writable {
+            set_path_readonly(&path)?;
+        }
+    }
+    Ok(())
+}
+
+fn set_path_readonly(path: &Path) -> Result<(), EntryDirectoryError> {
+    set_path_writable_flag(path, false)
+}
+
+fn set_path_writable(path: &Path) -> Result<(), EntryDirectoryError> {
+    set_path_writable_flag(path, true)
+}
+
+fn set_path_writable_flag(path: &Path, writable: bool) -> Result<(), EntryDirectoryError> {
+    let metadata = fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() {
+        return Ok(());
+    }
+    let mut permissions = metadata.permissions();
+    set_permissions_writable(&mut permissions, metadata.file_type().is_dir(), writable);
+    fs::set_permissions(path, permissions)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn set_permissions_writable(permissions: &mut fs::Permissions, is_directory: bool, writable: bool) {
+    let mode = permissions.mode();
+    let next = if writable {
+        if is_directory { mode | 0o700 } else { mode | 0o600 }
+    } else {
+        mode & !0o222
+    };
+    permissions.set_mode(next);
+}
+
+#[cfg(not(unix))]
+fn set_permissions_writable(
+    permissions: &mut fs::Permissions, _is_directory: bool, writable: bool,
+) {
+    permissions.set_readonly(!writable);
+}
+
 /// Error raised before an entry directory can be checked.
 #[derive(Debug, Error)]
 pub enum EntryDirectoryError {
@@ -546,6 +783,12 @@ pub enum EntryDirectoryError {
     /// The requested entry directory path is not a directory.
     #[error("entry path is not a directory: {0}")]
     NotDirectory(PathBuf),
+    /// The target entry directory must be empty for this write policy.
+    #[error("entry directory must be empty before checkout: {0}")]
+    DirectoryNotEmpty(PathBuf),
+    /// Checkout would overwrite a path that is not a managed entry file.
+    #[error("checkout conflict at unmanaged path: {0}")]
+    CheckoutConflict(PathBuf),
     /// Reading the directory or one of its files failed.
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -791,6 +1034,92 @@ category:
         let error = create_entry_file(&root, &entry).unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::CreateFile { .. }));
+    }
+
+    #[test]
+    fn replace_entry_directory_preserves_ignored_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        fs::create_dir_all(root.join(".obsidian")).unwrap();
+        fs::write(root.join(".obsidian/state.json"), "{}").unwrap();
+        fs::write(root.join("old.md"), "---\nname: Old\ndescription: Old.\n---\n").unwrap();
+        let metadata = EntryMetadata::new("New", "New entry.").unwrap();
+        let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
+
+        write_entry_directory(
+            &root,
+            std::slice::from_ref(&entry),
+            EntryDirectoryWritePolicy::ReplaceDirectory {
+                ignore: vec![PathBuf::from(".obsidian")],
+            },
+        )
+        .unwrap();
+
+        assert!(!root.join("old.md").exists());
+        assert!(root.join("new.md").exists());
+        assert!(root.join(".obsidian/state.json").exists());
+    }
+
+    #[test]
+    fn replace_entry_directory_rejects_stray_markdown() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("2026-05-12.md"), "").unwrap();
+        let metadata = EntryMetadata::new("New", "New entry.").unwrap();
+        let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
+
+        let error = write_entry_directory(
+            &root,
+            &[entry],
+            EntryDirectoryWritePolicy::ReplaceDirectory { ignore: Vec::new() },
+        )
+        .unwrap_err();
+
+        assert!(matches!(error, EntryDirectoryError::CheckoutConflict(_)));
+        assert!(root.join("2026-05-12.md").exists());
+    }
+
+    #[test]
+    fn readonly_entry_directory_can_be_made_writable_again() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        init_entry_directory(&root).unwrap();
+        let settings = EntryDirectoryCheckSettings::default();
+
+        set_entry_directory_readonly(&root, &settings).unwrap();
+        assert!(fs::metadata(root.join("concept.md")).unwrap().permissions().readonly());
+        assert!(fs::metadata(&root).unwrap().permissions().readonly());
+
+        set_entry_directory_writable(&root, &settings).unwrap();
+        assert!(!fs::metadata(root.join("concept.md")).unwrap().permissions().readonly());
+        assert!(!fs::metadata(&root).unwrap().permissions().readonly());
+    }
+
+    #[test]
+    fn readonly_checkout_warning_is_visible_body_quote() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("docs");
+        let metadata = EntryMetadata::new("New", "New entry.").unwrap();
+        let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
+        let paths = write_entry_directory(
+            &root,
+            std::slice::from_ref(&entry),
+            EntryDirectoryWritePolicy::EmptyDirectory,
+        )
+        .unwrap();
+
+        add_readonly_checkout_warnings(&paths).unwrap();
+        let source = fs::read_to_string(root.join("new.md")).unwrap();
+        let checked = check_entry_directory(&root, CheckMode::Review).unwrap();
+
+        assert!(source.contains(
+            "\n---\n\n> This file is a read-only Sirno history checkout.\n\
+             > Do not edit it by hand.\n\nBody.\n"
+        ));
+        assert_eq!(checked.entries()[0].metadata, entry.metadata);
+        assert!(checked.entries()[0].body.starts_with(READONLY_CHECKOUT_WARNING));
+        assert!(checked.entries()[0].body.ends_with("Body.\n"));
     }
 
     #[test]

@@ -9,11 +9,15 @@ refiner:
   - storage-and-interfaces
 ---
 
-Query selects parsed entries from the Markdown store.
+Query selects parsed entries from the public store or,
+when history is configured,
+from one history version.
 
 It reads entry ids, metadata, and bodies.
 Generated footers are projections for navigation,
 not structural input to query.
+When no version is supplied,
+query reads the public store.
 
 The default query mode is vague text query.
 It matches an entry's id, name, description, and body.
@@ -34,8 +38,6 @@ The same selected entries may be printed as summaries, ids, or paths.
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno-store](sirno-store.md)

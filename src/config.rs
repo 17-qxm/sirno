@@ -1,7 +1,8 @@
 //! Project configuration for a Sirno-managed repository.
 //!
 //! A repository is Sirno-managed when it contains `Sirno.toml`.
-//! The config names the monograph and the public Markdown entry store.
+//! The config names the monograph and public Markdown entry store.
+//! It may also opt into a private `eter` history store.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -85,10 +86,28 @@ impl StoreSettings {
     }
 }
 
+/// Configured private history store settings.
+///
+/// Invariant: `path` points to the `eter` history root used for snapshots.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HistorySettings {
+    /// Configured private history store path.
+    pub path: PathBuf,
+}
+
+impl HistorySettings {
+    /// Construct history settings from a history root path.
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self { path: path.into() }
+    }
+}
+
 /// Sirno project configuration.
 ///
 /// Invariant: `mono.path` points to the configured monograph path.
 /// `store.path` points to the configured public Markdown entry store path.
+/// `history.path`, when present, points to the configured private `eter` history root.
 /// `store.ignore` contains paths relative to the store root that Sirno skips.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
@@ -100,6 +119,9 @@ pub struct SirnoConfig {
     pub mono: MonoSettings,
     /// Configured public Markdown entry store settings.
     pub store: StoreSettings,
+    /// Configured private history store settings.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub history: Option<HistorySettings>,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -114,9 +136,16 @@ impl SirnoConfig {
         Self {
             mono: MonoSettings::new(mono),
             store: StoreSettings::new(store),
+            history: None,
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
+    }
+
+    /// Return this config with a configured history root.
+    pub fn with_history(mut self, history: impl Into<PathBuf>) -> Self {
+        self.history = Some(HistorySettings::new(history));
+        self
     }
 
     /// Default config for a new Sirno-managed repository.
@@ -132,7 +161,7 @@ impl SirnoConfig {
             .map_err(|source| ConfigError::Read { path: path.to_path_buf(), source })?;
         let config: Self = toml::from_str(&source)
             .map_err(|source| ConfigError::Parse { path: path.to_path_buf(), source })?;
-        config.store.validate()?;
+        config.validate_for_file(path)?;
         trace!("sirno config load end");
         Ok(config)
     }
@@ -143,7 +172,7 @@ impl SirnoConfig {
     pub fn write_new(&self, path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let path = path.as_ref();
         trace!("sirno config write begin: path={}", path.display());
-        self.store.validate()?;
+        self.validate_for_file(path)?;
         let source = toml::to_string_pretty(self).map_err(ConfigError::Render)?;
         let mut file = OpenOptions::new()
             .write(true)
@@ -156,6 +185,24 @@ impl SirnoConfig {
         Ok(())
     }
 
+    /// Write this config to an existing or new file.
+    pub fn write(&self, path: impl AsRef<Path>) -> Result<(), ConfigError> {
+        let path = path.as_ref();
+        trace!("sirno config write replace begin: path={}", path.display());
+        self.validate_for_file(path)?;
+        let source = toml::to_string_pretty(self).map_err(ConfigError::Render)?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+            .map_err(|source| ConfigError::Create { path: path.to_path_buf(), source })?;
+        file.write_all(source.as_bytes())
+            .map_err(|source| ConfigError::Write { path: path.to_path_buf(), source })?;
+        trace!("sirno config write replace end");
+        Ok(())
+    }
+
     /// Resolve the monograph path relative to a config file path.
     pub fn resolve_mono(&self, config_path: impl AsRef<Path>) -> PathBuf {
         resolve_config_relative(config_path.as_ref(), &self.mono.path)
@@ -164,6 +211,28 @@ impl SirnoConfig {
     /// Resolve the entry store path relative to a config file path.
     pub fn resolve_store(&self, config_path: impl AsRef<Path>) -> PathBuf {
         resolve_config_relative(config_path.as_ref(), &self.store.path)
+    }
+
+    /// Resolve the history store path relative to a config file path when configured.
+    pub fn resolve_history(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
+        self.history
+            .as_ref()
+            .map(|history| resolve_config_relative(config_path.as_ref(), &history.path))
+    }
+
+    /// Validate this config as it would be used from a specific config file path.
+    pub fn validate_for_file(&self, config_path: impl AsRef<Path>) -> Result<(), ConfigError> {
+        let config_path = config_path.as_ref();
+        self.store.validate()?;
+        if self.history.is_some() {
+            let store = self.resolve_store(config_path);
+            let history =
+                self.resolve_history(config_path).expect("history path exists after is_some");
+            if store == history || history.starts_with(&store) || store.starts_with(&history) {
+                return Err(ConfigError::HistoryStorePath { store, history });
+            }
+        }
+        Ok(())
     }
 }
 
@@ -201,6 +270,16 @@ pub enum ConfigError {
     /// A store ignore path is not relative to the store root.
     #[error("store.ignore path must be relative to the store root: {0}")]
     StoreIgnorePath(PathBuf),
+    /// The history root overlaps the public store path.
+    #[error(
+        "history path must be separate from public store path: store={store} history={history}"
+    )]
+    HistoryStorePath {
+        /// Resolved public store path.
+        store: PathBuf,
+        /// Resolved history root path.
+        history: PathBuf,
+    },
     /// The config file could not be created.
     #[error("failed to create config file {path}")]
     Create {
@@ -240,9 +319,29 @@ path = "docs"
 
         assert_eq!(config.mono.path, PathBuf::from("DESIGN.md"));
         assert_eq!(config.store.path, PathBuf::from("docs"));
+        assert_eq!(config.history, None);
         assert!(config.store.ignore.is_empty());
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
+    }
+
+    #[test]
+    fn parses_history_settings() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+
+[history]
+path = "sirno-history"
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.history, Some(HistorySettings { path: PathBuf::from("sirno-history") }));
     }
 
     #[test]
@@ -365,6 +464,11 @@ extra = "no"
 
         assert_eq!(config.resolve_mono(config_path), PathBuf::from("/tmp/project/DESIGN.md"));
         assert_eq!(config.resolve_store(config_path), PathBuf::from("/tmp/project/docs"));
+        assert_eq!(config.resolve_history(config_path), None);
+        assert_eq!(
+            config.with_history("sirno-history").resolve_history(config_path),
+            Some(PathBuf::from("/tmp/project/sirno-history"))
+        );
     }
 
     #[test]
@@ -400,5 +504,29 @@ ignore = ["../outside"]
 
         assert_eq!(read, config);
         assert!(matches!(config.write_new(&path), Err(ConfigError::Create { .. })));
+    }
+
+    #[test]
+    fn rejects_history_path_inside_public_store() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+
+[history]
+path = "docs/history"
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(error, ConfigError::HistoryStorePath { .. }));
     }
 }

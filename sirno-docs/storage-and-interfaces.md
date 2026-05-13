@@ -7,9 +7,12 @@ clustee:
   - sirno
 ---
 
-The entry store is managed through `eter`.
-At this design stage, `eter` provides durable storage and indexing.
-Versioning is reserved for later design.
+Sirno uses one required storage surface and one optional surface.
+
+The public Markdown store is the editable working form.
+The private history root is optional and managed through `eter`.
+`eter` provides durable storage, indexing, immutable snapshots,
+field history, version retirement, and garbage collection.
 
 Sirno exposes the store through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
@@ -22,6 +25,8 @@ Markdown entries are the human-facing form.
 They are easy to read, review, diff, and edit.
 `eter` provides the storage and indexing foundation beneath that form,
 so Sirno can grow more capable without making the entry files opaque.
+It also gives Sirno store-wide snapshots in `sirno-history`
+without adding version fields to entry metadata.
 
 The CLI is the first operational interface.
 It can initialize stores, create entries, query entries, check structure,
@@ -30,8 +35,14 @@ Those commands should remain plain enough to use from a terminal
 and stable enough for agents and skills to call.
 
 `sirno status` summarizes the configured repository.
-It reports the config path, monograph path, store path, entry count,
-check policy, link policy, and current check result.
+It reports the config path, monograph path, store path, optional history path,
+history lock state, entry count, check policy, link policy, and current check result.
+
+`sirno history init` configures the private history root and commits the current public store.
+`sirno history commit` commits the current public store into history
+and writes the resulting current version to `Sirno.lock`.
+`sirno history checkout VERSION` materializes one version into the public store.
+The checkout is immutable unless `--unsafe-mutable` is supplied.
 
 `sirno new` creates one Markdown entry from typed command-line metadata.
 It refuses to overwrite an existing entry file.
@@ -64,13 +75,12 @@ while Sirno keeps the entry id as the shared nominal handle.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
-
 Clustee (to)
 - [sirno](sirno.md)
 
 Refiner (from)
 - [project-config](project-config.md)
 - [query](query.md)
+- [versioning](versioning.md)
 
 > **Sirno generated links end.**

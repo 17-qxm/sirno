@@ -11,6 +11,7 @@ Sirno can describe its own design through its own model.
 
 A monograph can explain Sirno as one continuous document.
 A store can make the same design addressable in smaller pieces.
+An optional history root can preserve committed store snapshots.
 Repository artifacts can witness entries through `mosaika`.
 
 The monograph may grow long,
@@ -38,8 +39,6 @@ and where is it witnessed?
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno](sirno.md)

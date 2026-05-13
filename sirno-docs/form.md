@@ -14,6 +14,8 @@ It carries the whole project design as a readable monograph.
 
 `sirno` is one configured entry store.
 It contains compact Markdown entries with exact metadata.
+When history is configured, it is versioned through a separate `eter` history root,
+so one store version names one immutable entry set.
 
 `code` is the repository implementation form.
 It contains source, tests, configuration, generated files, assets,
@@ -45,8 +47,6 @@ Code can stay focused on behavior while still having a place to point for intent
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
-
-Clustee (from): (none)
 
 Clustee (to)
 - [sirno](sirno.md)

@@ -50,17 +50,6 @@ Sirno keeps the edges between those forms explicit.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from)
-- [code-form](code-form.md)
-- [concept-driven-development](concept-driven-development.md)
-- [form](form.md)
-- [future-work](future-work.md)
-- [mono](mono.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
-- [sirno-store](sirno-store.md)
-- [storage-and-interfaces](storage-and-interfaces.md)
-
 Clustee (to): (none)
 
 Refiner (from): (none)
