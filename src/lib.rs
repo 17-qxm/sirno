@@ -48,5 +48,5 @@ pub use crate::query::{
 };
 pub use crate::store::{SirnoStore, StoreError};
 pub use crate::witness::{
-    WitnessCheckSettings, WitnessError, WitnessIndex, WitnessRecord, scan_witnesses,
+    WitnessCheckSettings, WitnessError, WitnessIndex, WitnessRecord, WitnessSpan, scan_witnesses,
 };

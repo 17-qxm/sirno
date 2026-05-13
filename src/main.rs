@@ -12,9 +12,10 @@ use sirno::{
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
     EntryMetadata, EntryParseError, EntryQuery, GenLinkDirectoryReport, GeneratedLinkSettings,
     HistoryLockStatus, LockError, SirnoConfig, SirnoLock, SirnoStore, StoreError, VagueEntryQuery,
-    WitnessCheckSettings, WitnessError, WitnessMarker, add_readonly_checkout_warnings,
-    check_entry_directory_with_settings, check_gen_link_entry_directory_with_ignored_paths,
-    create_entry_file, delete_gen_link_entry_directory_with_ignored_paths,
+    WitnessCheckSettings, WitnessError, WitnessMarker, WitnessRecord,
+    add_readonly_checkout_warnings, check_entry_directory_with_settings,
+    check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
+    delete_gen_link_entry_directory_with_ignored_paths,
     gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
     resolve_lock_path, scan_witnesses, set_entry_directory_readonly, set_entry_directory_writable,
     vague_query_entries,
@@ -128,10 +129,13 @@ enum Command {
     },
     /// Show the current Sirno project status.
     Status,
-    /// Show repository witness markers for one entry id.
+    /// Show repository witness blocks for one entry id.
     Witness {
         /// Entry id used as the witness query key.
         id: String,
+        /// Print full witness regions instead of only their locations.
+        #[arg(long)]
+        full: bool,
     },
     /// Manage optional eter-backed history.
     History {
@@ -443,7 +447,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             print_status(&config_path, &mono, history.as_deref(), lock.as_ref(), &config, &report);
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
-        | Command::Witness { id } => run_witness_command(&config_path, &id),
+        | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
         | Command::History { command } => run_history_command(command, &config_path),
         | Command::Util { command } => run_util_command(command),
     }
@@ -580,7 +584,7 @@ fn history_version(version: u64) -> Result<Eterator, CliError> {
     Ok(Eterator(version))
 }
 
-fn run_witness_command(config_path: &Path, raw_id: &str) -> Result<ExitCode, CliError> {
+fn run_witness_command(config_path: &Path, raw_id: &str, full: bool) -> Result<ExitCode, CliError> {
     let config = SirnoConfig::from_file(config_path)?;
     let id = EntryId::new(raw_id)?;
     let Some(settings) = witness_check_settings(config_path, &config) else {
@@ -592,10 +596,81 @@ fn run_witness_command(config_path: &Path, raw_id: &str) -> Result<ExitCode, Cli
         println!("no witness found for {id}");
         return Ok(ExitCode::FAILURE);
     }
-    for record in records {
-        println!("{}:{}:{}\t{}", record.path.display(), record.line, record.column, record.marker);
-    }
+    print_witness_records(records, full);
     Ok(ExitCode::SUCCESS)
+}
+
+fn print_witness_records(records: &[WitnessRecord], full: bool) {
+    print!("{}", format_witness_records(records, full));
+}
+
+fn format_witness_records(records: &[WitnessRecord], full: bool) -> String {
+    let mut out = String::new();
+    for (index, record) in records.iter().enumerate() {
+        if full && index > 0 {
+            out.push_str("---\n\n");
+        }
+        out.push_str(&format_witness_record(record, full));
+    }
+    out
+}
+
+fn format_witness_record(record: &WitnessRecord, full: bool) -> String {
+    let body = dedent_witness_body(&record.body);
+    let range = format_witness_summary(record);
+    if !full {
+        let marker = body
+            .lines()
+            .next()
+            .map(str::to_owned)
+            .unwrap_or_else(|| dedent_witness_body(&record.marker));
+        return format!("{range}\t{marker}\n");
+    }
+
+    let mut out = format!("{range}\n\n");
+    out.push_str(&body);
+    if !body.ends_with('\n') {
+        out.push('\n');
+    }
+    out.push('\n');
+    out
+}
+
+fn format_witness_summary(record: &WitnessRecord) -> String {
+    format!(
+        "{}:{}:{}-{} :: {}:{}-{}",
+        record.path.display(),
+        record.opening.start_line,
+        record.opening.start_column,
+        record.opening.end_column,
+        record.closing.start_line,
+        record.closing.start_column,
+        record.closing.end_column
+    )
+}
+
+fn dedent_witness_body(body: &str) -> String {
+    let indent = body
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(leading_whitespace_len)
+        .min()
+        .unwrap_or(0);
+    let mut out =
+        body.lines().map(|line| strip_indent(line, indent)).collect::<Vec<_>>().join("\n");
+    if body.ends_with('\n') {
+        out.push('\n');
+    }
+    out
+}
+
+fn leading_whitespace_len(line: &str) -> usize {
+    line.bytes().take_while(|byte| matches!(byte, b' ' | b'\t')).count()
+}
+
+fn strip_indent(line: &str, indent: usize) -> &str {
+    let removable = leading_whitespace_len(line).min(indent);
+    &line[removable..]
 }
 
 fn run_util_command(command: UtilCommand) -> Result<ExitCode, CliError> {
@@ -867,7 +942,12 @@ mod tests {
 
     use clap::Parser;
 
-    use crate::{Cli, Command, HistoryCommand, format_gen_link_report};
+    use sirno::{EntryId, WitnessRecord, WitnessSpan};
+
+    use crate::{
+        Cli, Command, HistoryCommand, format_gen_link_report, format_witness_record,
+        format_witness_records,
+    };
 
     #[test]
     fn init_does_not_accept_history_path() {
@@ -903,7 +983,86 @@ mod tests {
     fn witness_accepts_entry_id() {
         let cli = Cli::parse_from(["sirno", "witness", "witness"]);
 
-        assert!(matches!(cli.command, Command::Witness { id } if id == "witness"));
+        assert!(matches!(cli.command, Command::Witness { id, full: false } if id == "witness"));
+    }
+
+    #[test]
+    fn witness_accepts_full_flag() {
+        let cli = Cli::parse_from(["sirno", "witness", "witness", "--full"]);
+
+        assert!(matches!(cli.command, Command::Witness { id, full: true } if id == "witness"));
+    }
+
+    #[test]
+    fn format_witness_record_prints_range_and_dedents_body() {
+        let record = WitnessRecord {
+            entry: EntryId::new("entry").unwrap(),
+            path: PathBuf::from("src/lib.rs"),
+            region: witness_span(10, 5, 14, 25),
+            opening: witness_span(10, 5, 10, 33),
+            closing: witness_span(14, 5, 14, 25),
+            marker: "    // sirno:witness:start entry".to_owned(),
+            body: concat!(
+                "    // sirno:witness:start entry\n",
+                "        fn main() {}\n",
+                "    // sirno:witness:end"
+            )
+            .to_owned(),
+        };
+
+        assert_eq!(
+            format_witness_record(&record, false),
+            "src/lib.rs:10:5-33 :: 14:5-25\t// sirno:witness:start entry\n"
+        );
+        assert_eq!(
+            format_witness_record(&record, true),
+            "\
+src/lib.rs:10:5-33 :: 14:5-25
+
+// sirno:witness:start entry
+    fn main() {}
+// sirno:witness:end
+
+"
+        );
+    }
+
+    #[test]
+    fn format_witness_records_adds_full_region_spacing() {
+        let first = WitnessRecord {
+            entry: EntryId::new("entry").unwrap(),
+            path: PathBuf::from("src/lib.rs"),
+            region: witness_span(10, 5, 14, 25),
+            opening: witness_span(10, 5, 10, 33),
+            closing: witness_span(14, 5, 14, 25),
+            marker: "    // sirno:witness:start entry".to_owned(),
+            body: concat!(
+                "    // sirno:witness:start entry\n",
+                "        fn main() {}\n",
+                "    // sirno:witness:end"
+            )
+            .to_owned(),
+        };
+        let mut second = first.clone();
+        second.region = witness_span(20, 5, 24, 25);
+        second.opening = witness_span(20, 5, 20, 33);
+        second.closing = witness_span(24, 5, 24, 25);
+
+        assert!(format_witness_records(&[first, second], true).contains(
+            "\
+// sirno:witness:end
+
+---
+
+src/lib.rs:20:5-33 :: 24:5-25
+"
+        ));
+    }
+
+    fn witness_span(
+        start_line: usize, start_column: usize, end_line: usize, end_column: usize,
+    ) -> WitnessSpan {
+        WitnessSpan { start_line, start_column, end_line, end_column }
     }
 
     #[test]

@@ -54,6 +54,11 @@ Exact structural predicates live behind explicit exact flags.
 
 `sirno witness ENTRY_ID` scans configured code members through `mosaika`
 and reports repository witness blocks for the selected entry id.
+`sirno witness ENTRY_ID --full` also prints the full matched code regions.
+Witness output reports the opening and closing delimiter ranges.
+In full mode, the summary line contains only the range.
+A blank line separates the summary from the dedented region.
+Multiple full regions are separated by a blank line, `---`, and another blank line.
 
 `sirno gen-link` creates or replaces Sirno-owned generated footer regions.
 `sirno gen-link --dry` reports generated footer regions that would change without writing files.

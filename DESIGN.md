@@ -513,6 +513,11 @@ It defaults to vague text query and keeps exact structural predicates behind exp
 
 `sirno witness ENTRY_ID` scans the configured code members
 and reports repository witness blocks for the selected entry id.
+`sirno witness ENTRY_ID --full` also prints the full matched code regions.
+Witness output reports the opening and closing delimiter ranges.
+In full mode, the summary line contains only the range.
+A blank line separates the summary from the dedented region.
+Multiple full regions are separated by a blank line, `---`, and another blank line.
 
 `sirno util completion` emits shell completion scripts.
 Utility commands do not read or mutate the store unless their own subcommand says so.

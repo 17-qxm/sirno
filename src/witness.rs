@@ -22,8 +22,8 @@ use crate::config::CodeMember;
 use crate::id::{EntryId, EntryIdError};
 
 const WITNESS_TRANSFORM: &str = "sirno-witness";
-const WITNESS_START_REGEX: &str = r"sirno:witness:start ([A-Za-z0-9_-]+)";
-const WITNESS_END: &str = "sirno:witness:end";
+const WITNESS_START_REGEX: &str = r"(?m)^[ \t]*//[ \t]*sirno:witness:start ([A-Za-z0-9_-]+)";
+const WITNESS_END_REGEX: &str = r"(?m)^[ \t]*//[ \t]*sirno:witness:end";
 
 /// Settings for a witness scan.
 ///
@@ -85,19 +85,40 @@ impl WitnessIndex {
 /// One repository witness block resolved by `mosaika`.
 ///
 /// Invariant: `entry` is the parsed id captured from the opening delimiter.
-/// `path`, `line`, and `column` identify the opening delimiter location.
+/// `region` identifies the matched block.
+/// `opening` and `closing` identify the delimiter spans.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WitnessRecord {
     /// Entry id captured from `sirno:witness:start <entry-id>`.
     pub entry: EntryId,
     /// Repository file that contains the witness block.
     pub path: PathBuf,
-    /// One-based line of the opening delimiter.
-    pub line: usize,
-    /// One-based column of the opening delimiter.
-    pub column: usize,
+    /// Full matched block region.
+    pub region: WitnessSpan,
+    /// Matched opening delimiter span.
+    pub opening: WitnessSpan,
+    /// Matched closing delimiter span.
+    pub closing: WitnessSpan,
     /// Matched opening delimiter text.
     pub marker: String,
+    /// Full witness block body emitted by `mosaika`.
+    pub body: String,
+}
+
+/// One source span reported by `mosaika`.
+///
+/// Invariant: line and column values are one-based.
+/// End columns point after the matched span.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WitnessSpan {
+    /// One-based starting line.
+    pub start_line: usize,
+    /// One-based starting column.
+    pub start_column: usize,
+    /// One-based ending line.
+    pub end_line: usize,
+    /// One-based column after the span.
+    pub end_column: usize,
 }
 
 // sirno:witness:start witness
@@ -217,7 +238,7 @@ fn witness_projection(files: &[PathBuf]) -> syn::Projection {
             name: WITNESS_TRANSFORM.to_owned(),
             delimiters: vec![
                 Delimiter::Regex(RegexDelimiter { regex: WITNESS_START_REGEX.to_owned() }),
-                Delimiter::String(WITNESS_END.to_owned()),
+                Delimiter::Regex(RegexDelimiter { regex: WITNESS_END_REGEX.to_owned() }),
             ],
             effects: vec![Effect::Log { log: true }],
         }],
@@ -245,6 +266,10 @@ fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
             .delimiters
             .first()
             .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
+        let closing = record
+            .delimiters
+            .last()
+            .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
         let raw_entry = marker
             .captures
             .first()
@@ -257,9 +282,11 @@ fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
         index.push(WitnessRecord {
             entry,
             path: PathBuf::from(record.file),
-            line: marker.span.start_line,
-            column: marker.span.start_column,
+            region: record.region.into(),
+            opening: marker.span.into(),
+            closing: closing.span.into(),
             marker: marker.matched.clone(),
+            body: record.body,
         });
     }
     Ok(index)
@@ -273,7 +300,9 @@ fn has_glob_meta(value: &str) -> bool {
 #[derive(Debug, Deserialize)]
 struct MosaikaLogRecord {
     file: String,
+    region: MosaikaSourceSpan,
     delimiters: Vec<MosaikaDelimiterRecord>,
+    body: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -283,10 +312,23 @@ struct MosaikaDelimiterRecord {
     captures: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 struct MosaikaSourceSpan {
     start_line: usize,
     start_column: usize,
+    end_line: usize,
+    end_column: usize,
+}
+
+impl From<MosaikaSourceSpan> for WitnessSpan {
+    fn from(span: MosaikaSourceSpan) -> Self {
+        Self {
+            start_line: span.start_line,
+            start_column: span.start_column,
+            end_line: span.end_line,
+            end_column: span.end_column,
+        }
+    }
 }
 
 /// Error raised while scanning repository witnesses.
@@ -389,8 +431,25 @@ mod tests {
         let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
 
         let index = scan_witnesses(&settings).unwrap();
+        let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
 
         assert!(index.contains_entry(&EntryId::new("witness-lookup").unwrap()));
+        assert_eq!(
+            records[0].body,
+            "// sirno:witness:start witness-lookup\nbody\n// sirno:witness:end"
+        );
+        assert_eq!(
+            records[0].region,
+            WitnessSpan { start_line: 1, start_column: 1, end_line: 3, end_column: 21 }
+        );
+        assert_eq!(
+            records[0].opening,
+            WitnessSpan { start_line: 1, start_column: 1, end_line: 1, end_column: 38 }
+        );
+        assert_eq!(
+            records[0].closing,
+            WitnessSpan { start_line: 3, start_column: 1, end_line: 3, end_column: 21 }
+        );
     }
 
     #[test]
