@@ -12,6 +12,7 @@ Sirno describes its own design through its own model.
 
 The store makes Sirno's design addressable in small entries.
 A materialized introduction entry gives the store a first narrative route.
+A materialized methodology entry gives the store a working guide.
 An optional history root can preserve committed store snapshots.
 Repository artifacts can witness entries through `mosaika`.
 

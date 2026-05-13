@@ -18,6 +18,8 @@ Materialized narratives may also live in the store as guides.
 They can state prerequisites, choose a base language,
 and point a reader through entries in an intentional order.
 This store's `introduction` entry is such a narrative.
+The `methodology` entry is another narrative:
+it gives the working route for acting inside the store.
 
 Interactive narratives may be generated ephemerally by skills.
 Canonical knowledge remains in entries and metadata.

@@ -89,6 +89,7 @@ with `sirno:witness:end` inside paths selected by `[code].members`.
 A narrative records a cognitive route through concepts.
 This repository keeps its first route in the store as
 [`introduction`](sirno-docs/introduction.md).
+It keeps its working guide as [`methodology`](sirno-docs/methodology.md).
 
 Narratives may be materialized guides in the Sirno store.
 They can state prerequisites,
@@ -112,7 +113,7 @@ leave that region untouched.
 This repository is the design and implementation workspace for Sirno.
 `sirno-docs/` is the current design source for the project.
 Start with [`sirno-docs/introduction.md`](sirno-docs/introduction.md).
-`METHODOLOGY.md` is the compact working guide for the project model.
+Use [`sirno-docs/methodology.md`](sirno-docs/methodology.md) as the compact working guide.
 
 The implementation is expected to expose CLI and MCP interfaces,
 with possible lightweight GUI or Obsidian integration later.

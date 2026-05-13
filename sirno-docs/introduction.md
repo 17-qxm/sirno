@@ -72,6 +72,7 @@ The footer only helps editors and documentation tools follow the graph.
 
 This repository now treats `sirno-docs/` as the design source.
 The introduction you are reading is the first route through that store.
+The `methodology` entry is the compact working guide for acting inside the store.
 The detailed design lives in the entries themselves:
 forms, structural fields, transforms, storage, checks, witnesses, and generated footers.
 Read this entry first,
