@@ -10,13 +10,13 @@ use eter::Eterator;
 use sirno::{
     CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
-    EntryMetadata, EntryParseError, EntryQuery, GenLinkDirectoryReport, GeneratedLinkSettings,
-    HistoryLockStatus, LockError, SirnoConfig, SirnoLock, SirnoStore, StoreError, VagueEntryQuery,
-    WitnessMarker, add_readonly_checkout_warnings, check_entry_directory_with_settings,
-    check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
+    EntryMetadata, EntryParseError, EntryQuery, GeneratedLinkSettings, HistoryLockStatus,
+    LockError, SirnoConfig, SirnoLock, SirnoStore, StoreError, VagueEntryQuery,
+    WitnessCheckSettings, WitnessError, WitnessMarker, add_readonly_checkout_warnings,
+    check_entry_directory_with_settings, create_entry_file,
     delete_gen_link_entry_directory_with_ignored_paths,
     gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
-    resolve_lock_path, set_entry_directory_readonly, set_entry_directory_writable,
+    resolve_lock_path, scan_witnesses, set_entry_directory_readonly, set_entry_directory_writable,
     vague_query_entries,
 };
 use thiserror::Error;
@@ -115,9 +115,6 @@ enum Command {
     /// Generate Markdown links in entry footers.
     #[command(name = "gen-link")]
     GenLink {
-        /// Write generated links instead of checking which entries would change.
-        #[arg(long)]
-        no_check: bool,
         /// Generated-link command.
         #[command(subcommand)]
         command: Option<GenLinkCommand>,
@@ -127,6 +124,11 @@ enum Command {
     },
     /// Show the current Sirno project status.
     Status,
+    /// Show repository witness markers for one entry id.
+    Witness {
+        /// Entry id used as the witness query key.
+        id: String,
+    },
     /// Manage optional eter-backed history.
     History {
         /// History command.
@@ -316,6 +318,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
             settings.link = false;
             settings.links = GeneratedLinkSettings::default();
+            settings.witness = None;
             let report = check_entry_directory_with_settings(&entries, CheckMode::Edit, &settings)?;
             if report.has_errors() {
                 print_entry_directory_report(&report);
@@ -352,7 +355,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 let report = check_entry_directory_with_settings(
                     config.resolve_store(&config_path),
                     mode.into(),
-                    &entry_directory_check_settings(&config),
+                    &entry_directory_check_settings(&config_path, &config),
                 )?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
@@ -375,10 +378,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
-        | Command::GenLink { command, entries, no_check } => match command {
+        | Command::GenLink { command, entries } => match command {
             | None => {
                 let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
                 settings.link = false;
+                settings.witness = None;
 
                 let check =
                     check_entry_directory_with_settings(&entries, CheckMode::Review, &settings)?;
@@ -387,40 +391,23 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                     return Ok(ExitCode::FAILURE);
                 }
 
-                if no_check {
-                    let report = gen_link_entry_directory_with_ignored_paths(
-                        &entries,
-                        &settings.links,
-                        settings.ignore.clone(),
-                    )?;
-                    println!(
-                        "generated links for {} entries in {} ({} changed)",
-                        report.entry_count(),
-                        report.root().display(),
-                        report.changed_paths().len()
-                    );
-                    return Ok(ExitCode::SUCCESS);
-                }
-
-                let report = check_gen_link_entry_directory_with_ignored_paths(
+                let report = gen_link_entry_directory_with_ignored_paths(
                     &entries,
                     &settings.links,
                     settings.ignore.clone(),
                 )?;
-                print_gen_link_check_report(&report);
-                if report.changed_paths().is_empty() {
-                    Ok(ExitCode::SUCCESS)
-                } else {
-                    Ok(ExitCode::FAILURE)
-                }
+                println!(
+                    "generated links for {} entries in {} ({} changed)",
+                    report.entry_count(),
+                    report.root().display(),
+                    report.changed_paths().len()
+                );
+                Ok(ExitCode::SUCCESS)
             }
             | Some(GenLinkCommand::Delete { entries: delete_entries }) => {
-                if no_check {
-                    return Err(CliError::NoCheckWithGenLinkSubcommand);
-                }
-
-                let (entries, settings) =
+                let (entries, mut settings) =
                     resolve_entry_directory(delete_entries.or(entries), &config_path)?;
+                settings.witness = None;
 
                 let report =
                     delete_gen_link_entry_directory_with_ignored_paths(&entries, settings.ignore)?;
@@ -443,11 +430,12 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let report = check_entry_directory_with_settings(
                 &store,
                 CheckMode::Review,
-                &entry_directory_check_settings(&config),
+                &entry_directory_check_settings(&config_path, &config),
             )?;
             print_status(&config_path, &mono, history.as_deref(), lock.as_ref(), &config, &report);
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
+        | Command::Witness { id } => run_witness_command(&config_path, &id),
         | Command::History { command } => run_history_command(command, &config_path),
         | Command::Util { command } => run_util_command(command),
     }
@@ -477,8 +465,10 @@ fn run_history_command(
                 config.resolve_history(config_path).expect("history path configured by init");
             let store_path = config.resolve_store(config_path);
             let mut store = SirnoStore::open(&history_root)?;
-            let version = store
-                .commit_entry_directory(&store_path, &entry_directory_check_settings(&config))?;
+            let version = store.commit_entry_directory(
+                &store_path,
+                &entry_directory_check_settings(config_path, &config),
+            )?;
             if needs_config_write {
                 config.write(config_path)?;
             }
@@ -551,7 +541,7 @@ impl HistoryContext {
         Ok(Self {
             history_root,
             lock_path: resolve_lock_path(config_path),
-            settings: entry_directory_check_settings(&config),
+            settings: entry_directory_check_settings(config_path, &config),
             store_path: config.resolve_store(config_path),
         })
     }
@@ -580,6 +570,24 @@ fn history_version(version: u64) -> Result<Eterator, CliError> {
         return Err(CliError::InvalidHistoryVersion(version));
     }
     Ok(Eterator(version))
+}
+
+fn run_witness_command(config_path: &Path, raw_id: &str) -> Result<ExitCode, CliError> {
+    let config = SirnoConfig::from_file(config_path)?;
+    let id = EntryId::new(raw_id)?;
+    let Some(settings) = witness_check_settings(config_path, &config) else {
+        return Err(CliError::CodeMembersNotConfigured);
+    };
+    let index = scan_witnesses(&settings)?;
+    let records = index.records_for(&id);
+    if records.is_empty() {
+        println!("no witness found for {id}");
+        return Ok(ExitCode::FAILURE);
+    }
+    for record in records {
+        println!("{}:{}:{}\t{}", record.path.display(), record.line, record.column, record.marker);
+    }
+    Ok(ExitCode::SUCCESS)
 }
 
 fn run_util_command(command: UtilCommand) -> Result<ExitCode, CliError> {
@@ -615,18 +623,33 @@ fn explicit_entries_check_settings(
 ) -> Result<EntryDirectoryCheckSettings, CliError> {
     if config_path.exists() {
         let config = SirnoConfig::from_file(config_path)?;
-        Ok(entry_directory_check_settings(&config))
+        Ok(entry_directory_check_settings(config_path, &config))
     } else {
         Ok(EntryDirectoryCheckSettings::default())
     }
 }
 
-fn entry_directory_check_settings(config: &SirnoConfig) -> EntryDirectoryCheckSettings {
+fn entry_directory_check_settings(
+    config_path: &Path, config: &SirnoConfig,
+) -> EntryDirectoryCheckSettings {
     EntryDirectoryCheckSettings {
         link: config.check.link,
         links: config.links,
         ignore: config.store.ignore.clone(),
+        witness: witness_check_settings(config_path, config),
     }
+}
+
+fn witness_check_settings(
+    config_path: &Path, config: &SirnoConfig,
+) -> Option<WitnessCheckSettings> {
+    if config.code.members.is_empty() {
+        return None;
+    }
+    Some(WitnessCheckSettings::new(
+        config_path.parent().unwrap_or_else(|| Path::new(".")),
+        config.code.members.clone(),
+    ))
 }
 
 fn resolve_entry_directory(
@@ -637,7 +660,7 @@ fn resolve_entry_directory(
     }
 
     let config = SirnoConfig::from_file(config_path)?;
-    Ok((config.resolve_store(config_path), entry_directory_check_settings(&config)))
+    Ok((config.resolve_store(config_path), entry_directory_check_settings(config_path, &config)))
 }
 
 fn parse_entry_ids(raw: Vec<String>) -> Result<Vec<EntryId>, CliError> {
@@ -704,18 +727,6 @@ fn history_state_label(lock: Option<&SirnoLock>) -> String {
     }
 }
 
-fn print_gen_link_check_report(report: &GenLinkDirectoryReport) {
-    println!(
-        "generated links would change {} of {} entries in {}",
-        report.changed_paths().len(),
-        report.entry_count(),
-        report.root().display()
-    );
-    for path in report.changed_paths() {
-        println!("{}", path.display());
-    }
-}
-
 fn print_query_results(
     report: &EntryDirectoryReport, entries: &[&Entry], format: CliQueryFormat,
 ) -> Result<(), CliError> {
@@ -777,9 +788,6 @@ fn severity_label(severity: CheckSeverity) -> &'static str {
 /// Error raised while running the CLI.
 #[derive(Debug, Error)]
 enum CliError {
-    /// A command-line flag was used with the wrong command shape.
-    #[error("`--no-check` only applies to `sirno gen-link` without a subcommand")]
-    NoCheckWithGenLinkSubcommand,
     /// History has already been configured at another path.
     #[error("history is already configured at {0}")]
     HistoryAlreadyConfigured(PathBuf),
@@ -792,6 +800,9 @@ enum CliError {
     /// Empty history cannot be checked out as a version.
     #[error("history version {0} is not a check-outable snapshot")]
     InvalidHistoryVersion(u64),
+    /// Witness lookup requires configured code members.
+    #[error("code members are not configured; add [code].members to Sirno.toml")]
+    CodeMembersNotConfigured,
     /// Config-backed command failed.
     #[error(transparent)]
     Config(#[from] ConfigError),
@@ -801,6 +812,9 @@ enum CliError {
     /// Store-backed command failed.
     #[error(transparent)]
     Store(#[from] StoreError),
+    /// Witness lookup failed.
+    #[error(transparent)]
+    Witness(#[from] WitnessError),
     /// Public Markdown entry directory command failed.
     #[error(transparent)]
     EntryDirectory(#[from] EntryDirectoryError),
@@ -846,5 +860,19 @@ mod tests {
                 command: HistoryCommand::Checkout { version: 3, unsafe_mutable: true }
             }
         ));
+    }
+
+    #[test]
+    fn witness_accepts_entry_id() {
+        let cli = Cli::parse_from(["sirno", "witness", "witness"]);
+
+        assert!(matches!(cli.command, Command::Witness { id } if id == "witness"));
+    }
+
+    #[test]
+    fn gen_link_rejects_no_check_flag() {
+        let error = Cli::try_parse_from(["sirno", "gen-link", "--no-check"]).unwrap_err();
+
+        assert!(error.to_string().contains("unexpected argument"));
     }
 }

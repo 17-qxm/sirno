@@ -51,10 +51,12 @@ It refuses to overwrite an existing entry file.
 Its default mode is vague text query.
 Exact structural predicates live behind explicit exact flags.
 
-`sirno gen-link` reports generated footer regions that would change.
-`sirno gen-link --no-check` creates or replaces Sirno-owned generated footer regions.
+`sirno witness ENTRY_ID` scans configured code members through `mosaika`
+and reports repository markers for the selected entry id.
+
+`sirno gen-link` creates or replaces Sirno-owned generated footer regions.
 `sirno gen-link delete` removes those regions.
-Both commands operate on the configured store unless an explicit entry directory is given.
+Generated-link commands operate on the configured store unless an explicit entry directory is given.
 
 `sirno util completion` emits shell completion scripts.
 Completion generation is a utility interface,
@@ -77,10 +79,5 @@ while Sirno keeps the entry id as the shared nominal handle.
 
 Clustee (to)
 - [sirno](sirno.md)
-
-Refiner (from)
-- [project-config](project-config.md)
-- [query](query.md)
-- [versioning](versioning.md)
 
 > **Sirno generated links end.**

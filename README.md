@@ -81,6 +81,8 @@ or testable behavior.
 `witness:` marks an entry whose claim is evidenced by repository artifacts.
 Sirno does not store a separate witness query.
 The entry id is the query key used by `mosaika`.
+Repository markers use `sirno:witness:<entry-id>` inside paths selected by
+`[code].members`.
 
 ## Narratives
 

@@ -53,6 +53,4 @@ or use version-aware Sirno interfaces.
 Clustee (to)
 - [sirno-store](sirno-store.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

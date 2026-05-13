@@ -39,7 +39,4 @@ The project supplies the vocabulary that makes its own design legible.
 
 Clustee (to): (none)
 
-Refiner (from)
-- [concept-driven-development](concept-driven-development.md)
-
 > **Sirno generated links end.**

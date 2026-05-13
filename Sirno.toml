@@ -5,8 +5,8 @@ path = "DESIGN.md"
 path = "sirno-docs"
 ignore = [".obsidian"]
 
-[history]
-path = "sirno-history"
+[code]
+members = ["src"]
 
 [check]
 link = true
@@ -15,4 +15,4 @@ link = true
 category = false
 clustee = { from = false, to = true }
 clique = false
-refiner = { from = true, to = false }
+refiner = false

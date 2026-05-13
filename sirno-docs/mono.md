@@ -51,6 +51,4 @@ not as a mechanical export of every known fact.
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

@@ -19,6 +19,7 @@ It may also configure a private history root.
 `[mono].path` names the monograph.
 `[store].path` names the Markdown entry store.
 `[history].path` optionally names the private `eter` history root.
+`[code].members` lists repository paths or globs scanned for witness markers.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
 A project can use Sirno without history.
@@ -34,6 +35,11 @@ or checked out to a historical version.
 Sirno skips those paths and their descendants while reading, checking,
 querying, and changing generated links.
 Ignored paths are for adjacent tool state, not for entries.
+
+`[code].members` lists paths and globs relative to `Sirno.toml`.
+File members are scanned directly.
+Directory members are scanned recursively.
+Glob members may match files or directories.
 
 `[check].link` controls generated-link freshness checks.
 It is enabled by default.
@@ -55,7 +61,5 @@ A boolean applies to both link sides.
 
 Clustee (to)
 - [sirno-store](sirno-store.md)
-
-Refiner (from): (none)
 
 > **Sirno generated links end.**

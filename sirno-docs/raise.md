@@ -44,6 +44,4 @@ The fix may belong in the store before the monograph can be made elegant.
 Clustee (to)
 - [transform](transform.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

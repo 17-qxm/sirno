@@ -46,6 +46,4 @@ then the closure gives that region a stable front door.
 
 Clustee (to): (none)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

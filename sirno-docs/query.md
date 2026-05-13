@@ -42,6 +42,4 @@ The same selected entries may be printed as summaries, ids, or paths.
 Clustee (to)
 - [sirno-store](sirno-store.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

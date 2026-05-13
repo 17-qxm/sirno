@@ -17,6 +17,10 @@ and other artifacts that realize design decisions.
 Repository artifacts can witness entries through `mosaika`.
 Sirno uses the entry id as the witness query key,
 keeping design names and repository marks connected without embedding mark syntax in entry prose.
+`[code].members` defines the repository artifact surface that Sirno scans.
+File members are scanned directly,
+and directory members are scanned recursively.
+The marker shape is `sirno:witness:<entry-id>`.
 
 The code form is where design becomes costly in the useful sense.
 Names, invariants, parser choices, storage boundaries, user interfaces,
@@ -43,7 +47,5 @@ and which repository artifact witnesses an entry.
 
 Clustee (to)
 - [sirno](sirno.md)
-
-Refiner (from): (none)
 
 > **Sirno generated links end.**

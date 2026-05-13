@@ -40,6 +40,4 @@ The prose should explain the combined responsibility so a future reader can tell
 
 Clustee (to): (none)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

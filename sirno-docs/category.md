@@ -40,6 +40,4 @@ The category field is most useful when it tells the reader what kind of object t
 
 Clustee (to): (none)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

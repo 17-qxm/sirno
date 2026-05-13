@@ -59,6 +59,4 @@ because every accepted field becomes part of the public structure that readers a
 Clustee (to)
 - [sirno-store](sirno-store.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

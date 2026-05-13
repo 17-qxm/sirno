@@ -14,11 +14,12 @@ pub mod links;
 pub mod lock;
 pub mod query;
 pub mod store;
+pub mod witness;
 
 pub use crate::check::{CheckDiagnostic, CheckMode, CheckReport, CheckSeverity};
 pub use crate::config::{
-    CONFIG_FILE_NAME, CheckSettings, ConfigError, HistorySettings, MonoSettings, SirnoConfig,
-    StoreSettings,
+    CONFIG_FILE_NAME, CheckSettings, CodeMember, CodeSettings, ConfigError, HistorySettings,
+    MonoSettings, SirnoConfig, StoreSettings,
 };
 pub use crate::entry::{
     Entry, EntryMetadata, EntryParseError, WitnessMarker, default_seed_entries,
@@ -46,3 +47,6 @@ pub use crate::query::{
     EntryQuery, EntryTextTerm, VagueEntryQuery, query_entries, vague_query_entries,
 };
 pub use crate::store::{SirnoStore, StoreError};
+pub use crate::witness::{
+    WitnessCheckSettings, WitnessError, WitnessIndex, WitnessRecord, scan_witnesses,
+};

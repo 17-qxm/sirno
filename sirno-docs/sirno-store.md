@@ -65,6 +65,4 @@ and where implementation evidence should be found when that evidence exists.
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

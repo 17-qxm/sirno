@@ -42,10 +42,4 @@ A raising skill should compose a readable monograph.
 
 Clustee (to): (none)
 
-Refiner (from)
-- [lower](lower.md)
-- [raise](raise.md)
-- [realize](realize.md)
-- [reflect](reflect.md)
-
 > **Sirno generated links end.**

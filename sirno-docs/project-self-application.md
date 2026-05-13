@@ -43,6 +43,4 @@ and where is it witnessed?
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

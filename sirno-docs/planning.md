@@ -41,6 +41,4 @@ not in ad hoc metadata that core tools silently ignore.
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

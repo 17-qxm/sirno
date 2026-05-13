@@ -36,6 +36,4 @@ Sirno refuses to commit an immutable checkout.
 Clustee (to)
 - [sirno-store](sirno-store.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

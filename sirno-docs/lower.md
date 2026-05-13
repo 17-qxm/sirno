@@ -45,6 +45,4 @@ That makes review and future reflection less dependent on remembering the origin
 Clustee (to)
 - [transform](transform.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

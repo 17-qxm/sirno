@@ -46,6 +46,4 @@ and find the entry that gave the commitment a name.
 Clustee (to)
 - [transform](transform.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

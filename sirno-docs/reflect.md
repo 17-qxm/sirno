@@ -45,6 +45,4 @@ not merely comply with it.
 Clustee (to)
 - [transform](transform.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

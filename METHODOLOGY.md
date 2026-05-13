@@ -236,6 +236,8 @@ Use `witness:` when the repository contains evidence for an entry.
 The witness may be source code, tests, configuration, generated files, assets,
 or any artifact that `mosaika` can mark and query.
 Sirno queries witnesses by entry id.
+Repository markers use `sirno:witness:<entry-id>` inside paths selected by
+`[code].members`.
 
 The entry body may explain how to interpret the evidence.
 That prose is helpful,

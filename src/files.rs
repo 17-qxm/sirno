@@ -22,6 +22,7 @@ use crate::links::{
     GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links,
     delete_generated_links, generated_links_are_stale, validate_generated_links,
 };
+use crate::witness::{WitnessCheckSettings, WitnessError, scan_witnesses};
 
 const READONLY_CHECKOUT_WARNING: &str = "\
 > This file is a read-only Sirno history checkout.
@@ -48,11 +49,18 @@ pub struct EntryDirectoryCheckSettings {
     pub links: GeneratedLinkSettings,
     /// Store-root-relative paths ignored by Sirno.
     pub ignore: Vec<PathBuf>,
+    /// Repository witness scan settings.
+    pub witness: Option<WitnessCheckSettings>,
 }
 
 impl Default for EntryDirectoryCheckSettings {
     fn default() -> Self {
-        Self { link: true, links: GeneratedLinkSettings::default(), ignore: Vec::new() }
+        Self {
+            link: true,
+            links: GeneratedLinkSettings::default(),
+            ignore: Vec::new(),
+            witness: None,
+        }
     }
 }
 
@@ -323,6 +331,7 @@ fn process_gen_link_entry_directory(
         link: false,
         links: *settings,
         ignore: ignore.into_iter().collect(),
+        witness: None,
     };
     let checked = check_entry_directory_with_settings(&root, CheckMode::Review, &check_settings)?;
     if checked.has_errors() {
@@ -398,6 +407,7 @@ pub fn delete_gen_link_entry_directory_with_ignored_paths(
         link: false,
         links: GeneratedLinkSettings::default(),
         ignore: ignore.into_iter().collect(),
+        witness: None,
     };
     let checked = check_entry_directory_with_settings(&root, CheckMode::Edit, &check_settings)?;
     if checked.has_errors() {
@@ -542,6 +552,7 @@ fn load_entry_directory(
 
     entries.sort_by(|left, right| left.id.cmp(&right.id));
     add_generated_link_diagnostics(&entries, &paths_by_id, mode, settings, &mut file_diagnostics)?;
+    add_witness_diagnostics(&entries, &paths_by_id, mode, settings, &mut file_diagnostics)?;
     Ok(LoadedEntryDirectory { entries, paths_by_id, file_diagnostics })
 }
 
@@ -575,6 +586,53 @@ fn add_generated_link_diagnostics(
             }
         }
     }
+    Ok(())
+}
+
+fn add_witness_diagnostics(
+    entries: &[Entry], paths_by_id: &BTreeMap<EntryId, PathBuf>, mode: CheckMode,
+    settings: &EntryDirectoryCheckSettings, file_diagnostics: &mut Vec<EntryFileDiagnostic>,
+) -> Result<(), EntryDirectoryError> {
+    let Some(witness) = &settings.witness else {
+        return Ok(());
+    };
+    if witness.is_empty() {
+        return Ok(());
+    }
+
+    let index = scan_witnesses(witness)?;
+    let ids = entries.iter().map(|entry| entry.id.clone()).collect::<BTreeSet<_>>();
+    let severity = mode_severity(mode);
+
+    for entry in entries {
+        if entry.metadata.witness.is_some() && !index.contains_entry(&entry.id) {
+            let path = paths_by_id
+                .get(&entry.id)
+                .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+            file_diagnostics.push(EntryFileDiagnostic::new(
+                severity,
+                path,
+                format!(
+                    "entry `{}` declares `witness:` but no repository marker was found",
+                    entry.id
+                ),
+            ));
+        }
+    }
+
+    for witness_id in index.entry_ids() {
+        if ids.contains(witness_id) {
+            continue;
+        }
+        for record in index.records_for(witness_id) {
+            file_diagnostics.push(EntryFileDiagnostic::new(
+                severity,
+                &record.path,
+                format!("repository witness marker references missing entry `{witness_id}`"),
+            ));
+        }
+    }
+
     Ok(())
 }
 
@@ -644,6 +702,7 @@ fn prepare_entry_directory_target(
                 set_path_writable(root)?;
                 let settings = EntryDirectoryCheckSettings {
                     ignore,
+                    witness: None,
                     ..EntryDirectoryCheckSettings::default()
                 };
                 remove_managed_entry_files(root, &settings)?;
@@ -812,6 +871,9 @@ pub enum EntryDirectoryError {
     /// Generated-link footer boundaries were malformed while writing.
     #[error(transparent)]
     GeneratedLink(#[from] GeneratedLinkError),
+    /// Repository witness lookup failed.
+    #[error(transparent)]
+    Witness(#[from] WitnessError),
     /// Generated-link operations require a clean enough entry directory.
     #[error("entry directory must pass checks before changing generated links: {0}")]
     InvalidEntryDirectory(PathBuf),
@@ -841,10 +903,21 @@ pub enum EntryDirectoryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::EntryMetadata;
+    use crate::{CodeMember, EntryMetadata, WitnessCheckSettings};
 
     fn write_entry(root: &Path, name: &str, body: &str) {
         fs::write(root.join(name), body).unwrap();
+    }
+
+    fn witness_settings(root: &Path) -> EntryDirectoryCheckSettings {
+        EntryDirectoryCheckSettings {
+            witness: Some(WitnessCheckSettings::new(root, [CodeMember::new("src").unwrap()])),
+            ..EntryDirectoryCheckSettings::default()
+        }
+    }
+
+    fn witness_marker(id: &str) -> String {
+        format!("// {}:{id}\n", "sirno:witness")
     }
 
     #[test]
@@ -971,6 +1044,103 @@ category:
 
         assert!(report.has_errors());
         assert_eq!(report.structural_report().diagnostics().len(), 1);
+    }
+
+    #[test]
+    fn check_accepts_witness_marker_found_by_mosaika() {
+        let temp = tempfile::tempdir().unwrap();
+        let docs = temp.path().join("docs");
+        let src = temp.path().join("src");
+        fs::create_dir_all(&docs).unwrap();
+        fs::create_dir_all(&src).unwrap();
+        write_entry(
+            &docs,
+            "witnessed.md",
+            "\
+---
+name: Witnessed
+description: A witnessed entry.
+witness:
+---
+
+Body.
+",
+        );
+        fs::write(src.join("lib.rs"), witness_marker("witnessed")).unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &docs,
+            CheckMode::Review,
+            &witness_settings(temp.path()),
+        )
+        .unwrap();
+
+        assert!(report.is_clean());
+    }
+
+    #[test]
+    fn check_reports_missing_witness_marker() {
+        let temp = tempfile::tempdir().unwrap();
+        let docs = temp.path().join("docs");
+        let src = temp.path().join("src");
+        fs::create_dir_all(&docs).unwrap();
+        fs::create_dir_all(&src).unwrap();
+        write_entry(
+            &docs,
+            "witnessed.md",
+            "\
+---
+name: Witnessed
+description: A witnessed entry.
+witness:
+---
+
+Body.
+",
+        );
+        fs::write(src.join("lib.rs"), "fn main() {}\n").unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &docs,
+            CheckMode::Review,
+            &witness_settings(temp.path()),
+        )
+        .unwrap();
+
+        assert!(report.has_errors());
+        assert!(report.file_diagnostics()[0].message.contains("no repository marker"));
+    }
+
+    #[test]
+    fn check_reports_witness_marker_for_missing_entry() {
+        let temp = tempfile::tempdir().unwrap();
+        let docs = temp.path().join("docs");
+        let src = temp.path().join("src");
+        fs::create_dir_all(&docs).unwrap();
+        fs::create_dir_all(&src).unwrap();
+        write_entry(
+            &docs,
+            "concept.md",
+            "\
+---
+name: Concept
+description: A concept.
+---
+
+Body.
+",
+        );
+        fs::write(src.join("lib.rs"), witness_marker("ghost-entry")).unwrap();
+
+        let report = check_entry_directory_with_settings(
+            &docs,
+            CheckMode::Review,
+            &witness_settings(temp.path()),
+        )
+        .unwrap();
+
+        assert!(report.has_errors());
+        assert!(report.file_diagnostics()[0].message.contains("missing entry `ghost-entry`"));
     }
 
     #[test]

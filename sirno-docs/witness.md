@@ -3,6 +3,7 @@ name: Witness
 description: A structural marker from a design entry to repository evidence.
 category:
   - concept
+witness:
 ---
 
 `witness:` declares that an entry's claim is evidenced in the repository.
@@ -13,6 +14,10 @@ Sirno queries witnesses through `mosaika` by entry id.
 The witness may be source code, tests, configuration, generated files, assets,
 or any repository artifact that `mosaika` can mark and query.
 A test may witness an entry when the test itself is the relevant code.
+
+Repository artifacts are selected by `[code].members`.
+Directory members are scanned recursively.
+The repository marker is `sirno:witness:<entry-id>`.
 
 The entry body may explain how to find or interpret evidence as fallback guidance.
 The structural convention remains the marker plus the entry id.
@@ -41,7 +46,5 @@ presence of `witness:` means the entry id is the query key.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to): (none)
-
-Refiner (from): (none)
 
 > **Sirno generated links end.**

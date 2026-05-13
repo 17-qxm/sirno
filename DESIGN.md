@@ -59,6 +59,7 @@ The file configures the forms and the operational policy that Sirno applies to t
 `[store].path` names the public Markdown entry store.
 `[history].path` optionally names the private `eter` history root,
 with `sirno-history` as the default convention when history is initialized.
+`[code].members` lists config-relative repository paths or globs that Sirno scans through `mosaika`.
 All configured paths are resolved relative to the config file when they are not absolute.
 
 A project can use Sirno without history.
@@ -263,6 +264,9 @@ Sirno queries witnesses through `mosaika` by entry id.
 The witness may be source code, tests, configuration, generated files, assets,
 or any repository artifact that `mosaika` can mark and query,
 and a test may witness an entry when the test itself is the relevant code.
+Repository artifacts are selected by `[code].members`.
+Directory members are scanned recursively.
+The repository marker is `sirno:witness:<entry-id>`.
 
 Sirno uses the entry id itself as the witness query key,
 which keeps the witness convention nominal and the repository marking separate from entry prose and metadata.
@@ -380,10 +384,8 @@ Changing metadata and regenerating the footer is the correct edit path.
 History commits remove generated regions before writing entry snapshots,
 so history stores canonical metadata and prose rather than navigation projections.
 
-`sirno gen-link` checks generated regions.
-It reports how many entry files would change and lists those files.
-It exits successfully only when no generated region would change.
-`sirno gen-link --no-check` creates or replaces the generated region.
+`sirno check` reports stale generated regions when link checking is enabled.
+`sirno gen-link` creates or replaces the generated region.
 `sirno gen-link delete` removes the generated region.
 Deleting generated links does not edit prose outside the guard-bounded region.
 
@@ -507,6 +509,9 @@ The checkout is immutable unless `--unsafe-mutable` is supplied.
 `sirno query` is the reading interface over the Markdown store.
 It defaults to vague text query and keeps exact structural predicates behind explicit exact flags.
 
+`sirno witness ENTRY_ID` scans the configured code members
+and reports repository markers for the selected entry id.
+
 `sirno util completion` emits shell completion scripts.
 Utility commands do not read or mutate the store unless their own subcommand says so.
 
@@ -518,6 +523,9 @@ Sirno checks structure, not semantic truth.
 
 Structural checks include required metadata fields, accepted field shapes, reference existence,
 generated footer boundaries, and witness lookup validity when requested.
+When `[code].members` is configured,
+review checks require each `witness:` entry to have at least one repository marker.
+They also report repository markers that name missing entries.
 
 Generated-link checking has two layers.
 Sentinel structure is always checked.

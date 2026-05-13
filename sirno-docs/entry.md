@@ -47,6 +47,4 @@ and the prose should explain the local meaning in ordinary language.
 Clustee (to)
 - [sirno-store](sirno-store.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

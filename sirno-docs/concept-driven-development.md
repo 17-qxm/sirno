@@ -50,6 +50,4 @@ The concept becomes a compact bridge between broad intent and detailed code.
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

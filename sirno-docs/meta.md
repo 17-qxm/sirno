@@ -31,6 +31,4 @@ and to entries about implementation commitments.
 
 Clustee (to): (none)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

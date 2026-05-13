@@ -52,6 +52,4 @@ Sirno keeps the edges between those forms explicit.
 
 Clustee (to): (none)
 
-Refiner (from): (none)
-
 > **Sirno generated links end.**

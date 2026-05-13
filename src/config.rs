@@ -103,12 +103,73 @@ impl HistorySettings {
     }
 }
 
+/// One repository member that Sirno scans through `mosaika`.
+///
+/// Invariant: `pattern` is a non-empty config-relative path or glob.
+/// It never names an absolute path or a parent-directory escape.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct CodeMember {
+    pattern: String,
+}
+
+impl CodeMember {
+    /// Construct one code-member pattern.
+    pub fn new(pattern: impl Into<String>) -> Result<Self, ConfigError> {
+        let member = Self { pattern: pattern.into() };
+        member.validate()?;
+        Ok(member)
+    }
+
+    /// Return the member pattern as written in `Sirno.toml`.
+    pub fn as_str(&self) -> &str {
+        &self.pattern
+    }
+
+    fn validate(&self) -> Result<(), ConfigError> {
+        let path = Path::new(&self.pattern);
+        if self.pattern.is_empty()
+            || path.is_absolute()
+            || path.components().any(|component| {
+                matches!(
+                    component,
+                    Component::ParentDir | Component::RootDir | Component::Prefix(_)
+                )
+            })
+        {
+            return Err(ConfigError::CodeMemberPath(self.pattern.clone()));
+        }
+        Ok(())
+    }
+}
+
+/// Configured repository artifacts that can witness Sirno entries.
+///
+/// Invariant: every member is a config-relative path or glob.
+/// Directory members are scanned recursively by witness lookup.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct CodeSettings {
+    /// Config-relative paths or globs scanned through `mosaika`.
+    pub members: Vec<CodeMember>,
+}
+
+impl CodeSettings {
+    fn validate(&self) -> Result<(), ConfigError> {
+        for member in &self.members {
+            member.validate()?;
+        }
+        Ok(())
+    }
+}
+
 /// Sirno project configuration.
 ///
 /// Invariant: `mono.path` points to the configured monograph path.
 /// `store.path` points to the configured public Markdown entry store path.
 /// `history.path`, when present, points to the configured private `eter` history root.
 /// `store.ignore` contains paths relative to the store root that Sirno skips.
+/// `code.members` contains relative member paths or globs for witness lookup.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
@@ -122,6 +183,9 @@ pub struct SirnoConfig {
     /// Configured private history store settings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub history: Option<HistorySettings>,
+    /// Configured repository artifact members.
+    #[serde(default)]
+    pub code: CodeSettings,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -137,6 +201,7 @@ impl SirnoConfig {
             mono: MonoSettings::new(mono),
             store: StoreSettings::new(store),
             history: None,
+            code: CodeSettings::default(),
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
@@ -224,6 +289,7 @@ impl SirnoConfig {
     pub fn validate_for_file(&self, config_path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let config_path = config_path.as_ref();
         self.store.validate()?;
+        self.code.validate()?;
         if self.history.is_some() {
             let store = self.resolve_store(config_path);
             let history =
@@ -270,6 +336,9 @@ pub enum ConfigError {
     /// A store ignore path is not relative to the store root.
     #[error("store.ignore path must be relative to the store root: {0}")]
     StoreIgnorePath(PathBuf),
+    /// A code member path or glob is not relative to the config directory.
+    #[error("code.members path must be relative to the config directory: {0}")]
+    CodeMemberPath(String),
     /// The history root overlaps the public store path.
     #[error(
         "history path must be separate from public store path: store={store} history={history}"
@@ -321,6 +390,7 @@ path = "docs"
         assert_eq!(config.store.path, PathBuf::from("docs"));
         assert_eq!(config.history, None);
         assert!(config.store.ignore.is_empty());
+        assert_eq!(config.code, CodeSettings::default());
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
     }
@@ -361,6 +431,34 @@ link = false
         .unwrap();
 
         assert_eq!(config.check, CheckSettings { link: false });
+    }
+
+    #[test]
+    fn parses_code_members() {
+        let config: SirnoConfig = toml::from_str(
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+
+[code]
+members = ["src", "Cargo.toml", "crates/*/src"]
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.code,
+            CodeSettings {
+                members: vec![
+                    CodeMember::new("src").unwrap(),
+                    CodeMember::new("Cargo.toml").unwrap(),
+                    CodeMember::new("crates/*/src").unwrap(),
+                ],
+            }
+        );
     }
 
     #[test]
@@ -491,6 +589,30 @@ ignore = ["../outside"]
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
         assert!(matches!(error, ConfigError::StoreIgnorePath(_)));
+    }
+
+    #[test]
+    fn rejects_code_members_outside_config_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[mono]
+path = "DESIGN.md"
+
+[store]
+path = "docs"
+
+[code]
+members = ["../outside"]
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(error, ConfigError::CodeMemberPath(_)));
     }
 
     #[test]

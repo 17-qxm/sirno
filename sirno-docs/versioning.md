@@ -99,8 +99,4 @@ so Sirno must provide the live set when it performs collection.
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from)
-- [history-store](history-store.md)
-- [sirno-lock](sirno-lock.md)
-
 > **Sirno generated links end.**

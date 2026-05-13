@@ -51,9 +51,4 @@ Code can stay focused on behavior while still having a place to point for intent
 Clustee (to)
 - [sirno](sirno.md)
 
-Refiner (from)
-- [code-form](code-form.md)
-- [mono](mono.md)
-- [sirno-store](sirno-store.md)
-
 > **Sirno generated links end.**
