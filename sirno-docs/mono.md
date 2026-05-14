@@ -50,7 +50,7 @@ not as a mechanical export of every known fact.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

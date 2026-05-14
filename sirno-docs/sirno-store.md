@@ -66,7 +66,7 @@ and where implementation evidence should be found when that evidence exists.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

@@ -40,7 +40,7 @@ The project supplies the vocabulary that makes its own design legible.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [meta](meta.md)
 
 > **Sirno generated links end.**

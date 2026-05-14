@@ -41,7 +41,7 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

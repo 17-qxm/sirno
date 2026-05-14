@@ -41,7 +41,7 @@ The category field is most useful when it tells the reader what kind of object t
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

@@ -63,7 +63,7 @@ A boolean applies to both link sides.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno-store](sirno-store.md)
 
 > **Sirno generated links end.**

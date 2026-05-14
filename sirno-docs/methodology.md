@@ -100,7 +100,7 @@ People and agents keep the meaning alive.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

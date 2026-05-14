@@ -91,7 +91,7 @@ while Sirno keeps the entry id as the shared nominal handle.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

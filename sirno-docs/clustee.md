@@ -57,7 +57,7 @@ Create a new clique closure only when the split creates a real new review bounda
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [structural-field](structural-field.md)
 
 > **Sirno generated links end.**

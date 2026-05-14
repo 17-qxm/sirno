@@ -31,7 +31,7 @@ Changing it alters generated navigation surfaces without changing structural met
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [generated-footer](generated-footer.md)
 
 > **Sirno generated links end.**

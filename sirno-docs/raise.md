@@ -42,7 +42,7 @@ The fix may belong in the store before the monograph can be made elegant.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [transform](transform.md)
 
 > **Sirno generated links end.**

@@ -50,7 +50,7 @@ but they should still treat entries as the source of durable project knowledge.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [meta](meta.md)
 
 > **Sirno generated links end.**

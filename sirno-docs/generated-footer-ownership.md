@@ -25,7 +25,7 @@ so the history store keeps canonical metadata and prose rather than navigation p
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [generated-footer](generated-footer.md)
 
 > **Sirno generated links end.**

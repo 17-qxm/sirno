@@ -49,7 +49,7 @@ and which repository artifact witnesses an entry.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [form](form.md)
 - [witness](witness.md)
 

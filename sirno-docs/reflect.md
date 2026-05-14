@@ -43,7 +43,7 @@ not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [transform](transform.md)
 
 > **Sirno generated links end.**

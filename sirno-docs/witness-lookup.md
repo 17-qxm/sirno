@@ -30,7 +30,7 @@ Repository artifacts carry the precise source spans that witness those claims.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [witness](witness.md)
 
 > **Sirno generated links end.**

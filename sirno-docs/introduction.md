@@ -82,7 +82,7 @@ then follow the clustees, refiners, and witnesses to the local design you need.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

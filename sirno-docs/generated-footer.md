@@ -33,8 +33,8 @@ Sirno can project selected fields into links so those tools can participate in t
 
 The generated body is grouped by configured structural field.
 Each enabled group appears in the region.
-A group with links begins with a plain label,
-such as `Category (from)`, `Clustee (to)`, or `Clique`.
+A group with links begins with a colon-terminated label,
+such as `Category (from):`, `Clustee (to):`, or `Clique:`.
 The group's links are ordinary Markdown list items.
 A group with no links is rendered inline, such as `Clustee (from): (none)`.
 If no generated-link group is enabled, the region contains `(none)`.
@@ -63,7 +63,7 @@ not to become another place for design prose.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno-store](sirno-store.md)
 
 > **Sirno generated links end.**

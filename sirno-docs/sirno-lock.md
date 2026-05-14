@@ -34,7 +34,7 @@ Sirno refuses to commit an immutable checkout.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [versioning](versioning.md)
 
 > **Sirno generated links end.**

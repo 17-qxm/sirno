@@ -57,7 +57,7 @@ That distinction keeps Sirno useful without pretending to solve judgment.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno-store](sirno-store.md)
 
 > **Sirno generated links end.**

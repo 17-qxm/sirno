@@ -444,6 +444,7 @@ fn render_section(out: &mut String, section: &GeneratedLinkSection) {
     }
 
     out.push_str(section.title);
+    out.push(':');
     out.push('\n');
     for id in &section.targets {
         out.push_str("- ");
@@ -548,7 +549,7 @@ mod tests {
         assert!(!footer.contains("[metadata](metadata.md)"));
         assert!(!footer.contains("## Sirno Links"));
         assert!(footer.contains("Clustee (from): (none)"));
-        assert!(footer.contains("Clustee (to)\n- [core](core.md)"));
+        assert!(footer.contains("Clustee (to):\n- [core](core.md)"));
         assert!(footer.contains(BEGIN_LINKS_GUARD));
         assert!(footer.contains(END_LINKS_GUARD));
         assert!(footer.contains("> **Sirno generated links begin."));
@@ -558,11 +559,9 @@ mod tests {
     fn quoted_guards_are_separated_from_link_list() {
         let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
 
-        assert!(
-            footer.contains(&format!(
-                "{BEGIN_LINKS_GUARD}\n\nClustee (from): (none)\n\nClustee (to)\n"
-            ))
-        );
+        assert!(footer.contains(&format!(
+            "{BEGIN_LINKS_GUARD}\n\nClustee (from): (none)\n\nClustee (to):\n"
+        )));
         assert!(footer.contains(&format!("- [core](core.md)\n\n{END_LINKS_GUARD}")));
     }
 
@@ -580,11 +579,11 @@ mod tests {
         assert!(footer.contains("- [core](core.md)"));
         assert!(footer.contains("- [metadata](metadata.md)"));
         assert!(footer.contains("Category (from): (none)"));
-        assert!(footer.contains("Category (to)"));
+        assert!(footer.contains("Category (to):"));
         assert!(footer.contains("Clustee (from): (none)"));
-        assert!(footer.contains("Clustee (to)"));
+        assert!(footer.contains("Clustee (to):"));
         assert!(footer.contains("Refiner (from): (none)"));
-        assert!(footer.contains("Refiner (to)"));
+        assert!(footer.contains("Refiner (to):"));
     }
 
     #[test]
@@ -622,11 +621,11 @@ mod tests {
         let category_footer = index.render_entry(&category, &settings);
         let member_footer = index.render_entry(&member, &settings);
 
-        assert!(category_footer.contains("Category (from)"));
+        assert!(category_footer.contains("Category (from):"));
         assert!(category_footer.contains("- [member](member.md)"));
         assert!(category_footer.contains("Category (to): (none)"));
         assert!(member_footer.contains("Category (from): (none)"));
-        assert!(member_footer.contains("Category (to)"));
+        assert!(member_footer.contains("Category (to):"));
         assert!(member_footer.contains("- [meta](meta.md)"));
     }
 
@@ -649,7 +648,7 @@ mod tests {
         let category_footer = index.render_entry(&category, &settings);
         let member_footer = index.render_entry(&member, &settings);
 
-        assert!(category_footer.contains("Category (from)"));
+        assert!(category_footer.contains("Category (from):"));
         assert!(category_footer.contains("- [member](member.md)"));
         assert!(member_footer.contains("Category (from): (none)"));
         assert!(!member_footer.contains("[meta](meta.md)"));
@@ -684,13 +683,13 @@ mod tests {
         let closure_footer = index.render_entry(&closure, &settings);
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(closure_footer.contains("Clique"));
+        assert!(closure_footer.contains("Clique:"));
         assert!(!closure_footer.contains("Clustee (from)"));
         assert!(closure_footer.contains("- [left](left.md)"));
         assert!(closure_footer.contains("- [right](right.md)"));
         assert!(!closure_footer.contains("[core](core.md)"));
         assert!(!closure_footer.contains("[outside](outside.md)"));
-        assert!(left_footer.contains("Clique"));
+        assert!(left_footer.contains("Clique:"));
         assert!(!left_footer.contains("Clustee (to)"));
         assert!(left_footer.contains("- [core](core.md)"));
         assert!(left_footer.contains("- [right](right.md)"));
@@ -723,8 +722,8 @@ mod tests {
 
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(left_footer.contains("Clustee (to)\n- [core](core.md)"));
-        assert!(left_footer.contains("Clique"));
+        assert!(left_footer.contains("Clustee (to):\n- [core](core.md)"));
+        assert!(left_footer.contains("Clique:"));
         assert!(left_footer.contains("- [right](right.md)"));
     }
 

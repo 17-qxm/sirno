@@ -53,7 +53,7 @@ presence of `witness:` means the entry id is the query key.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to)
+Clustee (to):
 - [sirno](sirno.md)
 - [structural-field](structural-field.md)
 
