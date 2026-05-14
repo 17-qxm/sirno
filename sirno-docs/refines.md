@@ -1,14 +1,14 @@
 ---
-name: Refiner
+name: Refines
 description: A structural field from a specific entry to the broader entries it makes concrete.
 category:
   - concept
-clustee:
+belongs:
   - structural-field
 witness:
 ---
 
-`refiner` points from a more specific entry to the broader entries it makes concrete.
+`refines` points from a more specific entry to the broader entries it makes concrete.
 
 Refinement turns high-level design into lower-level design,
 implementation detail, and testable behavior.
@@ -20,7 +20,7 @@ It starts from a compressed concept and can end near repository text.
 If the programming language expresses the design most clearly,
 the final refinement may be a Markdown code block.
 
-Use `refiner` when an entry answers the question:
+Use `refines` when an entry answers the question:
 what does this broader design mean here?
 The field preserves the reason that a local choice exists.
 A low-level entry can refine a concept,
@@ -33,8 +33,8 @@ from the local entry, a reader can climb back toward intent.
 From the broad entry, generated or queried metadata can reveal the entries that elaborate it.
 
 Use the nearest broader target that explains the current entry's design pressure.
-Do not use `refiner` to group entries that are merely reviewed together.
-Use `clustee` for that horizontal relation.
+Do not use `refines` to group entries that are merely reviewed together.
+Use `belongs` for that horizontal relation.
 
 An entry may refine more than one broader entry.
 That should happen when the local design genuinely joins several ideas,
@@ -45,11 +45,11 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [structural-field](structural-field.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

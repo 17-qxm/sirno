@@ -3,9 +3,9 @@ name: Introduction
 description: A first narrative route through Sirno's project model.
 category:
   - narrative
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - narrative
 ---
 
@@ -32,8 +32,8 @@ The prose keeps the handle meaningful.
 
 Sirno keeps its structural vocabulary small.
 `category` says what kind of entry something is.
-`clustee` places an entry in one or more review neighborhoods.
-`refiner` connects a local entry back to the broader entry it makes concrete.
+`belongs` places an entry in one or more review neighborhoods.
+`refines` connects a local entry back to the broader entry it makes concrete.
 `witness:` declares that an entry's claim has repository evidence.
 Those fields are explicit metadata,
 so tools can query them without pretending to understand the whole design semantically.
@@ -75,18 +75,18 @@ The `methodology` entry is the compact working guide for acting inside the lake.
 The detailed design lives in the entries themselves:
 forms, structural fields, transforms, storage, checks, witnesses, and generated footers.
 Read this entry first,
-then follow the clustees, refiners, and witnesses to the local design you need.
+then follow `belongs`, `refines`, and witnesses to the local design you need.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to):
+Refines (to):
 - [narrative](narrative.md)
 
 > **Sirno generated links end.**

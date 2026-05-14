@@ -111,9 +111,9 @@ or when the session produces a reusable way through a design region.
 
 Choose a lowercase kebab-case id.
 Use `category: narrative`.
-Use `clustee` for the project area the route belongs to.
-Use `refiner: narrative` when the entry is a specific form of the general narrative concept.
-Add other refiners only when the route makes a broader entry concrete.
+Use `belongs` for the project area the route belongs to.
+Use `refines: narrative` when the entry is a specific form of the general narrative concept.
+Add other `refines` targets only when the route makes a broader entry concrete.
 
 The entry body should state:
 

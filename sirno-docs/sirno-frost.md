@@ -3,7 +3,7 @@ name: Sirno Frost
 description: The private eter root that freezes immutable snapshots of the public Sirno Lake.
 category:
   - concept
-refiner:
+refines:
   - versioning
 witness:
 ---
@@ -52,11 +52,11 @@ or use version-aware Sirno interfaces.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [versioning](versioning.md)
 
 > **Sirno generated links end.**

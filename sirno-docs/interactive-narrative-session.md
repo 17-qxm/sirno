@@ -3,9 +3,9 @@ name: Interactive Narrative Session
 description: A user-shaped route through Sirno concepts that can be saved as a narrative entry.
 category:
   - narrative
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - narrative
 ---
 
@@ -34,12 +34,12 @@ which entries appear in order, and which details remain deferred. The local
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to):
+Refines (to):
 - [narrative](narrative.md)
 
 > **Sirno generated links end.**

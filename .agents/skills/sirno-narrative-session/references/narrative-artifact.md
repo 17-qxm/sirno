@@ -15,7 +15,7 @@ Recommended fields:
   "pressure": "the reader needs a route before editing code",
   "pull": "why a stable entry id matters before the edit begins",
   "known_terms": ["entry", "lake"],
-  "missing_terms": ["clustee", "refiner", "witness"],
+  "missing_terms": ["belongs", "refines", "witness"],
   "route": [
     {
       "entry": "introduction",
@@ -46,9 +46,9 @@ name: New Contributor Route
 description: A narrative route for a new contributor learning Sirno.
 category:
   - narrative
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - narrative
 ---
 ```
@@ -84,8 +84,8 @@ Name the entries and explain why they appear in that order.
   "id": "new-contributor-route",
   "name": "New Contributor Route",
   "description": "A narrative route for a new contributor learning Sirno.",
-  "clustee": ["sirno"],
-  "refiner": ["narrative"],
+  "belongs": ["sirno"],
+  "refines": ["narrative"],
   "body": [
     "This route serves a new contributor who needs the project model before editing code.",
     "The pull is simple: a stable entry id lets the work name its design object early.",

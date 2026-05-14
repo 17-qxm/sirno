@@ -1317,9 +1317,9 @@ Body.
         init_entry_directory(&root).unwrap();
         let settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: false,
-            refiner: true.into(),
+            refines: true.into(),
         };
 
         let report = gen_link_entry_directory(&root, &settings).unwrap();
@@ -1343,7 +1343,7 @@ Body.
             "\
 ---
 name: Core
-description: A clique closure.
+description: A review neighborhood.
 ---
 
 Body.
@@ -1355,8 +1355,8 @@ Body.
             "\
 ---
 name: Left
-description: A clique member.
-clustee:
+description: A neighborhood member.
+belongs:
   - core
 ---
 
@@ -1369,8 +1369,8 @@ Body.
             "\
 ---
 name: Right
-description: A clique member.
-clustee:
+description: A neighborhood member.
+belongs:
   - core
 ---
 
@@ -1379,9 +1379,9 @@ Body.
         );
         let settings = GeneratedLinkSettings {
             category: false.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: true,
-            refiner: false.into(),
+            refines: false.into(),
         };
 
         gen_link_entry_directory(temp.path(), &settings).unwrap();
@@ -1463,9 +1463,9 @@ Body.
         init_entry_directory(&root).unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: false,
-            refiner: true.into(),
+            refines: true.into(),
         };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 
@@ -1492,9 +1492,9 @@ Body.
         init_entry_directory(&root).unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: false,
-            refiner: true.into(),
+            refines: true.into(),
         };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 
@@ -1520,9 +1520,9 @@ Body.
         init_entry_directory(&root).unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: false,
-            refiner: true.into(),
+            refines: true.into(),
         };
         gen_link_entry_directory(&root, &old_settings).unwrap();
 

@@ -3,7 +3,7 @@ name: Project Config Comments
 description: The exact comments Sirno writes beside generated project config fields.
 category:
   - concept
-refiner:
+refines:
   - project-config
 witness:
 ---
@@ -23,9 +23,9 @@ The generated comments are:
 - `Repository files, directories, or globs scanned for witness blocks.`
 - `Require generated footers to match current metadata during checks.`
 - `Include category links; use a boolean or { to = bool, from = bool }.`
-- `Include clustee links; use a boolean or { to = bool, from = bool }.`
-- `Add clique sections derived from clustee closures.`
-- `Include refiner links; use a boolean or { to = bool, from = bool }.`
+- `Include belongs links; use a boolean or { to = bool, from = bool }.`
+- `Add clique sections derived from belongs targets.`
+- `Include refines links; use a boolean or { to = bool, from = bool }.`
 
 The comments explain use, not schema authority.
 The Rust config types and TOML parser remain the schema boundary.
@@ -34,11 +34,11 @@ The Rust config types and TOML parser remain the schema boundary.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [project-config](project-config.md)
 
 > **Sirno generated links end.**

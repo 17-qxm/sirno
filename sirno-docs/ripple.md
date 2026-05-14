@@ -3,9 +3,9 @@ name: Ripple
 description: The named delta between two Sirno Lake states.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
-refiner:
+refines:
   - versioning
 ---
 
@@ -30,12 +30,12 @@ but the concept remains the same delta between two states.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to):
+Refines (to):
 - [versioning](versioning.md)
 
 > **Sirno generated links end.**

@@ -4,7 +4,7 @@ description: The movement from changed code back into Sirno entries.
 category:
   - concept
   - narrative
-refiner:
+refines:
   - transform
 ---
 
@@ -41,11 +41,11 @@ not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [transform](transform.md)
 
 > **Sirno generated links end.**

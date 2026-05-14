@@ -82,8 +82,8 @@ def render_entry(data: dict[str, Any]) -> str:
     if not isinstance(body, list) or not all(isinstance(item, str) for item in body):
         fail("body must be a list of paragraph strings")
 
-    clustee = string_list(data, "clustee")
-    refiner = string_list(data, "refiner")
+    belongs = string_list(data, "belongs")
+    refines = string_list(data, "refines")
 
     lines = [
         "---",
@@ -92,8 +92,8 @@ def render_entry(data: dict[str, Any]) -> str:
         "category:",
         "  - narrative",
     ]
-    lines.extend(render_list_field("clustee", clustee))
-    lines.extend(render_list_field("refiner", refiner))
+    lines.extend(render_list_field("belongs", belongs))
+    lines.extend(render_list_field("refines", refines))
     lines.extend(["---", ""])
 
     paragraphs = [wrap_paragraph(item) for item in body if item.strip()]

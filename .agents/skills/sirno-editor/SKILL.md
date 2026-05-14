@@ -34,7 +34,7 @@ Look for:
 
 - concepts that compress repeated project knowledge
 - categories that define project vocabulary
-- entries that explain `category`, `clustee`, `refiner`, and `witness:`
+- entries that explain `category`, `belongs`, `refines`, and `witness:`
 - transform entries that explain movement between forms
 - interface, storage, metadata, and checking commitments
 - witnessable claims that should connect to repository artifacts
@@ -56,7 +56,7 @@ Preserve stable facts from the current project model:
 - central definition and scope
 - configured `lake` path and optional `mono` path
 - entry id rules and metadata schema
-- `category`, `clustee`, `refiner`, and `witness:` meanings
+- `category`, `belongs`, `refines`, and `witness:` meanings
 - generated footer ownership
 - witness lookup conventions
 - future-work items that are intentionally reserved
@@ -93,35 +93,35 @@ An entry categorized by `concept` should define a compressed idea.
 An entry categorized by `narrative` should record a route, story, or motivation through project ideas.
 An entry categorized by `meta` should define project vocabulary.
 
-Use `clustee` for review locality.
-A clustee target is a clique closure entry that gives a shared subject or design region a front door.
+Use `belongs` for review locality.
+A `belongs` target is an entry that gives a shared subject or design region a front door.
 It says that entries should be visited together because they live in the same working neighborhood.
 The relation is horizontal.
 It supports scanning, review, accountability, and local navigation across entries of different kinds.
 
-Use `refiner` for semantic narrowing.
-A refiner target is the broader entry that the current entry makes more specific.
+Use `refines` for semantic narrowing.
+A `refines` target is the broader entry that the current entry makes more specific.
 It says that the current entry is a local, concrete, or testable version of another design claim.
 The relation is vertical.
 It preserves why an implementation detail, invariant, interface, route, or test belongs under a broader idea.
 
-Prefer choosing either `clustee` or `refiner` for a new entry.
+Prefer choosing either `belongs` or `refines` for a new entry.
 They are suggested to be mutually exclusive because they answer different questions.
-`clustee` answers "which review neighborhood contains this entry?"
-`refiner` answers "which broader claim does this entry specialize?"
+`belongs` answers "which review neighborhood contains this entry?"
+`refines` answers "which broader claim does this entry specialize?"
 Using both can blur locality and specificity,
 so add both only when the entry truly sits in a review neighborhood
 and also concretizes a broader design claim that should be followed separately.
 
-When choosing `clustee`,
-prefer the smallest set of clustees that improves navigation, review, or accountability.
-An entry may belong to several clustees only when each clustee is a real review perspective.
-Keep split entries in the same clustee when a small design change should be checked inside that unit.
-Create a new clustee only when there is a real new review boundary.
+When choosing `belongs`,
+prefer the smallest set of targets that improves navigation, review, or accountability.
+An entry may name several `belongs` targets only when each target is a real review perspective.
+Keep split entries under the same `belongs` target when a small design change should be checked inside that unit.
+Create a new `belongs` target only when there is a real new review boundary.
 
-When choosing `refiner`,
+When choosing `refines`,
 prefer the nearest broader entry that explains the current entry's design pressure.
-Do not use `refiner` to say that two entries are merely related or commonly edited together.
+Do not use `refines` to say that two entries are merely related or commonly edited together.
 Create a more specific entry when a paragraph, code region, test, or policy needs a stable handle.
 
 Use `witness:` only when repository evidence exists or the task explicitly asks to declare it.
@@ -159,7 +159,7 @@ but more durable than a plan item.
 1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing lake.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
-   ids, names, descriptions, categories, clustees, refiners, and witness markers.
+   ids, names, descriptions, categories, `belongs` targets, `refines` targets, and witness markers.
 4. Create missing entries through Sirno's current entry-creation command when available.
 5. Expand or revise bodies with direct, reader-friendly prose.
 6. Leave generated footer regions untouched.

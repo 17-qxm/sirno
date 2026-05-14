@@ -3,7 +3,7 @@ name: Structural Check
 description: Validation of entry shape, structural targets, footers, and witnesses.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
 witness:
 ---
@@ -22,7 +22,7 @@ Sentinel shape is always checked.
 Freshness is controlled by `[check].link`,
 which is enabled by default.
 
-During editing, dangling `category`, `clustee`, and `refiner` ids may warn.
+During editing, dangling `category`, `belongs`, and `refines` ids may warn.
 At an explicit review boundary, those dangling ids are errors.
 
 Checks keep local movement fast while making review boundaries strict.
@@ -57,11 +57,11 @@ That distinction keeps Sirno useful without pretending to solve judgment.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

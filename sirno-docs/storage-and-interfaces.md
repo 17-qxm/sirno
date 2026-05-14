@@ -3,7 +3,7 @@ name: Storage And Interfaces
 description: The design commitment to eter storage and CLI or MCP access interfaces.
 category:
   - concept
-clustee:
+belongs:
   - sirno
 witness:
 ---
@@ -94,11 +94,11 @@ while Sirno keeps the entry id as the shared nominal handle.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

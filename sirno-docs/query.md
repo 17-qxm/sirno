@@ -3,9 +3,9 @@ name: Query
 description: Selection of Sirno entries through vague text and exact structural predicates.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
-refiner:
+refines:
   - storage-and-interfaces
 witness:
 ---
@@ -31,7 +31,7 @@ Each text term must match somewhere in the expanded entry text.
 Exact query uses explicit exact flags.
 Exact structural fields are conjunctive across fields and disjunctive inside one field.
 Two category values mean either category.
-A category plus a refiner requires both fields to match.
+A category plus a refines requires both fields to match.
 
 Query output is presentation.
 The same selected entries may be printed as summaries, ids, or paths.
@@ -40,12 +40,12 @@ The same selected entries may be printed as summaries, ids, or paths.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to):
+Refines (to):
 - [storage-and-interfaces](storage-and-interfaces.md)
 
 > **Sirno generated links end.**

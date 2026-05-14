@@ -31,11 +31,11 @@ A block should cover the smallest durable region that supports the entry claim.
 Multiple small blocks for one entry are better than one broad block that forces a reviewer to hunt.
 
 Create a more specific entry when the evidence supports a narrower claim.
-Use the specific entry as a `refiner` of the broader entry when that improves navigation.
-Choose `clustee` memberships for structural clearness.
-Keep the same `clustee` when the evidence belongs to the same module-like review unit.
-Add another `clustee` when the entry sits at a real intersection that should be reviewed from both sides.
-Create a new `clustee` only when the evidence belongs to a new design/program boundary.
+Use `refines` to point the specific entry at the broader entry when that improves navigation.
+Choose `belongs` targets for review locality.
+Keep the same `belongs` target when the evidence belongs to the same module-like review unit.
+Add another `belongs` target when the entry sits at a real intersection that should be reviewed from both sides.
+Create a new `belongs` target only when the evidence belongs to a new design/program boundary.
 Avoid ad hoc suffixes such as `entry#parser`; use real entry ids.
 
 Do not duplicate `mosaika` behavior in Sirno.

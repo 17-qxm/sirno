@@ -15,9 +15,9 @@ link = true
 [links]
 # Include category links; use a boolean or { to = bool, from = bool }.
 category = false
-# Include clustee links; use a boolean or { to = bool, from = bool }.
-clustee = true
-# Add clique sections derived from clustee closures.
+# Include belongs links; use a boolean or { to = bool, from = bool }.
+belongs = true
+# Add clique sections derived from belongs targets.
 clique = false
-# Include refiner links; use a boolean or { to = bool, from = bool }.
-refiner = { from = false, to = true }
+# Include refines links; use a boolean or { to = bool, from = bool }.
+refines = { from = false, to = true }

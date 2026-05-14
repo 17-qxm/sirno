@@ -16,8 +16,8 @@ const NAME_FIELD: &str = "name";
 const DESCRIPTION_FIELD: &str = "description";
 // sirno:witness:structural-field:begin
 const CATEGORY_FIELD: &str = "category";
-const CLUSTEE_FIELD: &str = "clustee";
-const REFINER_FIELD: &str = "refiner";
+const BELONGS_FIELD: &str = "belongs";
+const REFINES_FIELD: &str = "refines";
 const WITNESS_FIELD: &str = "witness";
 // sirno:witness:structural-field:end
 
@@ -87,14 +87,14 @@ pub struct EntryMetadata {
     /// Categories that classify this entry.
     pub category: Vec<EntryId>,
     // sirno:witness:category:end
-    // sirno:witness:clustee:begin
-    /// Clique closures that group this entry.
-    pub clustee: Vec<EntryId>,
-    // sirno:witness:clustee:end
-    // sirno:witness:refiner:begin
+    // sirno:witness:belongs:begin
+    /// Review neighborhoods this entry belongs to.
+    pub belongs: Vec<EntryId>,
+    // sirno:witness:belongs:end
+    // sirno:witness:refines:begin
     /// Broader entries refined by this entry.
-    pub refiner: Vec<EntryId>,
-    // sirno:witness:refiner:end
+    pub refines: Vec<EntryId>,
+    // sirno:witness:refines:end
     /// Witness marker declaring that this entry has repository evidence.
     pub witness: Option<WitnessMarker>,
 }
@@ -113,8 +113,8 @@ impl EntryMetadata {
             name,
             description,
             category: Vec::new(),
-            clustee: Vec::new(),
-            refiner: Vec::new(),
+            belongs: Vec::new(),
+            refines: Vec::new(),
             witness: None,
         })
     }
@@ -138,11 +138,11 @@ impl EntryMetadata {
         validate_plain_string(DESCRIPTION_FIELD, &description)?;
 
         let category = take_optional_id_list(&mut mapping, CATEGORY_FIELD)?;
-        let clustee = take_optional_id_list(&mut mapping, CLUSTEE_FIELD)?;
-        let refiner = take_optional_id_list(&mut mapping, REFINER_FIELD)?;
+        let belongs = take_optional_id_list(&mut mapping, BELONGS_FIELD)?;
+        let refines = take_optional_id_list(&mut mapping, REFINES_FIELD)?;
         let witness = take_witness_marker(&mut mapping, canonical_witness)?;
 
-        Ok(Self { name, description, category, clustee, refiner, witness })
+        Ok(Self { name, description, category, belongs, refines, witness })
     }
     // sirno:witness:metadata:end
 
@@ -156,8 +156,8 @@ impl EntryMetadata {
         out.push_str(&format!("name: {}\n", render_yaml_scalar(&self.name)?));
         out.push_str(&format!("description: {}\n", render_yaml_scalar(&self.description)?));
         render_id_list(&mut out, CATEGORY_FIELD, &self.category);
-        render_id_list(&mut out, CLUSTEE_FIELD, &self.clustee);
-        render_id_list(&mut out, REFINER_FIELD, &self.refiner);
+        render_id_list(&mut out, BELONGS_FIELD, &self.belongs);
+        render_id_list(&mut out, REFINES_FIELD, &self.refines);
         if self.witness.is_some() {
             out.push_str("witness:\n");
         }
@@ -171,8 +171,8 @@ impl EntryMetadata {
         self.category
             .iter()
             .map(|id| (CATEGORY_FIELD, id))
-            .chain(self.clustee.iter().map(|id| (CLUSTEE_FIELD, id)))
-            .chain(self.refiner.iter().map(|id| (REFINER_FIELD, id)))
+            .chain(self.belongs.iter().map(|id| (BELONGS_FIELD, id)))
+            .chain(self.refines.iter().map(|id| (REFINES_FIELD, id)))
     }
     // sirno:witness:metadata:end
 }
@@ -253,8 +253,8 @@ fn reject_unknown_fields(mapping: &Mapping) -> Result<(), EntryParseError> {
         NAME_FIELD,
         DESCRIPTION_FIELD,
         CATEGORY_FIELD,
-        CLUSTEE_FIELD,
-        REFINER_FIELD,
+        BELONGS_FIELD,
+        REFINES_FIELD,
         WITNESS_FIELD,
     ]);
     for key in mapping.keys() {

@@ -3,7 +3,7 @@ name: Metadata
 description: The exact YAML schema that carries Sirno entry structure.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
 witness:
 ---
@@ -14,7 +14,7 @@ Every entry has a YAML metadata block.
 The required fields are `name` and `description`,
 both plain strings.
 
-The optional structural fields are `category`, `clustee`, and `refiner`.
+The optional structural fields are `category`, `belongs`, and `refines`.
 They are always lists when present, and their values are entry ids.
 
 The optional `witness:` marker is canonical and has no value.
@@ -33,7 +33,7 @@ and the witness marker has no value.
 The body can explain nuance,
 but the metadata must not require prose parsing.
 If a tool needs to know that one entry refines another,
-the `refiner` field must say so.
+the `refines` field must say so.
 If a tool needs to know whether an entry has repository evidence,
 the `witness:` marker must be present.
 
@@ -57,11 +57,11 @@ because every accepted field becomes part of the public structure that readers a
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

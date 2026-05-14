@@ -4,7 +4,7 @@ description: A named idea that compresses project knowledge.
 category:
   - meta
   - concept
-clustee:
+belongs:
   - meta
 witness:
 ---
@@ -40,11 +40,11 @@ The project supplies the vocabulary that makes its own design legible.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [meta](meta.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

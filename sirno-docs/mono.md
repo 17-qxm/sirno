@@ -4,9 +4,9 @@ description: The configured monograph that carries the whole design narrative.
 category:
   - concept
   - narrative
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - form
 witness:
 ---
@@ -50,12 +50,12 @@ not as a mechanical export of every known fact.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to):
+Refines (to):
 - [form](form.md)
 
 > **Sirno generated links end.**

@@ -52,13 +52,13 @@ impl Field for CategoryField {
     type Content = Vec<EntryId>;
 }
 
-struct ClusteeField;
-impl Field for ClusteeField {
+struct BelongsField;
+impl Field for BelongsField {
     type Content = Vec<EntryId>;
 }
 
-struct RefinerField;
-impl Field for RefinerField {
+struct RefinesField;
+impl Field for RefinesField {
     type Content = Vec<EntryId>;
 }
 
@@ -287,8 +287,8 @@ fn sirno_registry() -> eter::filesystem::FilesystemFieldRegistry {
         .with_field::<NameField>("name")
         .with_field::<DescriptionField>("description")
         .with_field::<CategoryField>("category")
-        .with_field::<ClusteeField>("clustee")
-        .with_field::<RefinerField>("refiner")
+        .with_field::<BelongsField>("belongs")
+        .with_field::<RefinesField>("refines")
         .with_field::<WitnessField>("witness")
 }
 
@@ -297,8 +297,8 @@ struct StoredEntryFacet {
     name: Option<String>,
     description: Option<String>,
     category: Vec<EntryId>,
-    clustee: Vec<EntryId>,
-    refiner: Vec<EntryId>,
+    belongs: Vec<EntryId>,
+    refines: Vec<EntryId>,
     witness: Option<WitnessMarker>,
     body: Option<String>,
 }
@@ -309,8 +309,8 @@ impl StoredEntryFacet {
             name: Some(entry.metadata.name.clone()),
             description: Some(entry.metadata.description.clone()),
             category: entry.metadata.category.clone(),
-            clustee: entry.metadata.clustee.clone(),
-            refiner: entry.metadata.refiner.clone(),
+            belongs: entry.metadata.belongs.clone(),
+            refines: entry.metadata.refines.clone(),
             witness: entry.metadata.witness,
             body: Some(entry.body.clone()),
         }
@@ -326,8 +326,8 @@ impl StoredEntryFacet {
             self.body.ok_or_else(|| FrostError::CorruptEntry { id: id.clone(), field: "body" })?;
         let mut metadata = EntryMetadata::new(name, description)?;
         metadata.category = self.category;
-        metadata.clustee = self.clustee;
-        metadata.refiner = self.refiner;
+        metadata.belongs = self.belongs;
+        metadata.refines = self.refines;
         metadata.witness = self.witness;
         Ok(Entry::new(id, metadata, body))
     }
@@ -345,8 +345,8 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
             name: resolve_optional_text::<NameField>(backend, at, id)?,
             description: resolve_optional_text::<DescriptionField>(backend, at, id)?,
             category: resolve_optional_list::<CategoryField>(backend, at, id)?,
-            clustee: resolve_optional_list::<ClusteeField>(backend, at, id)?,
-            refiner: resolve_optional_list::<RefinerField>(backend, at, id)?,
+            belongs: resolve_optional_list::<BelongsField>(backend, at, id)?,
+            refines: resolve_optional_list::<RefinesField>(backend, at, id)?,
             witness: match backend.resolve::<WitnessField>(at, id)? {
                 | Resolution::Content(marker) => Some(marker),
                 | Resolution::Deleted | Resolution::Absent => None,
@@ -368,8 +368,8 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
             .set::<DescriptionField>(id, required_facet_text(&self.description, "description"));
 
         let txn = apply_optional_list::<CategoryField>(txn, id, &self.category);
-        let txn = apply_optional_list::<ClusteeField>(txn, id, &self.clustee);
-        let txn = apply_optional_list::<RefinerField>(txn, id, &self.refiner);
+        let txn = apply_optional_list::<BelongsField>(txn, id, &self.belongs);
+        let txn = apply_optional_list::<RefinesField>(txn, id, &self.refines);
         let txn = match self.witness {
             | Some(marker) => txn.set::<WitnessField>(id, marker),
             | None => txn.delete::<WitnessField>(id),

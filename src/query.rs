@@ -50,8 +50,8 @@ impl EntryTextTerm {
 pub struct EntryQuery {
     text_terms: Vec<EntryTextTerm>,
     category: Vec<EntryId>,
-    clustee: Vec<EntryId>,
-    refiner: Vec<EntryId>,
+    belongs: Vec<EntryId>,
+    refines: Vec<EntryId>,
     witness: bool,
 }
 // sirno:witness:query:end
@@ -75,15 +75,15 @@ impl EntryQuery {
         self
     }
 
-    /// Set clustee targets.
-    pub fn with_clustee(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.clustee = targets.into_iter().collect();
+    /// Set belongs targets.
+    pub fn with_belongs(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
+        self.belongs = targets.into_iter().collect();
         self
     }
 
-    /// Set refiner targets.
-    pub fn with_refiner(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.refiner = targets.into_iter().collect();
+    /// Set refines targets.
+    pub fn with_refines(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
+        self.refines = targets.into_iter().collect();
         self
     }
 
@@ -98,8 +98,8 @@ impl EntryQuery {
     pub fn matches(&self, entry: &Entry) -> bool {
         self.matches_text(entry)
             && matches_targets(&entry.metadata.category, &self.category)
-            && matches_targets(&entry.metadata.clustee, &self.clustee)
-            && matches_targets(&entry.metadata.refiner, &self.refiner)
+            && matches_targets(&entry.metadata.belongs, &self.belongs)
+            && matches_targets(&entry.metadata.refines, &self.refines)
             && (!self.witness || entry.metadata.witness.is_some())
     }
     // sirno:witness:query:end
@@ -251,11 +251,11 @@ mod tests {
     fn structural_fields_are_conjunctive_across_fields() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
         concept.metadata.category.push(id("meta"));
-        concept.metadata.clustee.push(id("knowledge"));
+        concept.metadata.belongs.push(id("knowledge"));
 
         let matching =
-            EntryQuery::new().with_category([id("meta")]).with_clustee([id("knowledge")]);
-        let missing = EntryQuery::new().with_category([id("meta")]).with_clustee([id("reader")]);
+            EntryQuery::new().with_category([id("meta")]).with_belongs([id("knowledge")]);
+        let missing = EntryQuery::new().with_category([id("meta")]).with_belongs([id("reader")]);
 
         assert!(matching.matches(&concept));
         assert!(!missing.matches(&concept));

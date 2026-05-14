@@ -9,7 +9,7 @@ witness:
 
 `meta` classifies entries that define project vocabulary.
 
-It is also the clique closure for initialized vocabulary entries.
+It is also the review front door for initialized vocabulary entries.
 `concept` and `narrative` belong to it because changes to those entries
 affect how the lake vocabulary is read.
 
@@ -34,12 +34,12 @@ and to entries about implementation commitments.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from):
+Belongs (from):
 - [concept](concept.md)
 - [narrative](narrative.md)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

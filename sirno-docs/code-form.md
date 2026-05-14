@@ -3,9 +3,9 @@ name: Code Form
 description: The repository artifacts that realize and witness design entries.
 category:
   - concept
-clustee:
+belongs:
   - witness
-refiner:
+refines:
   - form
 witness:
 ---
@@ -48,12 +48,12 @@ and which repository artifact witnesses an entry.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [witness](witness.md)
 
-Refiner (to):
+Refines (to):
 - [form](form.md)
 
 > **Sirno generated links end.**

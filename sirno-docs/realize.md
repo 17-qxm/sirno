@@ -4,7 +4,7 @@ description: The movement from Sirno entries into repository implementation.
 category:
   - concept
   - narrative
-refiner:
+refines:
   - transform
 ---
 
@@ -12,7 +12,7 @@ refiner:
 
 Realizing uses entries to guide implementation.
 Before editing code, read the entries that govern the work,
-follow their category, clustee, refiner, and witness fields,
+follow their category, belongs, refines, and witness fields,
 and inspect any witnessed repository regions.
 
 A realization step should be able to answer which entry explains a local design commitment.
@@ -42,11 +42,11 @@ and find the entry that gave the commitment a name.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [transform](transform.md)
 
 > **Sirno generated links end.**

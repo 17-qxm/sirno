@@ -3,9 +3,9 @@ name: Project Config
 description: The Sirno.toml file that marks and configures a Sirno-managed repository.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
-refiner:
+refines:
   - storage-and-interfaces
 witness:
 ---
@@ -52,24 +52,24 @@ Malformed generated-link sentinels remain errors,
 because malformed sentinels make Sirno ownership ambiguous.
 
 `[links]` controls which structural fields are projected into generated footers.
-`category`, `clustee`, and `refiner` each accept either a boolean
+`category`, `belongs`, and `refines` each accept either a boolean
 or `{ to = boolean, from = boolean }`.
 A boolean applies to both link sides.
 
 `to` links from the entry to metadata targets.
 `from` links from the entry to entries that name it as a metadata target.
-`links.clique` adds separate clique-derived sections through named clustee closures.
+`links.clique` adds separate clique-derived sections through named `belongs` targets.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to):
+Refines (to):
 - [storage-and-interfaces](storage-and-interfaces.md)
 
 > **Sirno generated links end.**

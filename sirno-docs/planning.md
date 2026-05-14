@@ -4,7 +4,7 @@ description: A use of Sirno entries for durable work artifacts.
 category:
   - concept
   - narrative
-clustee:
+belongs:
   - sirno
 ---
 
@@ -14,7 +14,7 @@ Entries are durable, named, and structured by metadata.
 That structure can support persistent planning without adding a planning primitive to Sirno.
 
 A skill may represent a worklist as ordinary entries.
-Those entries can use categories, refiners, clustees, and witnesses like any other lake entries.
+Those entries can use categories, `belongs`, `refines`, and witnesses like any other lake entries.
 
 This keeps the core model small.
 Planning often needs state, priorities, sequencing, ownership, and progress signals.
@@ -24,7 +24,7 @@ a planning skill can decide how to express a worklist using those primitives.
 
 The benefit is continuity.
 A plan written as Sirno entries can refer to the same concepts and implementation commitments as the design lake.
-It can cluster related tasks,
+It can place related tasks in a review neighborhood,
 refine broader design entries,
 or mark work that should be witnessed by code.
 The plan remains inspectable as Markdown rather than being hidden in a separate task system.
@@ -39,11 +39,11 @@ not in ad hoc metadata that core tools silently ignore.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

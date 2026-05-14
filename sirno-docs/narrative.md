@@ -4,7 +4,7 @@ description: A route, story, or motivation through concepts for a reader.
 category:
   - meta
   - concept
-clustee:
+belongs:
   - meta
 witness:
 ---
@@ -50,11 +50,11 @@ but they should still treat entries as the source of durable project knowledge.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [meta](meta.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

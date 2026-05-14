@@ -51,7 +51,7 @@ Sirno keeps the edges between those forms explicit.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from):
+Belongs (from):
 - [concept-driven-development](concept-driven-development.md)
 - [form](form.md)
 - [future-work](future-work.md)
@@ -67,8 +67,8 @@ Clustee (from):
 - [versioning](versioning.md)
 - [witness](witness.md)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

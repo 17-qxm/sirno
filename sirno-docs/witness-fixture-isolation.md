@@ -3,9 +3,9 @@ name: Witness Fixture Isolation
 description: Test fixtures for witness lookup avoid depending on their own delimiter text.
 category:
   - concept
-clustee:
+belongs:
   - witness
-refiner:
+refines:
   - witness-lookup
 witness:
 ---
@@ -30,12 +30,12 @@ or formatter.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [witness](witness.md)
 
-Refiner (to):
+Refines (to):
 - [witness-lookup](witness-lookup.md)
 
 > **Sirno generated links end.**

@@ -4,9 +4,9 @@ description: A working style that uses named concepts to compress project knowle
 category:
   - concept
   - narrative
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - concept
 ---
 
@@ -48,12 +48,12 @@ The concept becomes a compact bridge between broad intent and detailed code.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to):
+Refines (to):
 - [concept](concept.md)
 
 > **Sirno generated links end.**

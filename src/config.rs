@@ -430,21 +430,21 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
     )?;
     push_field(
         &mut out,
-        "clustee",
-        &config.links.clustee,
-        "Include clustee links; use a boolean or { to = bool, from = bool }.",
+        "belongs",
+        &config.links.belongs,
+        "Include belongs links; use a boolean or { to = bool, from = bool }.",
     )?;
     push_field(
         &mut out,
         "clique",
         &config.links.clique,
-        "Add clique sections derived from clustee closures.",
+        "Add clique sections derived from belongs targets.",
     )?;
     push_field(
         &mut out,
-        "refiner",
-        &config.links.refiner,
-        "Include refiner links; use a boolean or { to = bool, from = bool }.",
+        "refines",
+        &config.links.refines,
+        "Include refines links; use a boolean or { to = bool, from = bool }.",
     )?;
     // sirno:witness:project-config-comments:end
 
@@ -649,9 +649,9 @@ path = "docs"
 
 [links]
 category = true
-clustee = false
+belongs = false
 clique = true
-refiner = true
+refines = true
 "#,
         )
         .unwrap();
@@ -660,9 +660,9 @@ refiner = true
             config.links,
             GeneratedLinkSettings {
                 category: true.into(),
-                clustee: false.into(),
+                belongs: false.into(),
                 clique: true,
-                refiner: true.into(),
+                refines: true.into(),
             }
         );
     }
@@ -679,8 +679,8 @@ path = "docs"
 
 [links]
 category = { to = true, from = false }
-clustee = true
-refiner = { to = false, from = true }
+belongs = true
+refines = { to = false, from = true }
 "#,
         )
         .unwrap();
@@ -689,9 +689,9 @@ refiner = { to = false, from = true }
             config.links,
             GeneratedLinkSettings {
                 category: crate::links::GeneratedLinkFieldSettings::new(true, false),
-                clustee: crate::links::GeneratedLinkFieldSettings::new(true, true),
+                belongs: crate::links::GeneratedLinkFieldSettings::new(true, true),
                 clique: false,
-                refiner: crate::links::GeneratedLinkFieldSettings::new(false, true),
+                refines: crate::links::GeneratedLinkFieldSettings::new(false, true),
             }
         );
     }
@@ -811,7 +811,7 @@ members = ["../outside"]
         assert!(source.contains("[lake]"));
         assert!(source.contains("# Markdown entry lake path"));
         assert!(source.contains("# Require generated footers"));
-        assert!(source.contains("# Include clustee links"));
+        assert!(source.contains("# Include belongs links"));
         assert!(!source.contains("[mono]"));
         assert!(!source.contains("[code]"));
     }
@@ -829,9 +829,9 @@ members = ["../outside"]
             check: CheckSettings { link: false },
             links: GeneratedLinkSettings {
                 category: true.into(),
-                clustee: crate::links::GeneratedLinkFieldSettings::new(true, false),
+                belongs: crate::links::GeneratedLinkFieldSettings::new(true, false),
                 clique: true,
-                refiner: false.into(),
+                refines: false.into(),
             },
         };
 
@@ -846,9 +846,9 @@ members = ["../outside"]
         assert!(source.contains("# Repository files, directories, or globs"));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include category links"));
-        assert!(source.contains("# Include clustee links"));
+        assert!(source.contains("# Include belongs links"));
         assert!(source.contains("# Add clique sections"));
-        assert!(source.contains("# Include refiner links"));
+        assert!(source.contains("# Include refines links"));
     }
 
     #[test]

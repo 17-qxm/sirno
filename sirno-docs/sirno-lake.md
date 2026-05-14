@@ -3,9 +3,9 @@ name: Sirno Lake
 description: The configured directory of compact named design entries.
 category:
   - concept
-clustee:
+belongs:
   - sirno
-refiner:
+refines:
   - form
 witness:
 ---
@@ -39,7 +39,7 @@ The lake should feel like a set of well-named design cards.
 Each card has enough prose to be useful on its own,
 but it also participates in a larger graph through metadata.
 The graph is intentionally small:
-classification, clique membership, refinement, and witnesses.
+classification, belonging, refinement, and witnesses.
 That small set is enough to navigate without turning the lake into a separate database language.
 
 The lake is also a collaboration boundary.
@@ -71,7 +71,7 @@ and where implementation evidence should be found when that evidence exists.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from):
+Belongs (from):
 - [entry](entry.md)
 - [generated-footer](generated-footer.md)
 - [metadata](metadata.md)
@@ -80,10 +80,10 @@ Clustee (from):
 - [ripple](ripple.md)
 - [structural-check](structural-check.md)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to):
+Refines (to):
 - [form](form.md)
 
 > **Sirno generated links end.**

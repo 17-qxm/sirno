@@ -67,12 +67,12 @@ enum Command {
         /// Category target.
         #[arg(long)]
         category: Vec<String>,
-        /// Clique closure target.
+        /// Review-neighborhood target for `belongs`.
         #[arg(long)]
-        clustee: Vec<String>,
-        /// Refined entry target.
+        belongs: Vec<String>,
+        /// Broader entry target for `refines`.
         #[arg(long)]
-        refiner: Vec<String>,
+        refines: Vec<String>,
         /// Add a canonical witness marker.
         #[arg(long)]
         witness: bool,
@@ -95,12 +95,12 @@ enum Command {
         /// Exact category target.
         #[arg(long)]
         exact_category: Vec<String>,
-        /// Exact clique closure target.
+        /// Exact review-neighborhood target for `belongs`.
         #[arg(long)]
-        exact_clustee: Vec<String>,
-        /// Exact refined entry target.
+        exact_belongs: Vec<String>,
+        /// Exact broader entry target for `refines`.
         #[arg(long)]
-        exact_refiner: Vec<String>,
+        exact_refines: Vec<String>,
         /// Select only entries with a canonical witness marker.
         #[arg(long)]
         exact_witness: bool,
@@ -322,8 +322,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             name,
             description,
             category,
-            clustee,
-            refiner,
+            belongs,
+            refines,
             witness,
             body,
             entries,
@@ -339,8 +339,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let mut metadata =
                 EntryMetadata::new(name.unwrap_or_else(|| title_name_from_id(&id)), description)?;
             metadata.category = parse_entry_ids(category)?;
-            metadata.clustee = parse_entry_ids(clustee)?;
-            metadata.refiner = parse_entry_ids(refiner)?;
+            metadata.belongs = parse_entry_ids(belongs)?;
+            metadata.refines = parse_entry_ids(refines)?;
             if witness {
                 metadata.witness = Some(WitnessMarker::Present);
             }
@@ -354,8 +354,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             terms,
             exact_terms,
             exact_category,
-            exact_clustee,
-            exact_refiner,
+            exact_belongs,
+            exact_refines,
             exact_witness,
             format,
             entries,
@@ -374,8 +374,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let exact_query = EntryQuery::new()
                 .with_text_terms(exact_terms)
                 .with_category(parse_entry_ids(exact_category)?)
-                .with_clustee(parse_entry_ids(exact_clustee)?)
-                .with_refiner(parse_entry_ids(exact_refiner)?)
+                .with_belongs(parse_entry_ids(exact_belongs)?)
+                .with_refines(parse_entry_ids(exact_refines)?)
                 .with_witness(exact_witness);
             let vague_matches = vague_query_entries(report.entries(), &vague_query);
             let matches = query_entries(vague_matches, &exact_query);
@@ -873,9 +873,9 @@ fn print_status(
     println!("  link: {}", config.check.link);
     println!("links:");
     println!("  category: {}", config.links.category);
-    println!("  clustee: {}", config.links.clustee);
+    println!("  belongs: {}", config.links.belongs);
     println!("  clique: {}", config.links.clique);
-    println!("  refiner: {}", config.links.refiner);
+    println!("  refines: {}", config.links.refines);
     if report.has_errors() {
         println!("check: failed");
         print_entry_directory_report(report);

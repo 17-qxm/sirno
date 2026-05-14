@@ -4,7 +4,7 @@ description: A shape project knowledge takes inside Sirno.
 category:
   - concept
   - narrative
-clustee:
+belongs:
   - sirno
 ---
 
@@ -50,11 +50,11 @@ Code can stay focused on behavior while still having a place to point for intent
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

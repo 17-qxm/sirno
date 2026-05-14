@@ -49,8 +49,8 @@ The id is globally unique inside the lake and case-sensitive.
 
 Each entry has a YAML metadata block and a prose body.
 The required fields are `name` and `description`.
-The optional structural fields are list-valued `category`, `clustee`, and
-`refiner`.
+The optional structural fields are list-valued `category`, `belongs`, and
+`refines`.
 The optional `witness:` marker tells Sirno to query repository witness blocks by the
 entry id through `mosaika`.
 
@@ -68,12 +68,12 @@ witness:
 The initialized entries `concept` and `narrative` are ordinary entries,
 not privileged built-ins.
 
-`clustee` places an entry inside a named clique closure.
-The closure is also an ordinary entry.
+`belongs` places an entry inside a named review neighborhood.
+The target is also an ordinary entry.
 This gives a project a documented place for shared subject matter,
 local vocabulary, or design neighborhoods.
 
-`refiner` points from a more specific entry to the entry or entries it refines.
+`refines` points from a more specific entry to the broader entry or entries it makes concrete.
 It records how broad design becomes local design,
 implementation detail,
 or testable behavior.

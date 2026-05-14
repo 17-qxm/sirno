@@ -3,7 +3,7 @@ name: Future Work
 description: Reserved design areas that may be refined later.
 category:
   - narrative
-clustee:
+belongs:
   - sirno
 ---
 
@@ -50,11 +50,11 @@ entries and manuals can reflect that deliberately.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

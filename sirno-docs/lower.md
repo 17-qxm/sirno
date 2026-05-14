@@ -4,7 +4,7 @@ description: The movement from the monograph into the Sirno Lake.
 category:
   - concept
   - narrative
-refiner:
+refines:
   - transform
 ---
 
@@ -28,8 +28,8 @@ and narrative routes.
 Each lowered entry should stand on its own enough to be useful from a query result.
 It should also preserve its place in the larger design through metadata.
 Categories describe the kind of object.
-Clustees give local neighborhoods.
-Refiners connect local entries back to broader design.
+Belongss give local neighborhoods.
+Refiness connect local entries back to broader design.
 Witnesses are added only when repository evidence exists.
 
 Lowering is especially valuable before implementation work becomes local.
@@ -41,11 +41,11 @@ That makes review and future reflection less dependent on remembering the origin
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [transform](transform.md)
 
 > **Sirno generated links end.**

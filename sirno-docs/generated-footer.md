@@ -3,7 +3,7 @@ name: Generated Footer
 description: A Sirno-owned footer that projects selected metadata fields as links.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
 witness:
 ---
@@ -34,9 +34,9 @@ Sirno can project selected fields into links so those tools can participate in t
 The generated body is grouped by configured structural field.
 Each enabled group appears in the region.
 A group with links begins with a colon-terminated label,
-such as `Category (from):`, `Clustee (to):`, or `Clique:`.
+such as `Category (from):`, `Belongs (to):`, or `Clique:`.
 The group's links are ordinary Markdown list items.
-A group with no links is rendered inline, such as `Clustee (from): (none)`.
+A group with no links is rendered inline, such as `Belongs (from): (none)`.
 If no generated-link group is enabled, the region contains `(none)`.
 
 The footer is derived from metadata.
@@ -63,11 +63,11 @@ not to become another place for design prose.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

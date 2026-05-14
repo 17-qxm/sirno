@@ -3,7 +3,7 @@ name: Sirno Lock
 description: The TOML file that records the Frost state of the public lake.
 category:
   - concept
-refiner:
+refines:
   - versioning
 witness:
 ---
@@ -33,11 +33,11 @@ Sirno refuses to commit an immutable checkout.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to): (none)
+Belongs (to): (none)
 
-Refiner (to):
+Refines (to):
 - [versioning](versioning.md)
 
 > **Sirno generated links end.**

@@ -3,7 +3,7 @@ name: Entry
 description: A named Markdown document in the Sirno Lake.
 category:
   - concept
-clustee:
+belongs:
   - sirno-lake
 witness:
 ---
@@ -16,7 +16,7 @@ case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
 
 Each entry has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.
-The structural fields are `category`, `clustee`, `refiner`, and `witness:`.
+The structural fields are `category`, `belongs`, `refines`, and `witness:`.
 
 An entry should be readable in about five minutes or less.
 It can state a concept, category, review neighborhood, refinement, invariant,
@@ -45,11 +45,11 @@ and the prose should explain the local meaning in ordinary language.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno-lake](sirno-lake.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

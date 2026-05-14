@@ -3,14 +3,14 @@ name: Structural Field
 description: A metadata field that carries operational Sirno structure.
 category:
   - concept
-clustee:
+belongs:
   - sirno
 witness:
 ---
 
 A structural field is a metadata field that Sirno reads as project structure.
 
-The structural fields are `category`, `clustee`, `refiner`, and `witness:`.
+The structural fields are `category`, `belongs`, `refines`, and `witness:`.
 They are ordinary entry metadata,
 but Sirno treats their values as the graph that powers query, checking, generated links,
 and repository witness lookup.
@@ -20,23 +20,23 @@ They are list-valued and may name several targets.
 `witness:` is a canonical marker without a value.
 Its presence declares that the entry should have repository evidence.
 
-This entry is the clique closure for the structural field entries.
+This entry is the review front door for the structural field entries.
 It gives the field set one review front door while leaving each field entry free
-to carry its own meaning and other clustee memberships.
+to carry its own meaning and other `belongs` targets.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from):
+Belongs (from):
+- [belongs](belongs.md)
 - [category](category.md)
-- [clustee](clustee.md)
-- [refiner](refiner.md)
+- [refines](refines.md)
 - [witness](witness.md)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

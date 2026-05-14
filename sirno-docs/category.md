@@ -3,7 +3,7 @@ name: Category
 description: A structural field that classifies an entry by other entries.
 category:
   - concept
-clustee:
+belongs:
   - structural-field
 witness:
 ---
@@ -32,20 +32,20 @@ and Sirno can still check that referenced entries exist.
 
 Categories should stay semantic rather than decorative.
 If a label only helps browsing by topic,
-`clustee` may be a better fit.
+`belongs` may be a better fit.
 If an entry makes another entry more concrete,
-`refiner` is the sharper field.
+`refines` is the sharper field.
 The category field is most useful when it tells the reader what kind of object they are looking at.
 
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [structural-field](structural-field.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

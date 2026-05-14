@@ -4,7 +4,7 @@ description: The use of Sirno's own model to describe Sirno itself.
 category:
   - concept
   - narrative
-clustee:
+belongs:
   - sirno
 ---
 
@@ -18,7 +18,7 @@ Repository artifacts can witness entries through `mosaika`.
 
 The introduction should stay readable as one route.
 Local details that become dense should stay in entries
-and be linked through categories, clustees, refiners, and witnesses.
+and be linked through categories, `belongs`, `refines`, and witnesses.
 
 This self-application exercises the design under its own constraints.
 When implementation work changes the model,
@@ -40,11 +40,11 @@ and where is it witnessed?
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from): (none)
+Belongs (from): (none)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

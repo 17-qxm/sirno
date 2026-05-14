@@ -3,7 +3,7 @@ name: Witness
 description: A structural marker from a design entry to repository evidence.
 category:
   - concept
-clustee:
+belongs:
   - sirno
   - structural-field
 witness:
@@ -53,14 +53,14 @@ presence of `witness:` means the entry id is the query key.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (from):
+Belongs (from):
 - [code-form](code-form.md)
 - [witness-fixture-isolation](witness-fixture-isolation.md)
 
-Clustee (to):
+Belongs (to):
 - [sirno](sirno.md)
 - [structural-field](structural-field.md)
 
-Refiner (to): (none)
+Refines (to): (none)
 
 > **Sirno generated links end.**

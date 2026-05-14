@@ -124,12 +124,12 @@ struct GeneratedLinkSides {
 pub struct GeneratedLinkSettings {
     /// Include `category` targets.
     pub category: GeneratedLinkFieldSettings,
-    /// Include `clustee` targets.
-    pub clustee: GeneratedLinkFieldSettings,
-    /// Render clique sections derived from clustee closures.
+    /// Include `belongs` targets.
+    pub belongs: GeneratedLinkFieldSettings,
+    /// Render clique sections derived from `belongs` targets.
     pub clique: bool,
-    /// Include `refiner` targets.
-    pub refiner: GeneratedLinkFieldSettings,
+    /// Include `refines` targets.
+    pub refines: GeneratedLinkFieldSettings,
 }
 // sirno:witness:generated-link-policy:end
 
@@ -137,23 +137,23 @@ impl Default for GeneratedLinkSettings {
     fn default() -> Self {
         Self {
             category: GeneratedLinkFieldSettings::disabled(),
-            clustee: GeneratedLinkFieldSettings::enabled(),
+            belongs: GeneratedLinkFieldSettings::enabled(),
             clique: false,
-            refiner: GeneratedLinkFieldSettings::disabled(),
+            refines: GeneratedLinkFieldSettings::disabled(),
         }
     }
 }
 
 /// Lake-wide context for generated-link rendering.
 ///
-/// Invariant: each clustee closure maps to the closure id and every parsed entry that names it.
+/// Invariant: each `belongs` target maps to itself and every parsed entry that names it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 // sirno:witness:generated-footer:begin
 pub struct GeneratedLinkIndex {
     category_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    cliques_by_closure: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    clustee_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    refiner_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    cliques_by_belongs_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    belongs_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    refines_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
 }
 // sirno:witness:generated-footer:end
 
@@ -163,10 +163,11 @@ impl GeneratedLinkIndex {
     pub fn from_entries(entries: &[Entry]) -> Self {
         let mut category_sources_by_target =
             BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut cliques_by_closure = BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut clustee_sources_by_target =
+        let mut cliques_by_belongs_target =
             BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut refiner_sources_by_target =
+        let mut belongs_sources_by_target =
+            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
+        let mut refines_sources_by_target =
             BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
         for entry in entries {
             Self::insert_sources(
@@ -175,30 +176,30 @@ impl GeneratedLinkIndex {
                 &entry.metadata.category,
             );
             Self::insert_sources(
-                &mut clustee_sources_by_target,
+                &mut belongs_sources_by_target,
                 &entry.id,
-                &entry.metadata.clustee,
+                &entry.metadata.belongs,
             );
             Self::insert_sources(
-                &mut refiner_sources_by_target,
+                &mut refines_sources_by_target,
                 &entry.id,
-                &entry.metadata.refiner,
+                &entry.metadata.refines,
             );
             // sirno:witness:generated-footer:end
-            // sirno:witness:clustee:begin
-            for closure in &entry.metadata.clustee {
-                let clique = cliques_by_closure.entry(closure.clone()).or_default();
-                clique.insert(closure.clone());
+            // sirno:witness:belongs:begin
+            for target in &entry.metadata.belongs {
+                let clique = cliques_by_belongs_target.entry(target.clone()).or_default();
+                clique.insert(target.clone());
                 clique.insert(entry.id.clone());
             }
-            // sirno:witness:clustee:end
+            // sirno:witness:belongs:end
             // sirno:witness:generated-footer:begin
         }
         Self {
             category_sources_by_target,
-            cliques_by_closure,
-            clustee_sources_by_target,
-            refiner_sources_by_target,
+            cliques_by_belongs_target,
+            belongs_sources_by_target,
+            refines_sources_by_target,
         }
     }
     // sirno:witness:generated-footer:end
@@ -225,31 +226,31 @@ impl GeneratedLinkIndex {
                 entry.metadata.category.iter().cloned().collect(),
             ));
         }
-        if settings.clustee.from {
+        if settings.belongs.from {
             sections.push(GeneratedLinkSection::new(
-                "Clustee (from)",
-                self.incoming_targets(&self.clustee_sources_by_target, entry),
+                "Belongs (from)",
+                self.incoming_targets(&self.belongs_sources_by_target, entry),
             ));
         }
-        if settings.clustee.to {
+        if settings.belongs.to {
             sections.push(GeneratedLinkSection::new(
-                "Clustee (to)",
-                entry.metadata.clustee.iter().cloned().collect(),
+                "Belongs (to)",
+                entry.metadata.belongs.iter().cloned().collect(),
             ));
         }
         if settings.clique {
             sections.push(GeneratedLinkSection::new("Clique", self.clique_targets(entry)));
         }
-        if settings.refiner.from {
+        if settings.refines.from {
             sections.push(GeneratedLinkSection::new(
-                "Refiner (from)",
-                self.incoming_targets(&self.refiner_sources_by_target, entry),
+                "Refines (from)",
+                self.incoming_targets(&self.refines_sources_by_target, entry),
             ));
         }
-        if settings.refiner.to {
+        if settings.refines.to {
             sections.push(GeneratedLinkSection::new(
-                "Refiner (to)",
-                entry.metadata.refiner.iter().cloned().collect(),
+                "Refines (to)",
+                entry.metadata.refines.iter().cloned().collect(),
             ));
         }
         // sirno:witness:generated-footer:end
@@ -284,20 +285,20 @@ impl GeneratedLinkIndex {
         sources_by_target.get(&entry.id).cloned().unwrap_or_default()
     }
 
-    // sirno:witness:clustee:begin
+    // sirno:witness:belongs:begin
     fn clique_targets(&self, entry: &Entry) -> BTreeSet<crate::EntryId> {
         let mut targets = BTreeSet::new();
-        for closure in &entry.metadata.clustee {
-            if let Some(clique) = self.cliques_by_closure.get(closure) {
+        for target in &entry.metadata.belongs {
+            if let Some(clique) = self.cliques_by_belongs_target.get(target) {
                 targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
             }
         }
-        if let Some(clique) = self.cliques_by_closure.get(&entry.id) {
+        if let Some(clique) = self.cliques_by_belongs_target.get(&entry.id) {
             targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
         }
         targets
     }
-    // sirno:witness:clustee:end
+    // sirno:witness:belongs:end
 }
 
 #[derive(Debug)]
@@ -535,21 +536,21 @@ mod tests {
     fn entry() -> Entry {
         let mut metadata = EntryMetadata::new("Concept", "A named idea.").unwrap();
         metadata.category.push(id("meta"));
-        metadata.clustee.push(id("core"));
-        metadata.refiner.push(id("metadata"));
+        metadata.belongs.push(id("core"));
+        metadata.refines.push(id("metadata"));
         Entry::new(id("concept"), metadata, "Body.\n")
     }
 
     #[test]
-    fn default_settings_render_only_clustee_links() {
+    fn default_settings_render_only_belongs_links() {
         let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
 
         assert!(!footer.contains("[meta](meta.md)"));
         assert!(footer.contains("- [core](core.md)"));
         assert!(!footer.contains("[metadata](metadata.md)"));
         assert!(!footer.contains("## Sirno Links"));
-        assert!(footer.contains("Clustee (from): (none)"));
-        assert!(footer.contains("Clustee (to):\n- [core](core.md)"));
+        assert!(footer.contains("Belongs (from): (none)"));
+        assert!(footer.contains("Belongs (to):\n- [core](core.md)"));
         assert!(footer.contains(BEGIN_LINKS_GUARD));
         assert!(footer.contains(END_LINKS_GUARD));
         assert!(footer.contains("> **Sirno generated links begin."));
@@ -560,7 +561,7 @@ mod tests {
         let footer = render_generated_links(&entry(), &GeneratedLinkSettings::default());
 
         assert!(footer.contains(&format!(
-            "{BEGIN_LINKS_GUARD}\n\nClustee (from): (none)\n\nClustee (to):\n"
+            "{BEGIN_LINKS_GUARD}\n\nBelongs (from): (none)\n\nBelongs (to):\n"
         )));
         assert!(footer.contains(&format!("- [core](core.md)\n\n{END_LINKS_GUARD}")));
     }
@@ -569,9 +570,9 @@ mod tests {
     fn settings_can_enable_each_structural_field() {
         let settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: false,
-            refiner: true.into(),
+            refines: true.into(),
         };
         let footer = render_generated_links(&entry(), &settings);
 
@@ -580,10 +581,10 @@ mod tests {
         assert!(footer.contains("- [metadata](metadata.md)"));
         assert!(footer.contains("Category (from): (none)"));
         assert!(footer.contains("Category (to):"));
-        assert!(footer.contains("Clustee (from): (none)"));
-        assert!(footer.contains("Clustee (to):"));
-        assert!(footer.contains("Refiner (from): (none)"));
-        assert!(footer.contains("Refiner (to):"));
+        assert!(footer.contains("Belongs (from): (none)"));
+        assert!(footer.contains("Belongs (to):"));
+        assert!(footer.contains("Refines (from): (none)"));
+        assert!(footer.contains("Refines (to):"));
     }
 
     #[test]
@@ -592,9 +593,9 @@ mod tests {
         entry.metadata.category.push(id("meta"));
         let settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: false.into(),
+            belongs: false.into(),
             clique: false,
-            refiner: false.into(),
+            refines: false.into(),
         };
 
         let footer = render_generated_links(&entry, &settings);
@@ -606,9 +607,9 @@ mod tests {
     fn boolean_field_settings_render_to_and_from_edges() {
         let settings = GeneratedLinkSettings {
             category: true.into(),
-            clustee: false.into(),
+            belongs: false.into(),
             clique: false,
-            refiner: false.into(),
+            refines: false.into(),
         };
         let category =
             Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
@@ -633,9 +634,9 @@ mod tests {
     fn table_field_settings_can_choose_one_side() {
         let settings = GeneratedLinkSettings {
             category: GeneratedLinkFieldSettings::new(false, true),
-            clustee: false.into(),
+            belongs: false.into(),
             clique: false,
-            refiner: false.into(),
+            refines: false.into(),
         };
         let category =
             Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
@@ -655,27 +656,27 @@ mod tests {
     }
 
     #[test]
-    fn clique_setting_expands_clustee_closures_to_edges() {
+    fn clique_setting_expands_belongs_targets_to_edges() {
         let settings = GeneratedLinkSettings {
             category: false.into(),
-            clustee: false.into(),
+            belongs: false.into(),
             clique: true,
-            refiner: false.into(),
+            refines: false.into(),
         };
 
         let closure = Entry::new(
             id("core"),
-            EntryMetadata::new("Core", "A clique closure.").unwrap(),
+            EntryMetadata::new("Core", "A review neighborhood.").unwrap(),
             "Body.\n",
         );
-        let mut left_metadata = EntryMetadata::new("Left", "A clique member.").unwrap();
-        left_metadata.clustee.push(id("core"));
+        let mut left_metadata = EntryMetadata::new("Left", "A neighborhood member.").unwrap();
+        left_metadata.belongs.push(id("core"));
         let left = Entry::new(id("left"), left_metadata, "Body.\n");
-        let mut right_metadata = EntryMetadata::new("Right", "A clique member.").unwrap();
-        right_metadata.clustee.push(id("core"));
+        let mut right_metadata = EntryMetadata::new("Right", "A neighborhood member.").unwrap();
+        right_metadata.belongs.push(id("core"));
         let right = Entry::new(id("right"), right_metadata, "Body.\n");
         let mut outside_metadata = EntryMetadata::new("Outside", "Another member.").unwrap();
-        outside_metadata.clustee.push(id("other"));
+        outside_metadata.belongs.push(id("other"));
         let outside = Entry::new(id("outside"), outside_metadata, "Body.\n");
         let entries = vec![closure.clone(), left.clone(), right.clone(), outside];
         let index = GeneratedLinkIndex::from_entries(&entries);
@@ -684,13 +685,13 @@ mod tests {
         let left_footer = index.render_entry(&left, &settings);
 
         assert!(closure_footer.contains("Clique:"));
-        assert!(!closure_footer.contains("Clustee (from)"));
+        assert!(!closure_footer.contains("Belongs (from)"));
         assert!(closure_footer.contains("- [left](left.md)"));
         assert!(closure_footer.contains("- [right](right.md)"));
         assert!(!closure_footer.contains("[core](core.md)"));
         assert!(!closure_footer.contains("[outside](outside.md)"));
         assert!(left_footer.contains("Clique:"));
-        assert!(!left_footer.contains("Clustee (to)"));
+        assert!(!left_footer.contains("Belongs (to)"));
         assert!(left_footer.contains("- [core](core.md)"));
         assert!(left_footer.contains("- [right](right.md)"));
         assert!(!left_footer.contains("[left](left.md)"));
@@ -698,31 +699,31 @@ mod tests {
     }
 
     #[test]
-    fn clustee_sections_remain_direct_when_clique_is_enabled() {
+    fn belongs_sections_remain_direct_when_clique_is_enabled() {
         let settings = GeneratedLinkSettings {
             category: false.into(),
-            clustee: true.into(),
+            belongs: true.into(),
             clique: true,
-            refiner: false.into(),
+            refines: false.into(),
         };
 
         let closure = Entry::new(
             id("core"),
-            EntryMetadata::new("Core", "A clique closure.").unwrap(),
+            EntryMetadata::new("Core", "A review neighborhood.").unwrap(),
             "Body.\n",
         );
-        let mut left_metadata = EntryMetadata::new("Left", "A clique member.").unwrap();
-        left_metadata.clustee.push(id("core"));
+        let mut left_metadata = EntryMetadata::new("Left", "A neighborhood member.").unwrap();
+        left_metadata.belongs.push(id("core"));
         let left = Entry::new(id("left"), left_metadata, "Body.\n");
-        let mut right_metadata = EntryMetadata::new("Right", "A clique member.").unwrap();
-        right_metadata.clustee.push(id("core"));
+        let mut right_metadata = EntryMetadata::new("Right", "A neighborhood member.").unwrap();
+        right_metadata.belongs.push(id("core"));
         let right = Entry::new(id("right"), right_metadata, "Body.\n");
         let entries = vec![closure, left.clone(), right];
         let index = GeneratedLinkIndex::from_entries(&entries);
 
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(left_footer.contains("Clustee (to):\n- [core](core.md)"));
+        assert!(left_footer.contains("Belongs (to):\n- [core](core.md)"));
         assert!(left_footer.contains("Clique:"));
         assert!(left_footer.contains("- [right](right.md)"));
     }
@@ -734,8 +735,8 @@ mod tests {
 
         let footer = render_generated_links(&entry, &GeneratedLinkSettings::default());
 
-        assert!(footer.contains("Clustee (from): (none)"));
-        assert!(footer.contains("Clustee (to): (none)"));
+        assert!(footer.contains("Belongs (from): (none)"));
+        assert!(footer.contains("Belongs (to): (none)"));
         assert!(!footer.contains(&format!("{BEGIN_LINKS_GUARD}\n\n(none)\n\n{END_LINKS_GUARD}")));
         assert!(!footer.contains("- none"));
     }
@@ -746,9 +747,9 @@ mod tests {
         let entry = Entry::new(EntryId::new("meta").unwrap(), metadata, "Body.\n");
         let settings = GeneratedLinkSettings {
             category: false.into(),
-            clustee: false.into(),
+            belongs: false.into(),
             clique: false,
-            refiner: false.into(),
+            refines: false.into(),
         };
 
         let footer = render_generated_links(&entry, &settings);
@@ -828,9 +829,9 @@ mod tests {
                 &entry(),
                 &GeneratedLinkSettings {
                     category: true.into(),
-                    clustee: true.into(),
+                    belongs: true.into(),
                     clique: false,
-                    refiner: true.into(),
+                    refines: true.into(),
                 },
             ),
         )
