@@ -25,6 +25,11 @@ The value is a storage handle with ordering.
 Entry metadata does not store it,
 and entry ids remain stable across versions.
 
+A ripple is the named delta between two lake states.
+It is the reviewable difference made visible by comparing versions,
+checkout states,
+or other future lake snapshots.
+
 The public lake is always the editable working form.
 The history root is private storage,
 conventionally `sirno-history`.

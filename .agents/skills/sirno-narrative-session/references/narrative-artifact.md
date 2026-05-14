@@ -11,7 +11,7 @@ Recommended fields:
 ```json
 {
   "reader": "new contributor",
-  "task": "understand how Sirno lake entries guide implementation",
+  "task": "understand how Sirno Lake entries guide implementation",
   "pressure": "the reader needs a route before editing code",
   "pull": "why a stable entry id matters before the edit begins",
   "known_terms": ["entry", "lake"],

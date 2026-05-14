@@ -28,7 +28,7 @@ Markdown entries are the human-facing form.
 They are easy to read, review, diff, and edit.
 `eter` provides the storage and indexing foundation beneath that form,
 so Sirno can grow more capable without making the entry files opaque.
-It also gives Sirno lake-wide snapshots in `sirno-history`
+It also gives Sirno Lake snapshots in `sirno-history`
 without adding version fields to entry metadata.
 
 The CLI is the first operational interface.

@@ -188,7 +188,7 @@ pub enum WitnessMarker {
     Present,
 }
 
-/// Create the ordinary seed entries for a new Sirno lake.
+/// Create the ordinary seed entries for a new Sirno Lake.
 ///
 /// The entries are normal entries.
 /// Later operations do not privilege them.

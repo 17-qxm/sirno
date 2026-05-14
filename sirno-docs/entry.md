@@ -1,6 +1,6 @@
 ---
 name: Entry
-description: A named Markdown document in the Sirno lake.
+description: A named Markdown document in the Sirno Lake.
 category:
   - concept
 clustee:
@@ -8,7 +8,7 @@ clustee:
 witness:
 ---
 
-An entry is a Markdown file in the Sirno lake.
+An entry is a Markdown file in the Sirno Lake.
 
 The filename stem is the entry id.
 The id is globally unique inside the lake,

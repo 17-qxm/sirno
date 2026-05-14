@@ -27,7 +27,7 @@ Prefer direct definitions over defensive framing.
 ### Sirno Lake
 
 The authoritative project design lives in `sirno-docs/`.
-Whenever anything changes about the project design, keep the Sirno lake in sync.
+Whenever anything changes about the project design, keep the Sirno Lake in sync.
 Use the `sirno-editor` skill when editing, moving, or reorganizing design knowledge in the lake.
 Run generated-link maintenance after changing lake metadata.
 Use `sirno-docs/introduction.md` as the first narrative route.

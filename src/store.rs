@@ -1,4 +1,4 @@
-//! Sirno lake facade.
+//! Sirno Lake facade.
 //!
 //! The facade exposes typed Sirno entries.
 //! The current backend uses `eter` filesystem snapshots as durable storage.
@@ -395,7 +395,7 @@ fn required_facet_text(value: &Option<String>, field: &'static str) -> String {
         .unwrap_or_else(|| panic!("stored Sirno entry facet is missing required `{field}` field"))
 }
 
-/// Error raised by Sirno lake operations.
+/// Error raised by Sirno Lake operations.
 #[derive(Debug, Error)]
 pub enum StoreError {
     /// The backend reported a filesystem-store error.

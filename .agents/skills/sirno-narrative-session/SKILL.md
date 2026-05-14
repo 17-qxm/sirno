@@ -2,7 +2,7 @@
 name: sirno-narrative-session
 description: >-
   Conduct adaptive Sirno narrative sessions with users and materialize the resulting route as a
-  Sirno lake entry. Use when Codex needs to teach, onboard, review, or explore project knowledge
+  Sirno Lake entry. Use when Codex needs to teach, onboard, review, or explore project knowledge
   through questions, feedback loops, reader-state tracking, narrative route design, or serialized
   `category: narrative` artifacts in `sirno-docs/`.
 ---

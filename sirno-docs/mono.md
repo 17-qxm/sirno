@@ -18,7 +18,7 @@ This repository currently keeps its first narrative route inside the lake as `in
 It is the project monograph:
 one readable narrative for a person who wants the whole design in one sitting.
 
-The monograph is normal Markdown outside the Sirno lake.
+The monograph is normal Markdown outside the Sirno Lake.
 It does not carry Sirno entry metadata.
 
 When configured, the monograph becomes a raised narrative view of the current entries.

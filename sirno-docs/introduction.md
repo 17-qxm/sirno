@@ -25,7 +25,7 @@ The resulting names are readable by humans,
 stable for tools,
 and small enough to circulate.
 
-The central form is the Sirno lake.
+The central form is the Sirno Lake.
 The lake is a directory of Markdown entries.
 Each entry has a stable id, a short metadata block, and a body of prose.
 The id gives humans, tools, and agents a nominal handle for the thing being discussed.

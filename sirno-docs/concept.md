@@ -24,7 +24,7 @@ When that idea has a stable entry,
 the project can refer to it instead of rediscovering it in every local context.
 
 Concepts are also a scale control.
-Some concepts are broad, such as the Sirno lake or concept-driven development.
+Some concepts are broad, such as the Sirno Lake or concept-driven development.
 Other concepts are narrow, such as generated footer ownership or witness lookup.
 Both are useful when they compress repeated understanding into a name.
 

@@ -1,6 +1,6 @@
 ---
 name: Methodology
-description: A working guide for acting inside the Sirno lake.
+description: A working guide for acting inside the Sirno Lake.
 category:
   - concept
   - narrative

@@ -43,7 +43,7 @@ storage conventions, and witness lookup.
 
 ## Entries
 
-An entry is a Markdown file in the Sirno lake.
+An entry is a Markdown file in the Sirno Lake.
 Its filename stem is its id.
 The id is globally unique inside the lake and case-sensitive.
 
@@ -91,12 +91,12 @@ This repository keeps its first route in the lake as
 [`introduction`](sirno-docs/introduction.md).
 It keeps its working guide as [`methodology`](sirno-docs/methodology.md).
 
-Narratives may be materialized guides in the Sirno lake.
+Narratives may be materialized guides in the Sirno Lake.
 They can state prerequisites,
 choose a base language,
 and link to the concepts they traverse.
 Interactive narratives can also be produced ephemerally by skills that read the
-Sirno lake and adapt the route to a reader.
+Sirno Lake and adapt the route to a reader.
 
 ## Generated Footers
 

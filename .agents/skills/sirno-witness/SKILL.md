@@ -2,7 +2,7 @@
 name: sirno-witness
 description: >-
   Create, refine, or review Sirno repository witnesses. Use when Codex adds `witness:` metadata,
-  inserts or splits `sirno:witness:<entry-id>:begin` blocks, links code/tests/config to Sirno lake
+  inserts or splits `sirno:witness:<entry-id>:begin` blocks, links code/tests/config to Sirno Lake
   entries, interprets `sirno witness` output, or checks whether a Sirno entry has precise repository
   evidence.
 ---
@@ -11,7 +11,7 @@ description: >-
 
 ## Purpose
 
-Use this skill when linking Sirno lake entries to repository evidence.
+Use this skill when linking Sirno Lake entries to repository evidence.
 A witness is a repository region that makes an entry claim inspectable.
 The entry id is the query key.
 
@@ -87,7 +87,7 @@ Then run structural validation:
 cargo run -- check --mode review
 ```
 
-If Sirno lake metadata or links changed, run:
+If Sirno Lake metadata or links changed, run:
 
 ```sh
 cargo run -- gen-link

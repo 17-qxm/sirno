@@ -10,8 +10,13 @@ refiner:
 witness:
 ---
 
-The Sirno lake is the configured directory of Markdown entries.
+The Sirno Lake is the configured directory of Markdown entries.
 The usual convention is `docs/`.
+
+The name keeps Sirno's Cirno influence visible.
+It echoes Misty Lake and recasts the project design source as a Misty Lake of Knowledge:
+quiet enough to read,
+but structured enough that changes leave visible ripples.
 
 `Sirno.toml` records the lake path under `[lake].path`.
 `sirno mv PATH` renames the configured lake directory

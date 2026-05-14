@@ -1,7 +1,7 @@
 ---
 name: sirno-editor
 description: >-
-  Edit a Sirno lake. Use when Codex creates, revises, or reorganizes compact Markdown
+  Edit a Sirno Lake. Use when Codex creates, revises, or reorganizes compact Markdown
   entries, moves design knowledge from DESIGN.md or another mono form into the lake, chooses entry
   ids and structural metadata, expands entries, or validates generated Sirno links.
 ---
@@ -23,7 +23,7 @@ use the repository documentation-writing skills for prose style and document rol
 
 ## Core Judgment
 
-Sirno lake editing is not a heading split or metadata shuffle.
+Sirno Lake editing is not a heading split or metadata shuffle.
 When lowering from a monograph,
 read the monograph as a whole,
 then name the durable objects that make future work easier to address.
@@ -189,7 +189,7 @@ Report the blocker and still validate entry parsing and metadata references as f
 
 ## Git Hygiene
 
-When asked to commit Sirno lake editing work,
+When asked to commit Sirno Lake editing work,
 stage only the configured lake, the config change that points to it,
 and directly related documentation.
 Leave unrelated code or generated editor state alone.

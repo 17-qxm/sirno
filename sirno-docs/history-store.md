@@ -1,6 +1,6 @@
 ---
 name: History Store
-description: The private eter store that records immutable snapshots of the public Sirno lake.
+description: The private eter store that records immutable snapshots of the public Sirno Lake.
 category:
   - concept
 clustee:
