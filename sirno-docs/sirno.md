@@ -58,6 +58,7 @@ Sirno keeps the edges between those forms explicit.
 > **Sirno generated links begin. Do not edit this section.**
 
 Belongs (from):
+- [bootstrap-resolution](bootstrap-resolution.md)
 - [concept-driven-development](concept-driven-development.md)
 - [form](form.md)
 - [future-work](future-work.md)

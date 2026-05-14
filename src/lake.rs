@@ -948,6 +948,8 @@ mod tests {
 ---
 name: Meta
 description: A category for categories.
+category:
+  - meta
 ---
 
 Body.

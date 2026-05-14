@@ -12,6 +12,7 @@ Sirno checks structure.
 Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
+They also check that every `category` target is itself categorized by `meta`.
 When `[repo].members` is configured,
 review checks report repository witness blocks that name missing entries.
 
@@ -21,7 +22,8 @@ Freshness is controlled by `[check].link`,
 which is enabled by default.
 
 During editing, dangling `category`, `belongs`, and `refines` ids may warn.
-At an explicit review boundary, those dangling ids are errors.
+Category targets that are not categorized by `meta` also warn during editing.
+At an explicit review boundary, those diagnostics are errors.
 
 Checks keep local movement fast while making review boundaries strict.
 They do not decide whether prose is true or whether code satisfies a claim.
@@ -43,6 +45,8 @@ If an entry categorizes itself by an id,
 belongs under an id,
 or refines an id,
 that target should exist by the time the lake is reviewed.
+If an entry uses an id as a category,
+that target should define project vocabulary or documentation method through `meta`.
 This lets query results, generated footers, and reader navigation agree about the same set of entries.
 
 Semantic review remains human and agent work.

@@ -91,7 +91,8 @@ Use human-readable names and concise descriptions.
 Use `category` for kind.
 An entry categorized by `concept` should define a compressed idea.
 An entry categorized by `narrative` should record a route, story, or motivation through project ideas.
-An entry categorized by `meta` should define project vocabulary.
+An entry categorized by `meta` should define project vocabulary or documentation method.
+Every target used in a `category` field should itself be categorized by `meta`.
 
 Use `belongs` for review locality.
 A `belongs` target is an entry that gives a shared subject or design region a front door.
