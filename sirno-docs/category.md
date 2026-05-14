@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - structural-field
-witness:
 ---
 
 `category` classifies an entry by other entries.

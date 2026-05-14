@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - sirno
-witness:
 ---
 
 Sirno uses one required storage surface and several optional surfaces.

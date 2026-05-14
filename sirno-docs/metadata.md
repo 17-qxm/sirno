@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - sirno-lake
-witness:
 ---
 
 Metadata is the exact schema that carries Sirno structure.
@@ -17,8 +16,8 @@ both plain strings.
 The optional structural fields are `category`, `belongs`, and `refines`.
 They are always lists when present, and their values are entry ids.
 
-The optional `witness:` marker is canonical and has no value.
-No other witness spelling is accepted.
+Repository witness status is discovered from repository blocks by entry id,
+not from entry metadata.
 
 Operational structure is formed only from metadata.
 Prose links may help readers and external tools,
@@ -27,25 +26,23 @@ but they do not define Sirno structure.
 The metadata block should be small and stable.
 It is the part of an entry that tools must read without interpretation.
 That is why required fields are plain strings,
-structural fields are lists of ids,
-and the witness marker has no value.
+and structural fields are lists of ids.
 
 The body can explain nuance,
 but the metadata must not require prose parsing.
 If a tool needs to know that one entry refines another,
 the `refines` field must say so.
-If a tool needs to know whether an entry has repository evidence,
-the `witness:` marker must be present.
+If an agent needs to inspect repository evidence for an entry,
+it should run `sirno witness ENTRY_ID --full`.
 
 A canonical entry shape looks like this:
 
 ```yaml
 ---
-name: Witness
-description: An entry whose claim is evidenced by repository artifacts.
+name: Concept
+description: A named idea that compresses project knowledge.
 category:
   - concept
-witness:
 ---
 ```
 

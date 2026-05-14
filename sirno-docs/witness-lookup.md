@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - witness
-witness:
 ---
 
 Witness lookup resolves repository evidence by scanning configured code members with `mosaika`.

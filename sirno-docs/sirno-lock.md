@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - versioning
-witness:
 ---
 
 `Sirno.lock` records the public lake's state relative to the configured Frost root.

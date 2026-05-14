@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - structural-field
-witness:
 ---
 
 `refines` points from a more specific entry to the broader entries it makes concrete.

@@ -49,18 +49,15 @@ The id is globally unique inside the lake and case-sensitive.
 
 Each entry has a YAML metadata block and a prose body.
 The required fields are `name` and `description`.
-The optional structural fields are list-valued `category`, `belongs`, and
-`refines`.
-The optional `witness:` marker tells Sirno to query repository witness blocks by the
-entry id through `mosaika`.
+The optional structural fields are list-valued `category`, `belongs`, and `refines`.
+Repository witness status is discovered from repository blocks by entry id through `mosaika`.
 
 ```yaml
 ---
-name: Witness
-description: An entry whose claim is evidenced by repository artifacts.
+name: Concept
+description: A named idea that compresses project knowledge.
 category:
   - concept
-witness:
 ---
 ```
 
@@ -78,11 +75,12 @@ It records how broad design becomes local design,
 implementation detail,
 or testable behavior.
 
-`witness:` marks an entry whose claim is evidenced by repository artifacts.
-Sirno does not store a separate witness query.
+Witness blocks mark repository artifacts that evidence entry claims.
+Sirno does not store a separate witness query in entry metadata.
 The entry id is the query key used by `mosaika`.
 Repository witness blocks open with `sirno:witness:<entry-id>:begin` and close
 with `sirno:witness:<entry-id>:end` inside paths selected by `[code].members`.
+Use `sirno witness ENTRY_ID --full` to discover those regions mechanically.
 
 ## Narratives
 

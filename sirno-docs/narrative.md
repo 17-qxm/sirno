@@ -6,7 +6,6 @@ category:
   - concept
 belongs:
   - meta
-witness:
 ---
 
 A narrative records a cognitive route, story, or motivation through concepts.

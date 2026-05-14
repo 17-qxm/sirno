@@ -8,7 +8,6 @@ belongs:
   - sirno
 refines:
   - form
-witness:
 ---
 
 `mono` is the optional configured long-form Markdown document.

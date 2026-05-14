@@ -6,7 +6,6 @@ category:
   - concept
 belongs:
   - meta
-witness:
 ---
 
 A concept is a named idea that compresses project knowledge.

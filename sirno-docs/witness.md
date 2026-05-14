@@ -1,21 +1,21 @@
 ---
 name: Witness
-description: A structural marker from a design entry to repository evidence.
+description: Repository evidence for a design entry.
 category:
   - concept
 belongs:
   - sirno
-  - structural-field
-witness:
 ---
 
-`witness:` declares that an entry's claim is evidenced in the repository.
+A witness is repository evidence for an entry claim.
 
 The witness entry is the front door for repository evidence.
 Its local entries cover lookup behavior and the code artifact surface where witnesses live.
 
-The marker is canonical and has no value.
-Sirno queries witnesses through `mosaika` by entry id.
+Sirno discovers witness status mechanically.
+It queries witnesses through `mosaika` by entry id.
+Agents should use `sirno witness ENTRY_ID --full` to inspect evidence instead of inferring it
+from prose or generated links.
 
 The witness may be source code, tests, configuration, generated files, assets,
 or any repository artifact that `mosaika` can delimit and query.
@@ -28,26 +28,27 @@ and closes with `sirno:witness:<entry-id>:end`.
 The opening and closing entry ids must match.
 
 The entry body may explain how to find or interpret evidence as fallback guidance.
-The structural convention remains the metadata marker plus the witness block.
+The convention is the entry id plus the repository witness block.
 
 Witnesses connect prose to artifacts without merging the two.
 The entry states the design claim in project language.
 The witness block identifies the artifact region that should be inspected.
 The entry id ties them together.
 
-This marker is useful when a claim should be reviewable in code.
+Witness evidence is useful when a claim should be reviewable in code.
 An implementation module can witness an interface decision.
 A test can witness a behavioral property.
 A configuration file can witness a storage or tool boundary.
 A generated asset can witness a visible or packaged result.
 
-The `witness:` marker should be used deliberately.
 If an entry describes an idea that has no repository evidence yet,
-leaving the marker absent is clearer.
+leaving it unwitnessed is clearer.
 If the evidence exists but is hard to interpret,
 the entry body can explain what a reviewer should look for.
-The structural key remains simple:
-presence of `witness:` means the entry id is the query key.
+The entry id remains the query key.
+
+The repository witness for this entry should show how Sirno represents witness records
+and spans after `mosaika` finds the delimited repository regions.
 
 ---
 
@@ -59,7 +60,6 @@ Belongs (from):
 
 Belongs (to):
 - [sirno](sirno.md)
-- [structural-field](structural-field.md)
 
 Refines (to): (none)
 

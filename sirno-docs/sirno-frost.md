@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - versioning
-witness:
 ---
 
 Sirno Frost is the private `eter` root for frozen Sirno snapshots.

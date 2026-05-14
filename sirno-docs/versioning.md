@@ -7,7 +7,6 @@ belongs:
   - sirno
 refines:
   - storage-and-interfaces
-witness:
 ---
 
 When Sirno Frost is configured,

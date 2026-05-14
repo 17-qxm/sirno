@@ -4,7 +4,6 @@ description: A category for entries that define project vocabulary.
 category:
   - meta
   - concept
-witness:
 ---
 
 `meta` classifies entries that define project vocabulary.

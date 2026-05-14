@@ -7,7 +7,6 @@ belongs:
   - sirno
 refines:
   - form
-witness:
 ---
 
 The Sirno Lake is the configured directory of Markdown entries.

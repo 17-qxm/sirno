@@ -34,7 +34,7 @@ Look for:
 
 - concepts that compress repeated project knowledge
 - categories that define project vocabulary
-- entries that explain `category`, `belongs`, `refines`, and `witness:`
+- entries that explain `category`, `belongs`, `refines`, and witness lookup
 - transform entries that explain movement between forms
 - interface, storage, metadata, and checking commitments
 - witnessable claims that should connect to repository artifacts
@@ -56,7 +56,7 @@ Preserve stable facts from the current project model:
 - central definition and scope
 - configured `lake` path and optional `mono` path
 - entry id rules and metadata schema
-- `category`, `belongs`, `refines`, and `witness:` meanings
+- `category`, `belongs`, `refines`, and witness lookup meanings
 - generated footer ownership
 - witness lookup conventions
 - future-work items that are intentionally reserved
@@ -124,10 +124,10 @@ prefer the nearest broader entry that explains the current entry's design pressu
 Do not use `refines` to say that two entries are merely related or commonly edited together.
 Create a more specific entry when a paragraph, code region, test, or policy needs a stable handle.
 
-Use `witness:` only when repository evidence exists or the task explicitly asks to declare it.
 The entry id is the witness query key.
-The body may explain how to interpret evidence,
-but the structural convention is the marker.
+Discover evidence with `sirno witness ENTRY_ID --full`.
+The body should briefly explain what the repository evidence is expected to demonstrate
+when that meaning is not obvious from the entry claim.
 
 When a structural field feels merely decorative,
 leave it out.
@@ -159,7 +159,7 @@ but more durable than a plan item.
 1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing lake.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
-   ids, names, descriptions, categories, `belongs` targets, `refines` targets, and witness markers.
+   ids, names, descriptions, categories, `belongs` targets, `refines` targets, and witness status.
 4. Create missing entries through Sirno's current entry-creation command when available.
 5. Expand or revise bodies with direct, reader-friendly prose.
 6. Leave generated footer regions untouched.

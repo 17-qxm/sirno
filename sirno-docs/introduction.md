@@ -30,12 +30,13 @@ Each entry has a stable id, a short metadata block, and a body of prose.
 The id gives humans, tools, and agents a nominal handle for the thing being discussed.
 The prose keeps the handle meaningful.
 
-Sirno keeps its structural vocabulary small.
+Sirno keeps its metadata vocabulary small.
 `category` says what kind of entry something is.
 `belongs` places an entry in one or more review neighborhoods.
 `refines` connects a local entry back to the broader entry it makes concrete.
-`witness:` declares that an entry's claim has repository evidence.
-Those fields are explicit metadata,
+The three fields form the structural graph.
+Repository witness status is discovered through `sirno witness ENTRY_ID --full`.
+The structural fields are explicit metadata,
 so tools can query them without pretending to understand the whole design semantically.
 
 The lake is not only a glossary.

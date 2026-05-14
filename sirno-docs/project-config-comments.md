@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - project-config
-witness:
 ---
 
 Project config comments are the field-level comments Sirno writes when it renders `Sirno.toml`.

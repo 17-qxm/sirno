@@ -7,7 +7,6 @@ belongs:
   - sirno-lake
 refines:
   - storage-and-interfaces
-witness:
 ---
 
 `Sirno.toml` marks a repository as Sirno-managed.

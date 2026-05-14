@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - structural-field
-witness:
 ---
 
 `belongs` places an entry in a named review neighborhood.

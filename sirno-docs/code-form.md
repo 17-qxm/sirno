@@ -7,7 +7,6 @@ belongs:
   - witness
 refines:
   - form
-witness:
 ---
 
 The code form is the repository implementation form.

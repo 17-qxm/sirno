@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - sirno-lake
-witness:
 ---
 
 Sirno checks structure.
@@ -14,8 +13,7 @@ Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
 When `[code].members` is configured,
-review checks require each `witness:` entry to have at least one repository witness block.
-They also report repository witness blocks that name missing entries.
+review checks report repository witness blocks that name missing entries.
 
 Generated-link checking has two parts.
 Sentinel shape is always checked.
@@ -42,7 +40,7 @@ Unknown fields and malformed structural values are errors because tools cannot s
 
 Metadata target checks keep the graph navigable.
 If an entry categorizes itself by an id,
-clusters under an id,
+belongs under an id,
 or refines an id,
 that target should exist by the time the lake is reviewed.
 This lets query results, generated footers, and reader navigation agree about the same set of entries.

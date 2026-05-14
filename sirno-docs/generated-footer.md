@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - sirno-lake
-witness:
 ---
 
 Sirno may generate and maintain a footer at the bottom of entries.

@@ -1,9 +1,9 @@
 ---
 name: sirno-witness
 description: >-
-  Create, refine, or review Sirno repository witnesses. Use when Codex adds `witness:` metadata,
-  inserts or splits `sirno:witness:<entry-id>:begin` blocks, links code/tests/config to Sirno Lake
-  entries, interprets `sirno witness` output, or checks whether a Sirno entry has precise repository
+  Create, refine, or review Sirno repository witnesses. Use when Codex inserts or splits
+  `sirno:witness:<entry-id>:begin` blocks, links code/tests/config to Sirno Lake entries,
+  interprets `sirno witness` output, or checks whether a Sirno entry has precise repository
   evidence.
 ---
 
@@ -22,8 +22,8 @@ The entry states the claim in project language.
 The witness block identifies where that claim can be inspected in code, tests, config, assets,
 or generated artifacts.
 
-Use `witness:` only when repository evidence exists.
-Do not add the marker as a promise of future evidence.
+Use repository witness blocks only when repository evidence exists.
+Do not describe future evidence as present.
 Do not invent witness ids or query strings separate from the entry id.
 
 Prefer precise witness regions.
@@ -45,7 +45,7 @@ Sirno-side code should consume structured scan output and format it for review.
 ## Linking Workflow
 
 Read the target entry before editing code.
-Understand the claim, its structural fields, and any body guidance.
+Understand the claim, its structural fields, and any body guidance about what evidence should mean.
 
 Inspect current witnesses before adding new ones:
 
@@ -69,9 +69,8 @@ If no code members are configured, configure the intended repository artifact su
 For Rust, place witness comments around stable items or focused implementation spans.
 Avoid wrapping unrelated helpers just because they are nearby.
 
-Add `witness:` to the Sirno entry metadata only after the repository block exists.
+Update the entry prose when needed so it briefly says what the witness region demonstrates.
 Leave generated footer regions untouched.
-Run generated-link maintenance if entry metadata changes.
 
 ## Validation
 

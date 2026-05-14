@@ -34,8 +34,9 @@ implementation commitment, or narrative route.
 Use `category` for kind.
 Use `belongs` for review locality.
 Use `refines` for semantic narrowing.
-Use `witness:` when the repository contains evidence for the entry claim.
+Use repository witness blocks when the repository contains evidence for the entry claim.
 Leave a structural field out when it does not improve navigation, review, or accountability.
+Run `sirno witness ENTRY_ID --full` and read the entry prose for what the code evidence should mean.
 
 Lower when intent is too broad for the next local change.
 Lowering turns narrative design into compact lake entries.
@@ -69,6 +70,7 @@ The witness may be source code, tests, configuration, generated files, or assets
 Sirno queries witnesses by entry id through `mosaika`.
 The entry states the design claim.
 The witness block identifies the repository region to inspect.
+The entry prose should briefly say what that repository region is expected to demonstrate.
 
 Let Sirno maintain generated footers.
 The generated region is bounded by sentinels and Sirno-owned.
@@ -77,7 +79,7 @@ The footer exists for navigation and interoperability.
 
 Check at review boundaries.
 During editing, some structural problems can remain warnings.
-At review boundaries, dangling structural ids and missing witnesses should be errors.
+At review boundaries, dangling structural ids and witness blocks that name missing entries should be errors.
 Checks confirm structure.
 They do not replace judgment about meaning.
 

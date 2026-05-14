@@ -7,7 +7,6 @@ belongs:
   - sirno-lake
 refines:
   - storage-and-interfaces
-witness:
 ---
 
 Query selects parsed entries from the public lake or,

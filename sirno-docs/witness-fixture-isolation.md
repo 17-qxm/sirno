@@ -7,7 +7,6 @@ belongs:
   - witness
 refines:
   - witness-lookup
-witness:
 ---
 
 Witness fixture isolation keeps tests for witness lookup from satisfying themselves through source literals.

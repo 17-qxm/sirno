@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - generated-footer
-witness:
 ---
 
 Generated link policy decides which metadata-derived sections appear in a generated footer.

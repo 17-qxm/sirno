@@ -18,14 +18,16 @@ const DESCRIPTION_FIELD: &str = "description";
 const CATEGORY_FIELD: &str = "category";
 const BELONGS_FIELD: &str = "belongs";
 const REFINES_FIELD: &str = "refines";
-const WITNESS_FIELD: &str = "witness";
 // sirno:witness:structural-field:end
+// sirno:witness:witness:begin
+const WITNESS_FIELD: &str = "witness";
+// sirno:witness:witness:end
 
 // sirno:witness:entry:begin
 /// One Sirno entry.
 ///
 /// Invariant: `id` is a valid entry id.
-/// `metadata` contains typed structural fields.
+/// `metadata` contains typed entry metadata.
 /// `body` is normal Markdown prose outside the metadata block.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entry {

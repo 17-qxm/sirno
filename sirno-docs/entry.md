@@ -5,7 +5,6 @@ category:
   - concept
 belongs:
   - sirno-lake
-witness:
 ---
 
 An entry is a Markdown file in the Sirno Lake.
@@ -16,7 +15,8 @@ case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
 
 Each entry has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.
-The structural fields are `category`, `belongs`, `refines`, and `witness:`.
+The structural fields are `category`, `belongs`, and `refines`.
+Repository witness status is discovered by entry id with `sirno witness ENTRY_ID --full`.
 
 An entry should be readable in about five minutes or less.
 It can state a concept, category, review neighborhood, refinement, invariant,
@@ -40,6 +40,9 @@ but they also give enough context that a reader can follow a query result withou
 If a concept depends on several other concepts,
 the structural fields should carry the navigational structure,
 and the prose should explain the local meaning in ordinary language.
+
+When an entry has repository evidence,
+its prose may briefly say what the witness is expected to demonstrate.
 
 ---
 

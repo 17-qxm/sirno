@@ -5,7 +5,6 @@ category:
   - concept
 refines:
   - generated-footer
-witness:
 ---
 
 Generated footer ownership is the rule that Sirno mutates only the guard-bounded region.
