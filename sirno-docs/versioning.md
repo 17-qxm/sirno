@@ -14,8 +14,8 @@ When Sirno Frost is configured,
 Sirno versions the `sirno` form by freezing the public Markdown lake
 into a separate `eter` Frost root.
 
-The versioning entry is the module closure for Frost behavior.
-Its local entries define the private Sirno Frost and public lock file.
+The versioning entry is the front door for Frost behavior.
+Its local refinements define the private Sirno Frost and public lock file.
 
 A Sirno version is an `eter` `SnapshotRef`:
 a GC generation plus an `Eterator` coordinate.

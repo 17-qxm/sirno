@@ -7,7 +7,6 @@ clustee:
   - sirno
 refiner:
   - narrative
-  - sirno
 ---
 
 *Semantic Intermediate Representation of Nominal Objects*

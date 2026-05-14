@@ -19,7 +19,7 @@ The required metadata fields are `name` and `description`.
 The structural fields are `category`, `clustee`, `refiner`, and `witness:`.
 
 An entry should be readable in about five minutes or less.
-It can state a concept, category, clique closure, refinement, invariant,
+It can state a concept, category, review neighborhood, refinement, invariant,
 interface, implementation commitment, witnessable claim, or narrative route.
 
 The body of an entry should be useful prose, not just a label.

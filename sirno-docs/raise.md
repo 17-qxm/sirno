@@ -4,8 +4,6 @@ description: The movement from Sirno entries into a readable monograph.
 category:
   - concept
   - narrative
-clustee:
-  - transform
 refiner:
   - transform
 ---
@@ -42,7 +40,6 @@ The fix may belong in the lake before the monograph can be made elegant.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [transform](transform.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**

@@ -11,8 +11,8 @@ witness:
 
 `witness:` declares that an entry's claim is evidenced in the repository.
 
-The witness entry is the module closure for repository evidence.
-Its member entries cover lookup behavior and the code artifact surface where witnesses live.
+The witness entry is the front door for repository evidence.
+Its local entries cover lookup behavior and the code artifact surface where witnesses live.
 
 The marker is canonical and has no value.
 Sirno queries witnesses through `mosaika` by entry id.

@@ -1,6 +1,6 @@
 ---
 name: Refiner
-description: A structural field from a specific entry to the broader entries it refines.
+description: A structural field from a specific entry to the broader entries it makes concrete.
 category:
   - concept
 clustee:
@@ -8,11 +8,11 @@ clustee:
 witness:
 ---
 
-`refiner` points from a more specific entry to the broader entries it refines.
+`refiner` points from a more specific entry to the broader entries it makes concrete.
 
 Refinement turns high-level design into lower-level design,
 implementation detail, and testable behavior.
-The refined entry keeps the concept intact while making its consequences local and concrete.
+The current entry keeps the broader claim attached while making its consequences local.
 
 A refinement chain is a path of increasing specificity.
 It starts from a compressed concept and can end near repository text.
@@ -31,6 +31,10 @@ The more specific entry points back to the broader entry.
 This makes local work easier:
 from the local entry, a reader can climb back toward intent.
 From the broad entry, generated or queried metadata can reveal the entries that elaborate it.
+
+Use the nearest broader target that explains the current entry's design pressure.
+Do not use `refiner` to group entries that are merely reviewed together.
+Use `clustee` for that horizontal relation.
 
 An entry may refine more than one broader entry.
 That should happen when the local design genuinely joins several ideas,

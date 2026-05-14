@@ -4,7 +4,6 @@ description: A user-shaped route through Sirno concepts that can be saved as a n
 category:
   - narrative
 clustee:
-  - narrative
   - sirno
 refiner:
   - narrative
@@ -36,7 +35,6 @@ which entries appear in order, and which details remain deferred. The local
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [narrative](narrative.md)
 - [sirno](sirno.md)
 
 > **Sirno generated links end.**

@@ -32,8 +32,8 @@ It may name a concept, structural field, refinement, invariant,
 implementation commitment, or narrative route.
 
 Use `category` for kind.
-Use `clustee` for structural clearness.
-Use `refiner` when broad design needs local form.
+Use `clustee` for review locality.
+Use `refiner` for semantic narrowing.
 Use `witness:` when the repository contains evidence for the entry claim.
 Leave a structural field out when it does not improve navigation, review, or accountability.
 

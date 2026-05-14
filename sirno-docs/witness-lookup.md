@@ -3,8 +3,6 @@ name: Witness Lookup
 description: The mosaika-backed scan that resolves witness blocks by entry id.
 category:
   - concept
-clustee:
-  - witness
 refiner:
   - witness
 witness:
@@ -33,7 +31,6 @@ Repository artifacts carry the precise source spans that witness those claims.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [witness](witness.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**

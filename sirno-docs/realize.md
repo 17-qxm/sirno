@@ -4,8 +4,6 @@ description: The movement from Sirno entries into repository implementation.
 category:
   - concept
   - narrative
-clustee:
-  - transform
 refiner:
   - transform
 ---
@@ -44,7 +42,6 @@ and find the entry that gave the commitment a name.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [transform](transform.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**

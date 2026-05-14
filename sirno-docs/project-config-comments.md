@@ -3,8 +3,6 @@ name: Project Config Comments
 description: The exact comments Sirno writes beside generated project config fields.
 category:
   - concept
-clustee:
-  - project-config
 refiner:
   - project-config
 witness:
@@ -36,7 +34,6 @@ The Rust config types and TOML parser remain the schema boundary.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [project-config](project-config.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**

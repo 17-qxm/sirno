@@ -4,8 +4,6 @@ description: The movement from the monograph into the Sirno Lake.
 category:
   - concept
   - narrative
-clustee:
-  - transform
 refiner:
   - transform
 ---
@@ -43,7 +41,6 @@ That makes review and future reflection less dependent on remembering the origin
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [transform](transform.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**

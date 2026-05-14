@@ -3,8 +3,6 @@ name: Generated Link Policy
 description: Configuration that chooses which structural links appear in generated footers.
 category:
   - concept
-clustee:
-  - generated-footer
 refiner:
   - generated-footer
 witness:
@@ -31,7 +29,6 @@ Changing it alters generated navigation surfaces without changing structural met
 
 > **Sirno generated links begin. Do not edit this section.**
 
-Clustee (to):
-- [generated-footer](generated-footer.md)
+Clustee (to): (none)
 
 > **Sirno generated links end.**
