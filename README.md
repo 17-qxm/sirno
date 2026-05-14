@@ -17,11 +17,11 @@ and agents can inspect before changing code.
 
 Sirno works through three forms:
 
-- `sirno`: a configured store of named Markdown entries, often `docs/`
-- `mono`: an optional configured Markdown narrative, often raised from the store
+- `sirno`: a configured lake of named Markdown entries, often `docs/`
+- `mono`: an optional configured Markdown narrative, often raised from the lake
 - `code`: the repository implementation form
 
-The `sirno` store is the human-readable intermediate representation.
+The `sirno` lake is the human-readable intermediate representation.
 It is readable as documentation,
 structured enough for tools,
 and small enough for agents and humans to manipulate without losing the project shape.
@@ -43,9 +43,9 @@ storage conventions, and witness lookup.
 
 ## Entries
 
-An entry is a Markdown file in the Sirno store.
+An entry is a Markdown file in the Sirno lake.
 Its filename stem is its id.
-The id is globally unique inside the store and case-sensitive.
+The id is globally unique inside the lake and case-sensitive.
 
 Each entry has a YAML metadata block and a prose body.
 The required fields are `name` and `description`.
@@ -87,16 +87,16 @@ with `sirno:witness:<entry-id>:end` inside paths selected by `[code].members`.
 ## Narratives
 
 A narrative records a cognitive route through concepts.
-This repository keeps its first route in the store as
+This repository keeps its first route in the lake as
 [`introduction`](sirno-docs/introduction.md).
 It keeps its working guide as [`methodology`](sirno-docs/methodology.md).
 
-Narratives may be materialized guides in the Sirno store.
+Narratives may be materialized guides in the Sirno lake.
 They can state prerequisites,
 choose a base language,
 and link to the concepts they traverse.
 Interactive narratives can also be produced ephemerally by skills that read the
-Sirno store and adapt the route to a reader.
+Sirno lake and adapt the route to a reader.
 
 ## Generated Footers
 
@@ -119,6 +119,7 @@ The implementation is expected to expose CLI and MCP interfaces,
 with possible lightweight GUI or Obsidian integration later.
 Entry storage is built around `eter`.
 History is optional and initialized separately with `sirno history init`.
-Configured store paths can be renamed with `sirno mv` and `sirno history mv`.
-`Sirno.lock` records whether the public store is current or checked out to a history version.
+The configured lake can be renamed with `sirno mv`.
+The history root can be renamed with `sirno history mv`.
+`Sirno.lock` records whether the public lake is current or checked out to a history version.
 Repository witnesses are built around `mosaika`.

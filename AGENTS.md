@@ -24,12 +24,12 @@ Prefer direct definitions over defensive framing.
 - Avoid prose that reads like a rebuttal, disclaimer, or argument with an imaginary reviewer.
 - When documenting a constraint, state the positive rule first, then the consequence if needed.
 
-### Sirno Store
+### Sirno Lake
 
 The authoritative project design lives in `sirno-docs/`.
-Whenever anything changes about the project design, keep the Sirno store in sync.
-Use the `sirno-editor` skill when editing, moving, or reorganizing design knowledge in the store.
-Run generated-link maintenance after changing store metadata.
+Whenever anything changes about the project design, keep the Sirno lake in sync.
+Use the `sirno-editor` skill when editing, moving, or reorganizing design knowledge in the lake.
+Run generated-link maintenance after changing lake metadata.
 Use `sirno-docs/introduction.md` as the first narrative route.
 Use `sirno-docs/methodology.md` as the working guide.
 

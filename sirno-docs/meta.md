@@ -11,11 +11,11 @@ witness:
 
 It is also the clique closure for initialized vocabulary entries.
 `concept` and `narrative` belong to it because changes to those entries
-affect how the store vocabulary is read.
+affect how the lake vocabulary is read.
 
 Entries categorized by `meta` are ordinary entries.
 They are not privileged built-ins.
-They give the store a documented way to name categories and structural concepts.
+They give the lake a documented way to name categories and structural concepts.
 
 The `meta` category is useful because Sirno keeps its own ontology small.
 Instead of hard-coding a large list of kinds,
@@ -26,7 +26,7 @@ For example, `concept` and `narrative` can both be entries.
 They explain how other entries are meant to be read,
 but they still use the same metadata shape as every other entry.
 
-That uniformity keeps the store easy to reason about.
+That uniformity keeps the lake easy to reason about.
 The same query, check, footer, and metadata rules apply to entries about vocabulary
 and to entries about implementation commitments.
 

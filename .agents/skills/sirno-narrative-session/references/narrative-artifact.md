@@ -11,10 +11,10 @@ Recommended fields:
 ```json
 {
   "reader": "new contributor",
-  "task": "understand how Sirno store entries guide implementation",
+  "task": "understand how Sirno lake entries guide implementation",
   "pressure": "the reader needs a route before editing code",
   "pull": "why a stable entry id matters before the edit begins",
-  "known_terms": ["entry", "store"],
+  "known_terms": ["entry", "lake"],
   "missing_terms": ["clustee", "refiner", "witness"],
   "route": [
     {

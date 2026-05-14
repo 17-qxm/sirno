@@ -14,12 +14,12 @@ A narrative records a cognitive route, story, or motivation through concepts.
 The monograph is the primary narrative form.
 It introduces terms once and trusts them afterward.
 
-Materialized narratives may also live in the store as guides.
+Materialized narratives may also live in the lake as guides.
 They can state prerequisites, choose a base language,
 and point a reader through entries in an intentional order.
-This store's `introduction` entry is such a narrative.
+This lake's `introduction` entry is such a narrative.
 The `methodology` entry is another narrative:
-it gives the working route for acting inside the store.
+it gives the working route for acting inside the lake.
 
 Interactive narratives may be generated ephemerally by skills.
 Canonical knowledge remains in entries and metadata.
@@ -36,10 +36,10 @@ This matters for onboarding and review.
 An experienced maintainer may query directly for an entry.
 A new contributor may need a route that builds the model gradually.
 Sirno lets both routes exist:
-the store keeps named objects stable,
+the lake keeps named objects stable,
 and narratives arrange those objects for a particular reader or task.
 
-Materialized narratives should avoid duplicating the entire store.
+Materialized narratives should avoid duplicating the entire lake.
 They should explain why the route matters,
 state useful prerequisites,
 and point to the entries that carry durable detail.

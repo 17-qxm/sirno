@@ -2,7 +2,7 @@
 name: sirno-narrative-session
 description: >-
   Conduct adaptive Sirno narrative sessions with users and materialize the resulting route as a
-  Sirno store entry. Use when Codex needs to teach, onboard, review, or explore project knowledge
+  Sirno lake entry. Use when Codex needs to teach, onboard, review, or explore project knowledge
   through questions, feedback loops, reader-state tracking, narrative route design, or serialized
   `category: narrative` artifacts in `sirno-docs/`.
 ---
@@ -17,7 +17,7 @@ but the final artifact should be a compact Sirno narrative entry when the user a
 
 Treat entries as the durable source of knowledge.
 The narrative chooses sequence, prerequisites, pressure, and deferral.
-It should not duplicate the whole store.
+It should not duplicate the whole lake.
 
 ## Reader Pull
 
@@ -42,7 +42,7 @@ Use the moves that make the next concept arrive at the right time.
 
 Before designing the route, read:
 
-- `Sirno.toml` for the configured store path
+- `Sirno.toml` for the configured lake path
 - `sirno-docs/narrative.md`
 - `sirno-docs/introduction.md`
 - `sirno-docs/methodology.md`
@@ -134,11 +134,11 @@ Use the serializer from the skill directory when helpful:
 
 ```sh
 python3 .agents/skills/sirno-narrative-session/scripts/serialize_narrative_entry.py \
-  --store sirno-docs \
+  --lake sirno-docs \
   --input session.json
 ```
 
-After changing store metadata, run generated-link maintenance.
+After changing lake metadata, run generated-link maintenance.
 Then run structural checks.
 Prefer the repository's current Sirno CLI commands after inspecting what exists,
 such as:

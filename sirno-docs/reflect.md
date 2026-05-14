@@ -21,21 +21,21 @@ Reflection should happen while the code change is fresh.
 The reflected entry records the design fact future work needs,
 not a full narrative of the edit.
 
-Good reflection asks what the repository now knows that the store should know too.
+Good reflection asks what the repository now knows that the lake should know too.
 A function rename may not matter.
 A new storage boundary, parser invariant, CLI contract, or test rationale usually does.
 The reflected prose should name the stable design fact,
 then connect it to existing entries through metadata when structure is useful.
 
-Reflection should avoid turning the store into a changelog.
+Reflection should avoid turning the lake into a changelog.
 The commit history can explain the sequence of edits.
-The entry store should explain the design that survived the edit.
+The entry lake should explain the design that survived the edit.
 If a change was exploratory and later discarded,
 it may not deserve reflection.
 If a change changes how future work should reason,
 it should be reflected while the reason is still clear.
 
-Reflection keeps the monograph and store from becoming ceremonial.
+Reflection keeps the monograph and lake from becoming ceremonial.
 It gives implementation a way to improve the design model,
 not merely comply with it.
 

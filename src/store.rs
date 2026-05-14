@@ -1,4 +1,4 @@
-//! Sirno store facade.
+//! Sirno lake facade.
 //!
 //! The facade exposes typed Sirno entries.
 //! The current backend uses `eter` filesystem snapshots as durable storage.
@@ -68,7 +68,7 @@ impl Field for WitnessField {
     type Content = WitnessMarker;
 }
 
-/// Store facade for Sirno entries.
+/// History store facade for Sirno entries.
 ///
 /// Invariant: all entries written through this type are represented through
 /// typed metadata fields and a Markdown body in the configured `eter` backend.
@@ -84,15 +84,15 @@ impl SirnoStore {
     /// Open or initialize a history store rooted at `root`.
     // sirno:witness:history-store:begin
     pub fn open(root: impl Into<PathBuf>) -> Result<Self, StoreError> {
-        trace!("sirno store open begin");
+        trace!("sirno history store open begin");
         let root = root.into();
         let backend = SirnoBackend::open(&root, sirno_registry())?;
-        trace!("sirno store open end");
+        trace!("sirno history store open end");
         Ok(Self { root, backend })
     }
     // sirno:witness:history-store:end
 
-    /// The root path used by this store.
+    /// The root path used by this lake.
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -395,7 +395,7 @@ fn required_facet_text(value: &Option<String>, field: &'static str) -> String {
         .unwrap_or_else(|| panic!("stored Sirno entry facet is missing required `{field}` field"))
 }
 
-/// Error raised by Sirno store operations.
+/// Error raised by Sirno lake operations.
 #[derive(Debug, Error)]
 pub enum StoreError {
     /// The backend reported a filesystem-store error.

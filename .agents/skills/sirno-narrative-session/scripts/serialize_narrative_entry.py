@@ -104,9 +104,9 @@ def render_entry(data: dict[str, Any]) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Serialize a Sirno narrative session summary into a store entry."
+        description="Serialize a Sirno narrative session summary into a lake entry."
     )
-    parser.add_argument("--store", default="sirno-docs", help="Sirno store directory")
+    parser.add_argument("--lake", default="sirno-docs", help="Sirno lake directory")
     parser.add_argument("--input", required=True, help="JSON session summary, or - for stdin")
     parser.add_argument("--force", action="store_true", help="overwrite an existing entry")
     parser.add_argument("--dry-run", action="store_true", help="print the entry without writing")
@@ -119,7 +119,7 @@ def main() -> None:
 
     output = render_entry(data)
     entry_id = required_string(data, "id")
-    output_path = Path(args.store) / f"{entry_id}.md"
+    output_path = Path(args.lake) / f"{entry_id}.md"
 
     if args.dry_run:
         print(output, end="")

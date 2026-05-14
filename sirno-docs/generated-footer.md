@@ -4,7 +4,7 @@ description: A Sirno-owned footer that projects selected metadata fields as link
 category:
   - concept
 clustee:
-  - sirno-store
+  - sirno-lake
 witness:
 ---
 
@@ -29,7 +29,7 @@ It is not the source of structural truth.
 
 The generated footer is an interoperability layer.
 Some editors and documentation tools navigate Markdown links more naturally than metadata fields.
-Sirno can project selected fields into links so those tools can participate in the store.
+Sirno can project selected fields into links so those tools can participate in the lake.
 
 The generated body is grouped by configured structural field.
 Each enabled group appears in the region.
@@ -64,6 +64,6 @@ not to become another place for design prose.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [sirno-store](sirno-store.md)
+- [sirno-lake](sirno-lake.md)
 
 > **Sirno generated links end.**

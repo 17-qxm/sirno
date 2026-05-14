@@ -4,7 +4,7 @@ description: The Sirno.toml file that marks and configures a Sirno-managed repos
 category:
   - concept
 clustee:
-  - sirno-store
+  - sirno-lake
 refiner:
   - storage-and-interfaces
 witness:
@@ -12,31 +12,31 @@ witness:
 
 `Sirno.toml` marks a repository as Sirno-managed.
 
-The file configures the public entry store
-and the operational policies that Sirno applies to the store.
+The file configures the public entry lake
+and the operational policies that Sirno applies to the lake.
 It may also configure a monograph,
 repository witness members,
 and a private history root.
 Generated config files include concise comments that describe how each written field is used.
 
 `[mono].path` optionally names the monograph.
-`[store].path` names the Markdown entry store.
+`[lake].path` names the Markdown entry lake.
 `[history].path` optionally names the private `eter` history root.
 `[code].members` optionally lists repository paths or globs scanned for witness blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
 A project can use Sirno without a configured monograph, code members, or history.
-`sirno init` creates the config and public entry store.
-`sirno mv PATH` changes `[store].path` and renames the public store directory.
-`sirno history init` adds the history config and commits the current public store.
+`sirno init` creates the config and public entry lake.
+`sirno mv PATH` changes `[lake].path` and renames the public lake directory.
+`sirno history init` adds the history config and commits the current public lake.
 `sirno history mv PATH` changes `[history].path` and renames the private history root.
 
-`Sirno.lock` records the public store's history state when history is configured.
+`Sirno.lock` records the public lake's history state when history is configured.
 It lives next to `Sirno.toml`.
-The lock says whether the store is current
+The lock says whether the lake is current
 or checked out to a historical version.
 
-`[store].ignore` lists paths relative to the store root.
+`[lake].ignore` lists paths relative to the lake root.
 Sirno skips those paths and their descendants while reading, checking,
 querying, and changing generated links.
 Ignored paths are for adjacent tool state, not for entries.
@@ -65,6 +65,6 @@ A boolean applies to both link sides.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [sirno-store](sirno-store.md)
+- [sirno-lake](sirno-lake.md)
 
 > **Sirno generated links end.**

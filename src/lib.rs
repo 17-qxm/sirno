@@ -1,6 +1,6 @@
 //! Core library for Sirno.
 //!
-//! Sirno stores design as named Markdown entries with exact metadata.
+//! Sirno keeps design as named Markdown entries with exact metadata.
 //! The public model follows the repository design:
 //! entries are nominal objects, structural fields are explicit,
 //! and repository witnesses are represented by a marker on the entry.
@@ -19,7 +19,7 @@ pub mod witness;
 pub use crate::check::{CheckDiagnostic, CheckMode, CheckReport, CheckSeverity};
 pub use crate::config::{
     CONFIG_FILE_NAME, CheckSettings, CodeMember, CodeSettings, ConfigError, HistorySettings,
-    MonoSettings, SirnoConfig, StoreSettings,
+    LakeSettings, MonoSettings, SirnoConfig,
 };
 pub use crate::entry::{
     Entry, EntryMetadata, EntryParseError, WitnessMarker, default_seed_entries,

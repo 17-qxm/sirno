@@ -1,6 +1,6 @@
 ---
 name: Sirno Lock
-description: The TOML file that records the history state of the public store.
+description: The TOML file that records the history state of the public lake.
 category:
   - concept
 clustee:
@@ -10,17 +10,17 @@ refiner:
 witness:
 ---
 
-`Sirno.lock` records the public store's state relative to the configured history root.
+`Sirno.lock` records the public lake's state relative to the configured history root.
 It is TOML and lives next to `Sirno.toml`.
 It is written only when history is configured.
 
 The lock contains one `[history]` table.
-`status = "current"` means the public store represents the current editable history version.
-`status = "checked-out"` means the public store materializes a selected historical version.
+`status = "current"` means the public lake represents the current editable history version.
+`status = "checked-out"` means the public lake materializes a selected historical version.
 The `version` field stores the raw `Eterator` value for that state.
 
 A normal checkout is immutable.
-Sirno removes write permission from the public store root and managed entry files.
+Sirno removes write permission from the public lake root and managed entry files.
 It also writes a visible Markdown blockquote at the start of each checked-out entry body
 that says the file is read-only and should not be edited by hand.
 `sirno history checkout VERSION --unsafe-mutable` leaves the checkout writable

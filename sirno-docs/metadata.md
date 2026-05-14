@@ -4,7 +4,7 @@ description: The exact YAML schema that carries Sirno entry structure.
 category:
   - concept
 clustee:
-  - sirno-store
+  - sirno-lake
 witness:
 ---
 
@@ -58,6 +58,6 @@ because every accepted field becomes part of the public structure that readers a
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [sirno-store](sirno-store.md)
+- [sirno-lake](sirno-lake.md)
 
 > **Sirno generated links end.**

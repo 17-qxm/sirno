@@ -1,6 +1,6 @@
 //! Public Markdown entry directory support.
 //!
-//! This module reads the human-facing Sirno store shape:
+//! This module reads the human-facing Sirno lake shape:
 //! a flat directory of `*.md` files whose filename stems are entry ids.
 //! Path-shaped ids remain outside this first flat-file implementation.
 
@@ -32,7 +32,7 @@ const READONLY_CHECKOUT_WARNING: &str = "\
 
 /// Check report for a public Markdown entry directory.
 #[derive(Debug)]
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub struct EntryDirectoryReport {
     root: PathBuf,
     entries: Vec<Entry>,
@@ -40,22 +40,22 @@ pub struct EntryDirectoryReport {
     file_diagnostics: Vec<EntryFileDiagnostic>,
     structural_report: CheckReport,
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 /// Settings for checking a public Markdown entry directory.
 #[derive(Clone, Debug, PartialEq, Eq)]
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub struct EntryDirectoryCheckSettings {
     /// Check generated-link footer freshness.
     pub link: bool,
     /// Settings used to render expected generated links.
     pub links: GeneratedLinkSettings,
-    /// Store-root-relative paths ignored by Sirno.
+    /// Lake-root-relative paths ignored by Sirno.
     pub ignore: Vec<PathBuf>,
     /// Repository witness scan settings.
     pub witness: Option<WitnessCheckSettings>,
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 impl Default for EntryDirectoryCheckSettings {
     fn default() -> Self {
@@ -70,14 +70,14 @@ impl Default for EntryDirectoryCheckSettings {
 
 impl EntryDirectoryCheckSettings {
     /// Return true when a root-relative path is ignored.
-    // sirno:witness:sirno-store:begin
+    // sirno:witness:sirno-lake:begin
     pub fn ignores(&self, relative_path: &Path) -> bool {
         self.ignore.iter().any(|ignored| {
             !ignored.as_os_str().is_empty()
                 && (relative_path == ignored || relative_path.starts_with(ignored))
         })
     }
-    // sirno:witness:sirno-store:end
+    // sirno:witness:sirno-lake:end
 }
 
 impl EntryDirectoryReport {
@@ -118,7 +118,7 @@ impl EntryDirectoryReport {
     }
 }
 
-/// Diagnostic produced while loading the public Markdown entry store.
+/// Diagnostic produced while loading the public Markdown entry lake.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryFileDiagnostic {
     /// Diagnostic severity.
@@ -161,7 +161,7 @@ pub enum EntryDirectoryWritePolicy {
     EmptyDirectory,
     /// Replace managed Markdown entries while preserving ignored paths.
     ReplaceDirectory {
-        /// Store-root-relative paths preserved by checkout.
+        /// Lake-root-relative paths preserved by checkout.
         ignore: Vec<PathBuf>,
     },
 }
@@ -183,7 +183,7 @@ pub fn check_entry_directory(
 }
 
 /// Check one public Markdown entry directory with explicit settings.
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub fn check_entry_directory_with_settings(
     root: impl Into<PathBuf>, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
 ) -> Result<EntryDirectoryReport, EntryDirectoryError> {
@@ -205,12 +205,12 @@ pub fn check_entry_directory_with_settings(
         structural_report,
     })
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 /// Initialize a public Markdown entry directory with ordinary seed entries.
 ///
 /// Existing entry files are never overwritten.
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub fn init_entry_directory(root: impl Into<PathBuf>) -> Result<Vec<PathBuf>, EntryDirectoryError> {
     let root = root.into();
     trace!("init_entry_directory begin: root={}", root.display());
@@ -223,13 +223,13 @@ pub fn init_entry_directory(root: impl Into<PathBuf>) -> Result<Vec<PathBuf>, En
     trace!("init_entry_directory end: entries={}", paths.len());
     Ok(paths)
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 /// Create one public Markdown entry file.
 ///
 /// The entry directory is created if needed.
 /// Existing entry files are never overwritten.
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub fn create_entry_file(
     root: impl Into<PathBuf>, entry: &Entry,
 ) -> Result<PathBuf, EntryDirectoryError> {
@@ -240,12 +240,12 @@ pub fn create_entry_file(
     trace!("create_entry_file end: path={}", path.display());
     Ok(path)
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 /// Write a complete public Markdown entry directory.
 ///
 /// The write policy controls how existing target contents are handled.
-// sirno:witness:sirno-store:begin
+// sirno:witness:sirno-lake:begin
 pub fn write_entry_directory(
     root: impl Into<PathBuf>, entries: &[Entry], policy: EntryDirectoryWritePolicy,
 ) -> Result<Vec<PathBuf>, EntryDirectoryError> {
@@ -259,7 +259,7 @@ pub fn write_entry_directory(
     trace!("write_entry_directory end: entries={}", paths.len());
     Ok(paths)
 }
-// sirno:witness:sirno-store:end
+// sirno:witness:sirno-lake:end
 
 /// Mark the public Markdown entry directory as read-only.
 ///
@@ -1011,7 +1011,7 @@ Body.
     }
 
     #[test]
-    fn ignores_configured_store_paths() {
+    fn ignores_configured_lake_paths() {
         let temp = tempfile::tempdir().unwrap();
         fs::create_dir(temp.path().join(".obsidian")).unwrap();
         fs::write(temp.path().join("note.txt"), "text").unwrap();
@@ -1335,7 +1335,7 @@ Body.
     }
 
     #[test]
-    fn gen_link_expands_cliques_with_store_context() {
+    fn gen_link_expands_cliques_with_lake_context() {
         let temp = tempfile::tempdir().unwrap();
         write_entry(
             temp.path(),

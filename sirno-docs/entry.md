@@ -1,17 +1,17 @@
 ---
 name: Entry
-description: A named Markdown document in the Sirno store.
+description: A named Markdown document in the Sirno lake.
 category:
   - concept
 clustee:
-  - sirno-store
+  - sirno-lake
 witness:
 ---
 
-An entry is a Markdown file in the Sirno store.
+An entry is a Markdown file in the Sirno lake.
 
 The filename stem is the entry id.
-The id is globally unique inside the store,
+The id is globally unique inside the lake,
 case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
 
 Each entry has a YAML metadata block and a prose body.
@@ -46,6 +46,6 @@ and the prose should explain the local meaning in ordinary language.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [sirno-store](sirno-store.md)
+- [sirno-lake](sirno-lake.md)
 
 > **Sirno generated links end.**

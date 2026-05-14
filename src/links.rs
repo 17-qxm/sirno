@@ -144,7 +144,7 @@ impl Default for GeneratedLinkSettings {
     }
 }
 
-/// Store-wide context for generated-link rendering.
+/// Lake-wide context for generated-link rendering.
 ///
 /// Invariant: each clustee closure maps to the closure id and every parsed entry that names it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -203,7 +203,7 @@ impl GeneratedLinkIndex {
     }
     // sirno:witness:generated-footer:end
 
-    /// Render the generated-link footer for one entry using this store-wide index.
+    /// Render the generated-link footer for one entry using this lake-wide index.
     pub fn render_entry(&self, entry: &Entry, settings: &GeneratedLinkSettings) -> String {
         // sirno:witness:generated-footer:begin
         let mut out = String::new();
@@ -323,7 +323,7 @@ const GENERATED_LINK_DIVIDER: &str = "---";
 
 /// Render the generated-link footer for one entry using only that entry as context.
 ///
-/// Use `GeneratedLinkIndex::from_entries` when clique expansion needs the full store.
+/// Use `GeneratedLinkIndex::from_entries` when clique expansion needs the full lake.
 // sirno:witness:generated-footer:begin
 pub fn render_generated_links(entry: &Entry, settings: &GeneratedLinkSettings) -> String {
     GeneratedLinkIndex::from_entries(std::slice::from_ref(entry)).render_entry(entry, settings)

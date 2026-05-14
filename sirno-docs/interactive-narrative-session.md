@@ -18,7 +18,7 @@ earlier concepts, deferred detail, or a sharper endpoint.
 
 The session treats entries as canonical knowledge. It uses a narrative to choose order,
 prerequisites, and motivation, then points back to entries for durable detail instead of copying
-the store.
+the lake.
 
 The route should make knowledge worth moving toward before it makes knowledge complete. That pull
 may be practical, aesthetic, playful, urgent, elegant, sexy, desire-shaped, or clarifying. Desire

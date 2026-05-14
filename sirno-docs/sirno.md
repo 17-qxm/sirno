@@ -8,11 +8,11 @@ category:
 
 Sirno is the Semantic Intermediate Representation of Nominal Objects.
 
-This store focuses on Sirno's general design as a tool and as a philosophical system for design work.
+This lake focuses on Sirno's general design as a tool and as a philosophical system for design work.
 
 It compiles between design forms for design-aware programming work.
 It moves among one long-form project narrative,
-a store of compact named Markdown entries,
+a lake of compact named Markdown entries,
 and the repository codebase.
 
 The central problem is project memory.
@@ -43,7 +43,7 @@ and an agent can inspect a bounded set of related entries before editing code.
 
 The result should feel like a project with good names for its important ideas.
 Narratives give the reader routes through the design.
-The store gives the project durable local objects.
+The lake gives the project durable local objects.
 The codebase gives those objects consequences.
 Sirno keeps the edges between those forms explicit.
 

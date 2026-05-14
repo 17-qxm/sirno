@@ -1,7 +1,7 @@
 //! Project-local lock state for Sirno history.
 //!
 //! `Sirno.toml` configures paths and policy.
-//! `Sirno.lock` records the history snapshot represented by the public store.
+//! `Sirno.lock` records the history snapshot represented by the public lake.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -23,18 +23,18 @@ const LOCK_FILE_HEADER: &str = "\
 
 /// Project-local history state.
 ///
-/// Invariant: `history.version` names the `eter` snapshot represented by the public store.
+/// Invariant: `history.version` names the `eter` snapshot represented by the public lake.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // sirno:witness:sirno-lock:begin
 pub struct SirnoLock {
-    /// Current public-store history state.
+    /// Current public-lake history state.
     pub history: HistoryLock,
 }
 // sirno:witness:sirno-lock:end
 
 impl SirnoLock {
-    /// Construct a lock for the current editable public store.
+    /// Construct a lock for the current editable public lake.
     // sirno:witness:sirno-lock:begin
     pub fn current(version: Eterator) -> Self {
         Self { history: HistoryLock::current(version) }
@@ -103,9 +103,9 @@ impl SirnoLock {
 #[serde(deny_unknown_fields)]
 // sirno:witness:versioning:begin
 pub struct HistoryLock {
-    /// Public store status relative to the configured history root.
+    /// Public lake status relative to the configured history root.
     pub status: HistoryLockStatus,
-    /// Raw `Eterator` version represented by the public store.
+    /// Raw `Eterator` version represented by the public lake.
     pub version: u64,
     /// Whether a checked-out historical snapshot was intentionally left writable.
     #[serde(default, skip_serializing_if = "is_false")]
@@ -114,7 +114,7 @@ pub struct HistoryLock {
 // sirno:witness:versioning:end
 
 impl HistoryLock {
-    /// Construct state for the current editable public store.
+    /// Construct state for the current editable public lake.
     // sirno:witness:versioning:begin
     pub fn current(version: Eterator) -> Self {
         Self { status: HistoryLockStatus::Current, version: version.version(), mutable: false }
@@ -135,13 +135,13 @@ impl HistoryLock {
     }
     // sirno:witness:versioning:end
 
-    /// Returns true when the public store is a historical checkout.
+    /// Returns true when the public lake is a historical checkout.
     // sirno:witness:versioning:begin
     pub fn is_checked_out(&self) -> bool {
         self.status == HistoryLockStatus::CheckedOut
     }
 
-    /// Returns true when the public store is a writable historical checkout.
+    /// Returns true when the public lake is a writable historical checkout.
     pub fn is_unsafe_mutable_checkout(&self) -> bool {
         self.is_checked_out() && self.mutable
     }
@@ -157,14 +157,14 @@ impl HistoryLock {
     // sirno:witness:versioning:end
 }
 
-/// Public-store status relative to history.
+/// Public-lake status relative to history.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 // sirno:witness:versioning:begin
 pub enum HistoryLockStatus {
-    /// The public store is the current editable version.
+    /// The public lake is the current editable version.
     Current,
-    /// The public store is a materialized historical snapshot.
+    /// The public lake is a materialized historical snapshot.
     CheckedOut,
 }
 // sirno:witness:versioning:end
@@ -202,7 +202,7 @@ pub enum LockError {
     /// The lock file could not be rendered.
     #[error("failed to render lock file")]
     Render(#[source] toml::ser::Error),
-    /// Current public-store state must be editable.
+    /// Current public-lake state must be editable.
     #[error("current history state cannot be marked mutable")]
     CurrentMutable,
     /// The lock file could not be created.

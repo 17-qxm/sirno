@@ -14,7 +14,7 @@ refiner:
 
 Sirno compiles between design forms for design-aware programming work,
 moving among an optional long-form project narrative,
-a store of compact named Markdown entries,
+a lake of compact named Markdown entries,
 and the repository codebase.
 
 Design needs a form that humans can read,
@@ -25,8 +25,8 @@ The resulting names are readable by humans,
 stable for tools,
 and small enough to circulate.
 
-The central form is the Sirno store.
-The store is a directory of Markdown entries.
+The central form is the Sirno lake.
+The lake is a directory of Markdown entries.
 Each entry has a stable id, a short metadata block, and a body of prose.
 The id gives humans, tools, and agents a nominal handle for the thing being discussed.
 The prose keeps the handle meaningful.
@@ -39,7 +39,7 @@ Sirno keeps its structural vocabulary small.
 Those fields are explicit metadata,
 so tools can query them without pretending to understand the whole design semantically.
 
-The store is not only a glossary.
+The lake is not only a glossary.
 An entry should carry enough meaning to help future work.
 Some entries define concepts.
 Some entries give narrative routes through those concepts.
@@ -48,10 +48,10 @@ storage boundaries, generated regions, or witness lookup behavior.
 The point is to preserve the design object that a later edit or review should be able to cite.
 
 Sirno also names movements between forms.
-`lower` moves narrative design into store entries.
+`lower` moves narrative design into lake entries.
 `realize` uses entries to guide code.
-`reflect` records durable design facts learned from code back into the store.
-`raise` composes store entries into a readable monograph when a project wants one.
+`reflect` records durable design facts learned from code back into the lake.
+`raise` composes lake entries into a readable monograph when a project wants one.
 These transforms are vocabulary for work.
 They do not make Sirno a judge of design quality.
 They make the relevant design objects easier to name and inspect.
@@ -71,8 +71,8 @@ Metadata remains the source of structural truth.
 The footer only helps editors and documentation tools follow the graph.
 
 This repository now treats `sirno-docs/` as the design source.
-The introduction you are reading is the first route through that store.
-The `methodology` entry is the compact working guide for acting inside the store.
+The introduction you are reading is the first route through that lake.
+The `methodology` entry is the compact working guide for acting inside the lake.
 The detailed design lives in the entries themselves:
 forms, structural fields, transforms, storage, checks, witnesses, and generated footers.
 Read this entry first,

@@ -4,13 +4,13 @@ description: Selection of Sirno entries through vague text and exact structural 
 category:
   - concept
 clustee:
-  - sirno-store
+  - sirno-lake
 refiner:
   - storage-and-interfaces
 witness:
 ---
 
-Query selects parsed entries from the public store or,
+Query selects parsed entries from the public lake or,
 when history is configured,
 from one history version.
 
@@ -18,7 +18,7 @@ It reads entry ids, metadata, and bodies.
 Generated footers are projections for navigation,
 not structural input to query.
 When no version is supplied,
-query reads the public store.
+query reads the public lake.
 
 The default query mode is vague text query.
 It matches an entry's id, name, description, and body.
@@ -41,6 +41,6 @@ The same selected entries may be printed as summaries, ids, or paths.
 > **Sirno generated links begin. Do not edit this section.**
 
 Clustee (to):
-- [sirno-store](sirno-store.md)
+- [sirno-lake](sirno-lake.md)
 
 > **Sirno generated links end.**

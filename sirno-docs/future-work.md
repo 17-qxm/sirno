@@ -38,7 +38,7 @@ Until then, leaving the field reserved is safer than accepting vague lock behavi
 Version retention is another example.
 `eter` provides history, snapshots, retirement, and garbage collection.
 Sirno still needs policy for which snapshots stay live.
-That policy should preserve reviewable store states without making entry metadata harder to read.
+That policy should preserve reviewable lake states without making entry metadata harder to read.
 
 Transform names may also evolve.
 The current names are compact and memorable,

@@ -19,9 +19,9 @@ Parsing still ignores comments through ordinary TOML rules.
 The generated comments are:
 
 - `Markdown monograph path, resolved relative to this config file.`
-- `Markdown entry store path, resolved relative to this config file.`
-- `Store-root paths Sirno skips while reading, checking, querying, and generating links.`
-- `Private eter history root, kept outside the public store.`
+- `Markdown entry lake path, resolved relative to this config file.`
+- `Lake-root paths Sirno skips while reading, checking, querying, and generating links.`
+- `Private eter history root, kept outside the public lake.`
 - `Repository files, directories, or globs scanned for witness blocks.`
 - `Require generated footers to match current metadata during checks.`
 - `Include category links; use a boolean or { to = bool, from = bool }.`

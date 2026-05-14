@@ -44,14 +44,14 @@ enum Command {
         /// Monograph path written to Sirno.toml.
         #[arg(long)]
         mono: Option<PathBuf>,
-        /// Public Markdown entry store path written to Sirno.toml.
+        /// Public Markdown entry lake path written to Sirno.toml.
         #[arg(long)]
-        store: Option<PathBuf>,
+        lake: Option<PathBuf>,
     },
-    /// Move the configured public Markdown entry store.
+    /// Move the configured public Markdown entry lake.
     Mv {
-        /// New public Markdown entry store path written to Sirno.toml.
-        store: PathBuf,
+        /// New public Markdown entry lake path written to Sirno.toml.
+        lake: PathBuf,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Create one Markdown entry.
@@ -113,14 +113,14 @@ enum Command {
         entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
-    /// Check current store structure.
+    /// Check current entry structure.
     // sirno:witness:storage-and-interfaces:begin
     Check {
-        /// Eter-backed entry store root.
-        #[arg(long, conflicts_with = "entries")]
-        store: Option<PathBuf>,
+        /// Eter-backed history store root.
+        #[arg(long = "history-store", conflicts_with = "entries")]
+        history_store: Option<PathBuf>,
         /// Public Markdown entry directory.
-        #[arg(long, conflicts_with = "store")]
+        #[arg(long, conflicts_with = "history_store")]
         entries: Option<PathBuf>,
         /// Check boundary.
         #[arg(long, value_enum)]
@@ -224,7 +224,7 @@ enum UtilCommand {
 /// Supported history commands.
 #[derive(Debug, Subcommand)]
 enum HistoryCommand {
-    /// Configure history and commit the current public Markdown store.
+    /// Configure history and commit the current public Markdown lake.
     Init {
         /// Private eter history store path written to Sirno.toml.
         #[arg(long)]
@@ -235,9 +235,9 @@ enum HistoryCommand {
         /// New private eter history store path written to Sirno.toml.
         history: PathBuf,
     },
-    /// Commit the current public Markdown store into history.
+    /// Commit the current public Markdown lake into history.
     Commit,
-    /// Check out one history version into the public Markdown store.
+    /// Check out one history version into the public Markdown lake.
     Checkout {
         /// Raw Eterator version to materialize.
         version: u64,
@@ -292,30 +292,30 @@ fn main() -> ExitCode {
 fn run(cli: Cli) -> Result<ExitCode, CliError> {
     let config_path = cli.config.unwrap_or_else(default_config_path);
     match cli.command {
-        | Command::Init { mono, store } => {
-            let mut config = SirnoConfig::new(store.unwrap_or_else(default_store_path));
+        | Command::Init { mono, lake } => {
+            let mut config = SirnoConfig::new(lake.unwrap_or_else(default_lake_path));
             if let Some(mono) = mono {
                 config = config.with_mono(mono);
             }
-            let store_path = config.resolve_store(&config_path);
+            let lake_path = config.resolve_lake(&config_path);
             config.write_new(&config_path)?;
-            let paths = init_entry_directory(&store_path)?;
+            let paths = init_entry_directory(&lake_path)?;
             println!(
                 "initialized {} with {} entries in {}",
                 config_path.display(),
                 paths.len(),
-                store_path.display()
+                lake_path.display()
             );
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Mv { store } => {
+        | Command::Mv { lake } => {
             let config = SirnoConfig::from_file(&config_path)?;
-            let old_store = config.resolve_store(&config_path);
-            let config = config.with_store(store);
+            let old_lake = config.resolve_lake(&config_path);
+            let config = config.with_lake(lake);
             config.validate_for_file(&config_path)?;
-            let new_store = config.resolve_store(&config_path);
-            move_configured_path_and_write_config(&old_store, &new_store, &config, &config_path)?;
-            println!("moved store {} to {}", old_store.display(), new_store.display());
+            let new_lake = config.resolve_lake(&config_path);
+            move_configured_path_and_write_config(&old_lake, &new_lake, &config, &config_path)?;
+            println!("moved lake {} to {}", old_lake.display(), new_lake.display());
             Ok(ExitCode::SUCCESS)
         }
         | Command::New {
@@ -333,7 +333,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 | Some(entries) => entries,
                 | None => {
                     let config = SirnoConfig::from_file(&config_path)?;
-                    config.resolve_store(&config_path)
+                    config.resolve_lake(&config_path)
                 }
             };
             let id = EntryId::new(&id)?;
@@ -383,7 +383,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Check { store, entries, mode } => {
+        | Command::Check { history_store, entries, mode } => {
             let mode = mode.unwrap_or(CliCheckMode::Review);
             if let Some(entries) = entries {
                 let settings = explicit_entries_check_settings(&config_path)?;
@@ -396,10 +396,10 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 };
             }
 
-            let Some(store) = store else {
+            let Some(history_store) = history_store else {
                 let config = SirnoConfig::from_file(&config_path)?;
                 let report = check_entry_directory_with_settings(
-                    config.resolve_store(&config_path),
+                    config.resolve_lake(&config_path),
                     mode.into(),
                     &entry_directory_check_settings(&config_path, &config),
                 )?;
@@ -411,7 +411,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 };
             };
 
-            let store = SirnoStore::open(store)?;
+            let store = SirnoStore::open(history_store)?;
             let report = store.check_current(mode.into())?;
             if report.is_clean() {
                 println!("ok: {}", store.root().display());
@@ -475,9 +475,9 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let history = config.resolve_history(&config_path);
             let lock_path = resolve_lock_path(&config_path);
             let lock = if history.is_some() { read_lock_if_exists(&lock_path)? } else { None };
-            let store = config.resolve_store(&config_path);
+            let lake = config.resolve_lake(&config_path);
             let report = check_entry_directory_with_settings(
-                &store,
+                &lake,
                 CheckMode::Review,
                 &entry_directory_check_settings(&config_path, &config),
             )?;
@@ -519,10 +519,10 @@ fn run_history_command(
 
             let history_root =
                 config.resolve_history(config_path).expect("history path configured by init");
-            let store_path = config.resolve_store(config_path);
+            let lake_path = config.resolve_lake(config_path);
             let mut store = SirnoStore::open(&history_root)?;
             let version = store.commit_entry_directory(
-                &store_path,
+                &lake_path,
                 &entry_directory_check_settings(config_path, &config),
             )?;
             if needs_config_write {
@@ -533,7 +533,7 @@ fn run_history_command(
                 "initialized history {} at version {} from {}",
                 history_root.display(),
                 version.version(),
-                store_path.display()
+                lake_path.display()
             );
             Ok(ExitCode::SUCCESS)
         }
@@ -559,13 +559,13 @@ fn run_history_command(
             let context = HistoryContext::load(config_path)?;
             reject_immutable_checkout(&context.lock_path)?;
             let mut store = SirnoStore::open(&context.history_root)?;
-            let version = store.commit_entry_directory(&context.store_path, &context.settings)?;
-            set_entry_directory_writable(&context.store_path, &context.settings)?;
+            let version = store.commit_entry_directory(&context.lake_path, &context.settings)?;
+            set_entry_directory_writable(&context.lake_path, &context.settings)?;
             SirnoLock::current(version).write(&context.lock_path)?;
             println!(
                 "committed history version {} from {}",
                 version.version(),
-                context.store_path.display()
+                context.lake_path.display()
             );
             Ok(ExitCode::SUCCESS)
         }
@@ -575,22 +575,22 @@ fn run_history_command(
             let store = SirnoStore::open(&context.history_root)?;
             let paths = store.checkout_entry_directory(
                 version,
-                &context.store_path,
+                &context.lake_path,
                 EntryDirectoryWritePolicy::ReplaceDirectory {
                     ignore: context.settings.ignore.clone(),
                 },
             )?;
             if unsafe_mutable {
-                set_entry_directory_writable(&context.store_path, &context.settings)?;
+                set_entry_directory_writable(&context.lake_path, &context.settings)?;
             } else {
                 add_readonly_checkout_warnings(&paths)?;
-                set_entry_directory_readonly(&context.store_path, &context.settings)?;
+                set_entry_directory_readonly(&context.lake_path, &context.settings)?;
             }
             SirnoLock::checked_out(version, unsafe_mutable).write(&context.lock_path)?;
             println!(
                 "checked out history version {} into {} ({} entries, {})",
                 version.version(),
-                context.store_path.display(),
+                context.lake_path.display(),
                 paths.len(),
                 if unsafe_mutable { "unsafe mutable" } else { "immutable" }
             );
@@ -640,7 +640,7 @@ struct HistoryContext {
     history_root: PathBuf,
     lock_path: PathBuf,
     settings: EntryDirectoryCheckSettings,
-    store_path: PathBuf,
+    lake_path: PathBuf,
 }
 
 impl HistoryContext {
@@ -653,7 +653,7 @@ impl HistoryContext {
             history_root,
             lock_path: resolve_lock_path(config_path),
             settings: entry_directory_check_settings(config_path, &config),
-            store_path: config.resolve_store(config_path),
+            lake_path: config.resolve_lake(config_path),
         })
     }
 }
@@ -788,7 +788,7 @@ fn default_config_path() -> PathBuf {
     PathBuf::from(CONFIG_FILE_NAME)
 }
 
-fn default_store_path() -> PathBuf {
+fn default_lake_path() -> PathBuf {
     PathBuf::from("docs")
 }
 
@@ -813,7 +813,7 @@ fn entry_directory_check_settings(
     EntryDirectoryCheckSettings {
         link: config.check.link,
         links: config.links,
-        ignore: config.store.ignore.clone(),
+        ignore: config.lake.ignore.clone(),
         witness: witness_check_settings(config_path, config),
     }
 }
@@ -839,7 +839,7 @@ fn resolve_entry_directory(
     }
 
     let config = SirnoConfig::from_file(config_path)?;
-    Ok((config.resolve_store(config_path), entry_directory_check_settings(config_path, &config)))
+    Ok((config.resolve_lake(config_path), entry_directory_check_settings(config_path, &config)))
 }
 
 fn parse_entry_ids(raw: Vec<String>) -> Result<Vec<EntryId>, CliError> {
@@ -873,7 +873,7 @@ fn print_status(
     } else {
         println!("mono: (not configured)");
     }
-    println!("store: {}", report.root().display());
+    println!("lake: {}", report.root().display());
     if let Some(history) = history {
         println!("history: {}", history.display());
         println!("history-state: {}", history_state_label(lock));
@@ -1008,10 +1008,10 @@ enum CliError {
     /// Empty history cannot be checked out as a version.
     #[error("history version {0} is not a check-outable snapshot")]
     InvalidHistoryVersion(u64),
-    /// A configured store move cannot replace an existing destination.
+    /// A configured lake move cannot replace an existing destination.
     #[error("move destination already exists: {0}")]
     MoveDestinationExists(PathBuf),
-    /// A configured store move could not inspect its destination.
+    /// A configured lake move could not inspect its destination.
     #[error("failed to inspect move destination {path}")]
     ReadMoveDestination {
         /// Destination path that could not be inspected.
@@ -1020,7 +1020,7 @@ enum CliError {
         #[source]
         source: std::io::Error,
     },
-    /// A configured store path could not be moved.
+    /// A configured lake path could not be moved.
     #[error("failed to move {source_path} to {destination_path}")]
     MovePath {
         /// Source path configured before the move.
@@ -1058,7 +1058,7 @@ enum CliError {
     /// Lock-backed command failed.
     #[error(transparent)]
     Lock(#[from] LockError),
-    /// Store-backed command failed.
+    /// History-store-backed command failed.
     #[error(transparent)]
     Store(#[from] StoreError),
     /// Witness lookup failed.
@@ -1110,12 +1110,10 @@ mod tests {
     }
 
     #[test]
-    fn mv_accepts_store_path() {
+    fn mv_accepts_lake_path() {
         let cli = Cli::parse_from(["sirno", "mv", "sirno-docs"]);
 
-        assert!(
-            matches!(cli.command, Command::Mv { store } if store == PathBuf::from("sirno-docs"))
-        );
+        assert!(matches!(cli.command, Command::Mv { lake } if lake == Path::new("sirno-docs")));
     }
 
     #[test]
@@ -1125,7 +1123,7 @@ mod tests {
         assert!(matches!(
             cli.command,
             Command::History { command: HistoryCommand::Mv { history } }
-                if history == PathBuf::from("sirno-history-2")
+                if history == Path::new("sirno-history-2")
         ));
     }
 
@@ -1142,14 +1140,14 @@ mod tests {
     }
 
     #[test]
-    fn mv_moves_store_and_rewrites_config() {
+    fn mv_moves_lake_and_rewrites_config() {
         let temp = tempfile::tempdir().unwrap();
         let config_path = temp.path().join(CONFIG_FILE_NAME);
-        let old_store = temp.path().join("docs");
-        let new_store = temp.path().join("sirno-docs");
+        let old_lake = temp.path().join("docs");
+        let new_lake = temp.path().join("sirno-docs");
         SirnoConfig::new("docs").write_new(&config_path).unwrap();
-        fs::create_dir(&old_store).unwrap();
-        fs::write(old_store.join("entry.md"), "entry").unwrap();
+        fs::create_dir(&old_lake).unwrap();
+        fs::write(old_lake.join("entry.md"), "entry").unwrap();
 
         run(Cli::parse_from([
             "sirno",
@@ -1161,20 +1159,20 @@ mod tests {
         .unwrap();
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
-        assert_eq!(config.store.path, PathBuf::from("sirno-docs"));
-        assert!(!old_store.exists());
-        assert!(new_store.join("entry.md").exists());
+        assert_eq!(config.lake.path, PathBuf::from("sirno-docs"));
+        assert!(!old_lake.exists());
+        assert!(new_lake.join("entry.md").exists());
     }
 
     #[test]
     fn mv_refuses_existing_destination() {
         let temp = tempfile::tempdir().unwrap();
         let config_path = temp.path().join(CONFIG_FILE_NAME);
-        let old_store = temp.path().join("docs");
-        let new_store = temp.path().join("sirno-docs");
+        let old_lake = temp.path().join("docs");
+        let new_lake = temp.path().join("sirno-docs");
         SirnoConfig::new("docs").write_new(&config_path).unwrap();
-        fs::create_dir(&old_store).unwrap();
-        fs::create_dir(&new_store).unwrap();
+        fs::create_dir(&old_lake).unwrap();
+        fs::create_dir(&new_lake).unwrap();
 
         let error = run(Cli::parse_from([
             "sirno",
@@ -1187,8 +1185,8 @@ mod tests {
 
         assert!(matches!(error, CliError::MoveDestinationExists(_)));
         let config = SirnoConfig::from_file(&config_path).unwrap();
-        assert_eq!(config.store.path, PathBuf::from("docs"));
-        assert!(old_store.exists());
+        assert_eq!(config.lake.path, PathBuf::from("docs"));
+        assert!(old_lake.exists());
     }
 
     #[test]

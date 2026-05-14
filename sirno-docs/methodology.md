@@ -1,6 +1,6 @@
 ---
 name: Methodology
-description: A working guide for acting inside the Sirno store.
+description: A working guide for acting inside the Sirno lake.
 category:
   - concept
   - narrative
@@ -20,7 +20,7 @@ It does not decide whether a design is good.
 It does not prove that code satisfies an entry.
 It makes the relevant objects easier to name, connect, revise, and witness.
 
-Start from the store.
+Start from the lake.
 This repository keeps its design source in `sirno-docs/`.
 Read `introduction` first when you need the first route through the project.
 Then follow categories, clustees, refiners, and witnesses to the local design.
@@ -38,7 +38,7 @@ Use `witness:` when the repository contains evidence for the entry claim.
 Leave a structural field out when it does not improve navigation, review, or accountability.
 
 Lower when intent is too broad for the next local change.
-Lowering turns narrative design into compact store entries.
+Lowering turns narrative design into compact lake entries.
 It should preserve the route that made the narrative readable
 while giving future work stable handles.
 
@@ -57,7 +57,7 @@ or reveals a clearer local design.
 The reflected prose should record the durable design fact,
 not narrate the whole edit.
 
-Raise only when a project needs a long-form narrative outside the store.
+Raise only when a project needs a long-form narrative outside the lake.
 Raising composes entries into a readable monograph.
 It is not concatenation.
 It chooses a route,
@@ -83,7 +83,7 @@ They do not replace judgment about meaning.
 
 Treat planning as a use of Sirno, not a core primitive.
 A worklist can be represented as ordinary entries when that helps.
-Those entries can use categories, clustees, refiners, and witnesses like the rest of the store.
+Those entries can use categories, clustees, refiners, and witnesses like the rest of the lake.
 
 The habit is simple.
 Name the thing.

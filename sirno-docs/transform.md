@@ -19,7 +19,7 @@ They describe coherent work without requiring every transform to be a one-shot c
 
 The transform names make design work easier to request and review.
 Instead of saying "split this document into smaller pieces" every time,
-a user can ask to lower a monograph into the store.
+a user can ask to lower a monograph into the lake.
 Instead of saying "update the design notes based on this code change",
 a user can ask to reflect the code into entries.
 

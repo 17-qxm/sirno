@@ -38,7 +38,7 @@ the local vocabulary,
 or the reason the entries should be considered as a review unit.
 
 This is useful for domains that cut across categories.
-For example, a store neighborhood may include concepts, metadata rules,
+For example, a lake neighborhood may include concepts, metadata rules,
 generated footer behavior, and checks.
 Those entries are different kinds of objects,
 but they belong together because they explain the same part of the project.
@@ -46,7 +46,7 @@ but they belong together because they explain the same part of the project.
 The closure entry should carry real explanatory value.
 If the group name is only a loose tag,
 it may not deserve a `clustee` field yet.
-If the group helps a reader enter a complicated region of the store,
+If the group helps a reader enter a complicated region of the lake,
 then the closure gives that region a stable front door.
 When splitting an entry,
 keep the new entries in the same clustee if they belong to the same module.

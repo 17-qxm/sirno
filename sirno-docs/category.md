@@ -25,7 +25,7 @@ An entry categorized by `narrative` should record or name a route through concep
 An entry categorized by `meta` should define project vocabulary.
 
 Because categories are entries,
-their meanings can be documented in the same store they classify.
+their meanings can be documented in the same lake they classify.
 This avoids a hidden enum in the implementation becoming the only source of truth.
 The project can grow vocabulary by adding entries,
 and Sirno can still check that referenced entries exist.

@@ -1,7 +1,7 @@
 //! Project configuration for a Sirno-managed repository.
 //!
 //! A repository is Sirno-managed when it contains `Sirno.toml`.
-//! The config names the public Markdown entry store.
+//! The config names the public Markdown entry lake.
 //! It may also opt into a monograph, repository witness members, and private `eter` history store.
 
 use std::fs::{self, OpenOptions};
@@ -50,22 +50,22 @@ impl Default for CheckSettings {
     }
 }
 
-/// Configured public Markdown store settings.
+/// Configured public Markdown lake settings.
 ///
-/// Invariant: `path` points to the public Markdown entry store.
-/// `ignore` contains paths relative to the store root that Sirno does not read.
+/// Invariant: `path` points to the public Markdown entry lake.
+/// `ignore` contains paths relative to the lake root that Sirno does not read.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct StoreSettings {
-    /// Configured public Markdown entry store path.
+pub struct LakeSettings {
+    /// Configured public Markdown entry lake path.
     pub path: PathBuf,
-    /// Store-root-relative paths ignored by Sirno.
+    /// Lake-root-relative paths ignored by Sirno.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ignore: Vec<PathBuf>,
 }
 
-impl StoreSettings {
-    /// Construct store settings from a store path and no ignored paths.
+impl LakeSettings {
+    /// Construct lake settings from a lake path and no ignored paths.
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self { path: path.into(), ignore: Vec::new() }
     }
@@ -81,7 +81,7 @@ impl StoreSettings {
                     )
                 })
             {
-                return Err(ConfigError::StoreIgnorePath(path.clone()));
+                return Err(ConfigError::LakeIgnorePath(path.clone()));
             }
         }
         Ok(())
@@ -172,10 +172,10 @@ impl CodeSettings {
 
 /// Sirno project configuration.
 ///
-/// `store.path` points to the configured public Markdown entry store path.
+/// `lake.path` points to the configured public Markdown entry lake path.
 /// `mono.path`, when present, points to the configured monograph path.
 /// `history.path`, when present, points to the configured private `eter` history root.
-/// `store.ignore` contains paths relative to the store root that Sirno skips.
+/// `lake.ignore` contains paths relative to the lake root that Sirno skips.
 /// `code.members`, when present, contains relative member paths or globs for witness lookup.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
@@ -187,8 +187,8 @@ pub struct SirnoConfig {
     /// Configured monograph settings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mono: Option<MonoSettings>,
-    /// Configured public Markdown entry store settings.
-    pub store: StoreSettings,
+    /// Configured public Markdown entry lake settings.
+    pub lake: LakeSettings,
     /// Configured private history store settings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub history: Option<HistorySettings>,
@@ -205,12 +205,12 @@ pub struct SirnoConfig {
 // sirno:witness:project-config:end
 
 impl SirnoConfig {
-    /// Construct a config from the required store path.
+    /// Construct a config from the required lake path.
     // sirno:witness:project-config:begin
-    pub fn new(store: impl Into<PathBuf>) -> Self {
+    pub fn new(lake: impl Into<PathBuf>) -> Self {
         Self {
             mono: None,
-            store: StoreSettings::new(store),
+            lake: LakeSettings::new(lake),
             history: None,
             code: None,
             check: CheckSettings::default(),
@@ -225,9 +225,9 @@ impl SirnoConfig {
         self
     }
 
-    /// Return this config with a configured public store path.
-    pub fn with_store(mut self, store: impl Into<PathBuf>) -> Self {
-        self.store.path = store.into();
+    /// Return this config with a configured public lake path.
+    pub fn with_lake(mut self, lake: impl Into<PathBuf>) -> Self {
+        self.lake.path = lake.into();
         self
     }
 
@@ -304,9 +304,9 @@ impl SirnoConfig {
         self.mono.as_ref().map(|mono| resolve_config_relative(config_path.as_ref(), &mono.path))
     }
 
-    /// Resolve the entry store path relative to a config file path.
-    pub fn resolve_store(&self, config_path: impl AsRef<Path>) -> PathBuf {
-        resolve_config_relative(config_path.as_ref(), &self.store.path)
+    /// Resolve the entry lake path relative to a config file path.
+    pub fn resolve_lake(&self, config_path: impl AsRef<Path>) -> PathBuf {
+        resolve_config_relative(config_path.as_ref(), &self.lake.path)
     }
 
     /// Resolve the history store path relative to a config file path when configured.
@@ -321,16 +321,16 @@ impl SirnoConfig {
     // sirno:witness:project-config:begin
     pub fn validate_for_file(&self, config_path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let config_path = config_path.as_ref();
-        self.store.validate()?;
+        self.lake.validate()?;
         if let Some(code) = &self.code {
             code.validate()?;
         }
         if self.history.is_some() {
-            let store = self.resolve_store(config_path);
+            let lake = self.resolve_lake(config_path);
             let history =
                 self.resolve_history(config_path).expect("history path exists after is_some");
-            if store == history || history.starts_with(&store) || store.starts_with(&history) {
-                return Err(ConfigError::HistoryStorePath { store, history });
+            if lake == history || history.starts_with(&lake) || lake.starts_with(&history) {
+                return Err(ConfigError::HistoryLakePath { lake, history });
             }
         }
         Ok(())
@@ -365,20 +365,20 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
         out.push('\n');
     }
 
-    push_table(&mut out, "store");
+    push_table(&mut out, "lake");
     // sirno:witness:project-config-comments:begin
     push_field(
         &mut out,
         "path",
-        &config.store.path,
-        "Markdown entry store path, resolved relative to this config file.",
+        &config.lake.path,
+        "Markdown entry lake path, resolved relative to this config file.",
     )?;
-    if !config.store.ignore.is_empty() {
+    if !config.lake.ignore.is_empty() {
         push_field(
             &mut out,
             "ignore",
-            &config.store.ignore,
-            "Store-root paths Sirno skips while reading, checking, querying, and generating links.",
+            &config.lake.ignore,
+            "Lake-root paths Sirno skips while reading, checking, querying, and generating links.",
         )?;
     }
     // sirno:witness:project-config-comments:end
@@ -391,7 +391,7 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
             &mut out,
             "path",
             &history.path,
-            "Private eter history root, kept outside the public store.",
+            "Private eter history root, kept outside the public lake.",
         )?;
         // sirno:witness:project-config-comments:end
     }
@@ -501,19 +501,17 @@ pub enum ConfigError {
     /// The config file could not be rendered.
     #[error("failed to render config file")]
     Render(#[source] toml::ser::Error),
-    /// A store ignore path is not relative to the store root.
-    #[error("store.ignore path must be relative to the store root: {0}")]
-    StoreIgnorePath(PathBuf),
+    /// A lake ignore path is not relative to the lake root.
+    #[error("lake.ignore path must be relative to the lake root: {0}")]
+    LakeIgnorePath(PathBuf),
     /// A code member path or glob is not relative to the config directory.
     #[error("code.members path must be relative to the config directory: {0}")]
     CodeMemberPath(String),
-    /// The history root overlaps the public store path.
-    #[error(
-        "history path must be separate from public store path: store={store} history={history}"
-    )]
-    HistoryStorePath {
-        /// Resolved public store path.
-        store: PathBuf,
+    /// The history root overlaps the public lake path.
+    #[error("history path must be separate from public lake path: lake={lake} history={history}")]
+    HistoryLakePath {
+        /// Resolved public lake path.
+        lake: PathBuf,
         /// Resolved history root path.
         history: PathBuf,
     },
@@ -545,16 +543,16 @@ mod tests {
     fn parses_minimal_config() {
         let config: SirnoConfig = toml::from_str(
             r#"
-[store]
+[lake]
 path = "docs"
 "#,
         )
         .unwrap();
 
         assert_eq!(config.mono, None);
-        assert_eq!(config.store.path, PathBuf::from("docs"));
+        assert_eq!(config.lake.path, PathBuf::from("docs"));
         assert_eq!(config.history, None);
-        assert!(config.store.ignore.is_empty());
+        assert!(config.lake.ignore.is_empty());
         assert_eq!(config.code, None);
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
@@ -567,7 +565,7 @@ path = "docs"
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 "#,
         )
@@ -583,7 +581,7 @@ path = "docs"
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [history]
@@ -602,7 +600,7 @@ path = "sirno-history"
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [check]
@@ -621,7 +619,7 @@ link = false
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [code]
@@ -649,7 +647,7 @@ members = ["src", "Cargo.toml", "crates/*/src"]
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [links]
@@ -679,7 +677,7 @@ refiner = true
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [links]
@@ -702,21 +700,21 @@ refiner = { to = false, from = true }
     }
 
     #[test]
-    fn parses_store_ignore_settings() {
+    fn parses_lake_ignore_settings() {
         let config: SirnoConfig = toml::from_str(
             r#"
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 ignore = [".obsidian", "drafts"]
 "#,
         )
         .unwrap();
 
-        assert_eq!(config.store.path, PathBuf::from("docs"));
-        assert_eq!(config.store.ignore, vec![PathBuf::from(".obsidian"), PathBuf::from("drafts")]);
+        assert_eq!(config.lake.path, PathBuf::from("docs"));
+        assert_eq!(config.lake.ignore, vec![PathBuf::from(".obsidian"), PathBuf::from("drafts")]);
     }
 
     #[test]
@@ -726,7 +724,7 @@ ignore = [".obsidian", "drafts"]
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 extra = "no"
 "#,
@@ -742,7 +740,7 @@ extra = "no"
         let config_path = Path::new("/tmp/project/Sirno.toml");
 
         assert_eq!(config.resolve_mono(config_path), Some(PathBuf::from("/tmp/project/DESIGN.md")));
-        assert_eq!(config.resolve_store(config_path), PathBuf::from("/tmp/project/docs"));
+        assert_eq!(config.resolve_lake(config_path), PathBuf::from("/tmp/project/docs"));
         assert_eq!(config.resolve_history(config_path), None);
         assert_eq!(
             config.with_history("sirno-history").resolve_history(config_path),
@@ -751,7 +749,7 @@ extra = "no"
     }
 
     #[test]
-    fn rejects_ignore_paths_outside_store_root() {
+    fn rejects_ignore_paths_outside_lake_root() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
@@ -760,7 +758,7 @@ extra = "no"
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 ignore = ["../outside"]
 "#,
@@ -769,7 +767,7 @@ ignore = ["../outside"]
 
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
-        assert!(matches!(error, ConfigError::StoreIgnorePath(_)));
+        assert!(matches!(error, ConfigError::LakeIgnorePath(_)));
     }
 
     #[test]
@@ -782,7 +780,7 @@ ignore = ["../outside"]
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [code]
@@ -813,8 +811,8 @@ members = ["../outside"]
     fn default_project_omits_optional_tables_when_rendered() {
         let source = SirnoConfig::default_project().to_toml().unwrap();
 
-        assert!(source.contains("[store]"));
-        assert!(source.contains("# Markdown entry store path"));
+        assert!(source.contains("[lake]"));
+        assert!(source.contains("# Markdown entry lake path"));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include clustee links"));
         assert!(!source.contains("[mono]"));
@@ -825,7 +823,7 @@ members = ["../outside"]
     fn rendered_config_comments_each_written_field() {
         let config = SirnoConfig {
             mono: Some(MonoSettings::new("DESIGN.md")),
-            store: StoreSettings {
+            lake: LakeSettings {
                 path: PathBuf::from("docs"),
                 ignore: vec![PathBuf::from(".obsidian")],
             },
@@ -845,8 +843,8 @@ members = ["../outside"]
 
         assert_eq!(read, config);
         assert!(source.contains("# Markdown monograph path"));
-        assert!(source.contains("# Markdown entry store path"));
-        assert!(source.contains("# Store-root paths Sirno skips"));
+        assert!(source.contains("# Markdown entry lake path"));
+        assert!(source.contains("# Lake-root paths Sirno skips"));
         assert!(source.contains("# Private eter history root"));
         assert!(source.contains("# Repository files, directories, or globs"));
         assert!(source.contains("# Require generated footers"));
@@ -857,7 +855,7 @@ members = ["../outside"]
     }
 
     #[test]
-    fn rejects_history_path_inside_public_store() {
+    fn rejects_history_path_inside_public_lake() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
@@ -866,7 +864,7 @@ members = ["../outside"]
 [mono]
 path = "DESIGN.md"
 
-[store]
+[lake]
 path = "docs"
 
 [history]
@@ -877,6 +875,6 @@ path = "docs/history"
 
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
-        assert!(matches!(error, ConfigError::HistoryStorePath { .. }));
+        assert!(matches!(error, ConfigError::HistoryLakePath { .. }));
     }
 }

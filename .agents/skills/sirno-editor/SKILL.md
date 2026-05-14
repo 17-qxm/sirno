@@ -1,8 +1,8 @@
 ---
 name: sirno-editor
 description: >-
-  Edit a Sirno entry store. Use when Codex creates, revises, or reorganizes compact Markdown
-  entries, moves design knowledge from DESIGN.md or another mono form into the store, chooses entry
+  Edit a Sirno lake. Use when Codex creates, revises, or reorganizes compact Markdown
+  entries, moves design knowledge from DESIGN.md or another mono form into the lake, chooses entry
   ids and structural metadata, expands entries, or validates generated Sirno links.
 ---
 
@@ -12,7 +12,7 @@ description: >-
 
 Use this skill when editing `sirno` entries
 or moving design knowledge from `mono` to `sirno`.
-Editing keeps the store precise, structured, and useful for future work.
+Editing keeps the lake precise, structured, and useful for future work.
 Lowering gives a long-form narrative compact nominal form.
 It preserves the design route while creating or revising entries
 future work can cite, query, realize, and reflect.
@@ -23,7 +23,7 @@ use the repository documentation-writing skills for prose style and document rol
 
 ## Core Judgment
 
-Sirno store editing is not a heading split or metadata shuffle.
+Sirno lake editing is not a heading split or metadata shuffle.
 When lowering from a monograph,
 read the monograph as a whole,
 then name the durable objects that make future work easier to address.
@@ -46,15 +46,15 @@ Avoid entries that only restate a paragraph without creating a useful handle.
 ## Authority
 
 Before editing, decide which form currently carries authority.
-If the store is already established and maintained,
+If the lake is already established and maintained,
 treat it as the structured design source.
-If the store is absent or skeletal,
+If the lake is absent or skeletal,
 use the configured monograph as the source of intended design unless the user says code is authoritative.
 
 Preserve stable facts from the current project model:
 
 - central definition and scope
-- configured `store` path and optional `mono` path
+- configured `lake` path and optional `mono` path
 - entry id rules and metadata schema
 - `category`, `clustee`, `refiner`, and `witness:` meanings
 - generated footer ownership
@@ -144,7 +144,7 @@ One paragraph should introduce one idea, state its consequence, and stop.
 Prefer short sentences and natural line breaks under the repository line budget.
 Break Markdown prose at natural punctuation boundaries or conjunctions; otherwise don't make linebreaks.
 
-Avoid turning the store into:
+Avoid turning the lake into:
 
 - a glossary with labels but no design pressure
 - a changelog that narrates edits instead of durable facts
@@ -156,7 +156,7 @@ but more durable than a plan item.
 
 ## Workflow
 
-1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing store.
+1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing lake.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
    ids, names, descriptions, categories, clustees, refiners, and witness markers.
@@ -164,10 +164,10 @@ but more durable than a plan item.
 5. Expand or revise bodies with direct, reader-friendly prose.
 6. Leave generated footer regions untouched.
 7. Run Sirno's generated-link command after metadata stabilizes.
-8. Run structural checks and query commands to verify the store parses and references resolve.
+8. Run structural checks and query commands to verify the lake parses and references resolve.
 
-Use the configured store path.
-Do not hard-code `docs/` when `Sirno.toml` names a different store.
+Use the configured lake path.
+Do not hard-code `docs/` when `Sirno.toml` names a different lake.
 
 ## Validation
 
@@ -183,16 +183,16 @@ sirno status
 
 Use `cargo run -- ...` or `target/debug/sirno ...` according to the repository state.
 
-If review-mode checks fail because local editor/tool directories are inside the store,
+If review-mode checks fail because local editor/tool directories are inside the lake,
 preserve those files unless the user asks to remove them.
 Report the blocker and still validate entry parsing and metadata references as far as possible.
 
 ## Git Hygiene
 
-When asked to commit Sirno store editing work,
-stage only the configured store, the config change that points to it,
+When asked to commit Sirno lake editing work,
+stage only the configured lake, the config change that points to it,
 and directly related documentation.
 Leave unrelated code or generated editor state alone.
 
 Use the repository commit convention.
-For documentation-only store editing, `docs: revise sirno store entries` is an appropriate shape.
+For documentation-only lake editing, `docs: revise sirno lake entries` is an appropriate shape.
