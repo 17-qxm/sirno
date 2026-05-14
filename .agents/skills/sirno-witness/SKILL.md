@@ -57,8 +57,8 @@ Choose the evidence region deliberately.
 Prefer a single item, test case, config stanza, generated boundary, or small cohesive block.
 If the current region is too broad, split it into smaller blocks with the same entry id.
 
-Add the repository block inside configured `[code].members` paths.
-If no code members are configured, configure the intended repository artifact surface first:
+Add the repository block inside configured `[repo].members` paths.
+If no repo members are configured, configure the intended repository artifact surface first:
 
 ```rust
 // sirno:witness:entry-id:begin

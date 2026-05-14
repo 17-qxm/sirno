@@ -13,7 +13,7 @@ This lake focuses on Sirno's general design as a tool and as a philosophical sys
 It compiles between design forms for design-aware programming work.
 It moves among one long-form project narrative,
 a lake of compact named Markdown entries,
-and the repository codebase.
+and the repository artifact form.
 
 The central problem is project memory.
 Design tends to begin as a narrative, then scatter across code, tests, comments,
@@ -34,7 +34,7 @@ People, agents, and other tools still judge design quality and semantic truth.
 This division is important.
 Sirno does not claim to know whether an architecture is elegant,
 whether a test proves the right property,
-or whether a code path truly satisfies a design claim.
+or whether a repository path truly satisfies a design claim.
 It gives those claims stable handles.
 That makes the conversation around design more precise:
 a person can ask for an entry to be realized,
@@ -44,7 +44,7 @@ and an agent can inspect a bounded set of related entries before editing code.
 The result should feel like a project with good names for its important ideas.
 Narratives give the reader routes through the design.
 The lake gives the project durable local objects.
-The codebase gives those objects consequences.
+The repo gives those objects consequences.
 Sirno keeps the edges between those forms explicit.
 
 ---

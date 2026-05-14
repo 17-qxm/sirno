@@ -111,14 +111,14 @@ impl FrostSettings {
 /// It never names an absolute path or a parent-directory escape.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-// sirno:witness:code-form:begin
-pub struct CodeMember {
+// sirno:witness:repo:begin
+pub struct RepoMember {
     pattern: String,
 }
-// sirno:witness:code-form:end
+// sirno:witness:repo:end
 
-impl CodeMember {
-    /// Construct one code-member pattern.
+impl RepoMember {
+    /// Construct one repo-member pattern.
     pub fn new(pattern: impl Into<String>) -> Result<Self, ConfigError> {
         let member = Self { pattern: pattern.into() };
         member.validate()?;
@@ -141,7 +141,7 @@ impl CodeMember {
                 )
             })
         {
-            return Err(ConfigError::CodeMemberPath(self.pattern.clone()));
+            return Err(ConfigError::RepoMemberPath(self.pattern.clone()));
         }
         Ok(())
     }
@@ -153,15 +153,15 @@ impl CodeMember {
 /// Directory members are scanned recursively by witness lookup.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-// sirno:witness:code-form:begin
-pub struct CodeSettings {
+// sirno:witness:repo:begin
+pub struct RepoSettings {
     /// Config-relative paths or globs scanned through `mosaika`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub members: Vec<CodeMember>,
+    pub members: Vec<RepoMember>,
 }
-// sirno:witness:code-form:end
+// sirno:witness:repo:end
 
-impl CodeSettings {
+impl RepoSettings {
     fn validate(&self) -> Result<(), ConfigError> {
         for member in &self.members {
             member.validate()?;
@@ -176,7 +176,7 @@ impl CodeSettings {
 /// `mono.path`, when present, points to the configured monograph path.
 /// `frost.path`, when present, points to the configured Sirno Frost root.
 /// `lake.ignore` contains paths relative to the lake root that Sirno skips.
-/// `code.members`, when present, contains relative member paths or globs for witness lookup.
+/// `repo.members`, when present, contains relative member paths or globs for witness lookup.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
@@ -194,7 +194,7 @@ pub struct SirnoConfig {
     pub frost: Option<FrostSettings>,
     /// Configured repository artifact members.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub code: Option<CodeSettings>,
+    pub repo: Option<RepoSettings>,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -212,7 +212,7 @@ impl SirnoConfig {
             mono: None,
             lake: LakeSettings::new(lake),
             frost: None,
-            code: None,
+            repo: None,
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
@@ -320,8 +320,8 @@ impl SirnoConfig {
     pub fn validate_for_file(&self, config_path: impl AsRef<Path>) -> Result<(), ConfigError> {
         let config_path = config_path.as_ref();
         self.lake.validate()?;
-        if let Some(code) = &self.code {
-            code.validate()?;
+        if let Some(repo) = &self.repo {
+            repo.validate()?;
         }
         if self.frost.is_some() {
             let lake = self.resolve_lake(config_path);
@@ -393,16 +393,16 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
         // sirno:witness:project-config-comments:end
     }
 
-    if let Some(code) = &config.code
-        && !code.members.is_empty()
+    if let Some(repo) = &config.repo
+        && !repo.members.is_empty()
     {
         out.push('\n');
-        push_table(&mut out, "code");
+        push_table(&mut out, "repo");
         // sirno:witness:project-config-comments:begin
         push_field(
             &mut out,
             "members",
-            &code.members,
+            &repo.members,
             "Repository files, directories, or globs scanned for witness blocks.",
         )?;
         // sirno:witness:project-config-comments:end
@@ -501,9 +501,9 @@ pub enum ConfigError {
     /// A lake ignore path is not relative to the lake root.
     #[error("lake.ignore path must be relative to the lake root: {0}")]
     LakeIgnorePath(PathBuf),
-    /// A code member path or glob is not relative to the config directory.
-    #[error("code.members path must be relative to the config directory: {0}")]
-    CodeMemberPath(String),
+    /// A repo member path or glob is not relative to the config directory.
+    #[error("repo.members path must be relative to the config directory: {0}")]
+    RepoMemberPath(String),
     /// The Sirno Frost root overlaps the public lake path.
     #[error("frost path must be separate from public lake path: lake={lake} frost={frost}")]
     FrostLakePath {
@@ -550,7 +550,7 @@ path = "docs"
         assert_eq!(config.lake.path, PathBuf::from("docs"));
         assert_eq!(config.frost, None);
         assert!(config.lake.ignore.is_empty());
-        assert_eq!(config.code, None);
+        assert_eq!(config.repo, None);
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
     }
@@ -610,7 +610,7 @@ link = false
     }
 
     #[test]
-    fn parses_code_members() {
+    fn parses_repo_members() {
         let config: SirnoConfig = toml::from_str(
             r#"
 [mono]
@@ -619,19 +619,19 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[code]
+[repo]
 members = ["src", "Cargo.toml", "crates/*/src"]
 "#,
         )
         .unwrap();
 
         assert_eq!(
-            config.code,
-            Some(CodeSettings {
+            config.repo,
+            Some(RepoSettings {
                 members: vec![
-                    CodeMember::new("src").unwrap(),
-                    CodeMember::new("Cargo.toml").unwrap(),
-                    CodeMember::new("crates/*/src").unwrap(),
+                    RepoMember::new("src").unwrap(),
+                    RepoMember::new("Cargo.toml").unwrap(),
+                    RepoMember::new("crates/*/src").unwrap(),
                 ],
             })
         );
@@ -768,7 +768,7 @@ ignore = ["../outside"]
     }
 
     #[test]
-    fn rejects_code_members_outside_config_root() {
+    fn rejects_repo_members_outside_config_root() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
@@ -780,7 +780,7 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[code]
+[repo]
 members = ["../outside"]
 "#,
         )
@@ -788,7 +788,7 @@ members = ["../outside"]
 
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
-        assert!(matches!(error, ConfigError::CodeMemberPath(_)));
+        assert!(matches!(error, ConfigError::RepoMemberPath(_)));
     }
 
     #[test]
@@ -813,7 +813,7 @@ members = ["../outside"]
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include belongs links"));
         assert!(!source.contains("[mono]"));
-        assert!(!source.contains("[code]"));
+        assert!(!source.contains("[repo]"));
     }
 
     #[test]
@@ -825,7 +825,7 @@ members = ["../outside"]
                 ignore: vec![PathBuf::from(".obsidian")],
             },
             frost: Some(FrostSettings::new("sirno-frost")),
-            code: Some(CodeSettings { members: vec![CodeMember::new("src").unwrap()] }),
+            repo: Some(RepoSettings { members: vec![RepoMember::new("src").unwrap()] }),
             check: CheckSettings { link: false },
             links: GeneratedLinkSettings {
                 category: true.into(),

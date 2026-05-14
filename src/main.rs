@@ -676,7 +676,7 @@ fn run_witness_command(config_path: &Path, raw_id: &str, full: bool) -> Result<E
     let config = SirnoConfig::from_file(config_path)?;
     let id = EntryId::new(raw_id)?;
     let Some(settings) = witness_check_settings(config_path, &config) else {
-        return Err(CliError::CodeMembersNotConfigured);
+        return Err(CliError::RepoMembersNotConfigured);
     };
     let index = scan_witnesses(&settings)?;
     let records = index.records_for(&id);
@@ -810,13 +810,13 @@ fn entry_directory_check_settings(
 fn witness_check_settings(
     config_path: &Path, config: &SirnoConfig,
 ) -> Option<WitnessCheckSettings> {
-    let code = config.code.as_ref()?;
-    if code.members.is_empty() {
+    let repo = config.repo.as_ref()?;
+    if repo.members.is_empty() {
         return None;
     }
     Some(WitnessCheckSettings::new(
         config_path.parent().unwrap_or_else(|| Path::new(".")),
-        code.members.clone(),
+        repo.members.clone(),
     ))
 }
 
@@ -1042,9 +1042,9 @@ enum CliError {
         /// Rollback rename error.
         rollback: std::io::Error,
     },
-    /// Witness lookup requires configured code members.
-    #[error("code members are not configured; add [code].members to Sirno.toml")]
-    CodeMembersNotConfigured,
+    /// Witness lookup requires configured repo members.
+    #[error("repo members are not configured; add [repo].members to Sirno.toml")]
+    RepoMembersNotConfigured,
     /// Dry-run mode applies only to generated-link writing.
     #[error("`--dry` only applies to `sirno gen-link` without a subcommand")]
     DryWithGenLinkSubcommand,

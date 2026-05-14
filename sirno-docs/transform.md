@@ -12,7 +12,7 @@ Sirno uses four transform names:
 `lower`, `raise`, `realize`, and `reflect`.
 
 Their direct names are also useful:
-`mono-to-sirno`, `sirno-to-mono`, `sirno-to-code`, and `code-to-sirno`.
+`mono-to-sirno`, `sirno-to-mono`, `sirno-to-repo`, and `repo-to-sirno`.
 
 Transforms are vocabulary for humans, LLMs, skills, CLI interfaces, and MCP tools.
 They describe coherent work without requiring every transform to be a one-shot command.
@@ -20,13 +20,13 @@ They describe coherent work without requiring every transform to be a one-shot c
 The transform names make design work easier to request and review.
 Instead of saying "split this document into smaller pieces" every time,
 a user can ask to lower a monograph into the lake.
-Instead of saying "update the design notes based on this code change",
-a user can ask to reflect the code into entries.
+Instead of saying "update the design notes based on this repo change",
+a user can ask to reflect the repo into entries.
 
 The four transforms form a loop:
 `mono` lowers into `sirno`,
-`sirno` realizes into `code`,
-`code` reflects back into `sirno`,
+`sirno` realizes into `repo`,
+`repo` reflects back into `sirno`,
 and `sirno` raises into `mono`.
 The loop is conceptual, not automatic authority.
 Each transform should still be performed with judgment about the current source of truth.

@@ -1,7 +1,7 @@
 //! Repository witness lookup through `mosaika`.
 //!
-//! Sirno keeps witness intent in entry metadata and delegates repository scans to
-//! `mosaika`. The Sirno layer owns member selection because `[code].members`
+//! Sirno delegates repository witness scans to `mosaika`.
+//! The Sirno layer owns member selection because `[repo].members`
 //! accepts recursive directory members in addition to glob patterns.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -18,7 +18,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use tracing::trace;
 
-use crate::config::CodeMember;
+use crate::config::RepoMember;
 use crate::id::{EntryId, EntryIdError};
 
 const WITNESS_TRANSFORM: &str = "sirno-witness";
@@ -31,15 +31,15 @@ const WITNESS_END_REGEX: &str = r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-
 /// `members` are already validated config-relative member patterns.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WitnessCheckSettings {
-    /// Directory relative to which code members are resolved.
+    /// Directory relative to which repo members are resolved.
     pub root: PathBuf,
     /// Configured repository members scanned for witness markers.
-    pub members: Vec<CodeMember>,
+    pub members: Vec<RepoMember>,
 }
 
 impl WitnessCheckSettings {
-    /// Construct witness settings from a config root and code members.
-    pub fn new(root: impl Into<PathBuf>, members: impl IntoIterator<Item = CodeMember>) -> Self {
+    /// Construct witness settings from a config root and repo members.
+    pub fn new(root: impl Into<PathBuf>, members: impl IntoIterator<Item = RepoMember>) -> Self {
         Self { root: root.into(), members: members.into_iter().collect() }
     }
 
@@ -162,7 +162,7 @@ fn resolve_member_files(settings: &WitnessCheckSettings) -> Result<Vec<PathBuf>,
 
 // sirno:witness:witness-lookup:begin
 fn collect_glob_member(
-    root: &Path, member: &CodeMember, files: &mut BTreeSet<PathBuf>,
+    root: &Path, member: &RepoMember, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
     let pattern = root.join(member.as_str()).to_string_lossy().to_string();
     let matches = glob(&pattern).map_err(|source| WitnessError::InvalidGlob {
@@ -185,7 +185,7 @@ fn collect_glob_member(
 
 // sirno:witness:witness-lookup:begin
 fn collect_path_member(
-    member: &CodeMember, path: &Path, files: &mut BTreeSet<PathBuf>,
+    member: &RepoMember, path: &Path, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
     if !path.exists() {
         return Ok(());
@@ -207,7 +207,7 @@ fn collect_path_member(
 
 // sirno:witness:witness-lookup:begin
 fn collect_directory_files(
-    member: &CodeMember, root: &Path, files: &mut BTreeSet<PathBuf>,
+    member: &RepoMember, root: &Path, files: &mut BTreeSet<PathBuf>,
 ) -> Result<(), WitnessError> {
     for entry in std::fs::read_dir(root).map_err(|source| WitnessError::ReadDirectory {
         member: member.as_str().to_owned(),
@@ -373,14 +373,14 @@ fn leading_whitespace_len(line: &str) -> usize {
 /// Error raised while scanning repository witnesses.
 #[derive(Debug, Error)]
 pub enum WitnessError {
-    /// A configured code member did not select any files.
-    #[error("code member did not select any files: {member}")]
+    /// A configured repo member did not select any files.
+    #[error("repo member did not select any files: {member}")]
     MissingMember {
         /// Configured member pattern.
         member: String,
     },
     /// A configured glob is malformed.
-    #[error("code member contains an invalid glob: {member}")]
+    #[error("repo member contains an invalid glob: {member}")]
     InvalidGlob {
         /// Configured member pattern.
         member: String,
@@ -389,7 +389,7 @@ pub enum WitnessError {
         source: glob::PatternError,
     },
     /// Glob expansion failed.
-    #[error("failed to expand code member glob: {member}")]
+    #[error("failed to expand repo member glob: {member}")]
     Glob {
         /// Configured member pattern.
         member: String,
@@ -398,7 +398,7 @@ pub enum WitnessError {
         source: glob::GlobError,
     },
     /// A configured member resolved to an unsupported filesystem item.
-    #[error("code member resolved to an unsupported filesystem item: {member} -> {path}")]
+    #[error("repo member resolved to an unsupported filesystem item: {member} -> {path}")]
     UnsupportedMember {
         /// Configured member pattern.
         member: String,
@@ -406,7 +406,7 @@ pub enum WitnessError {
         path: PathBuf,
     },
     /// A directory member could not be read.
-    #[error("failed to read code member directory {path} from {member}")]
+    #[error("failed to read repo member directory {path} from {member}")]
     ReadDirectory {
         /// Configured member pattern.
         member: String,
@@ -500,7 +500,7 @@ mod tests {
         let src = temp.path().join("src/nested");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), witness_block("witness-lookup")).unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
 
         let index = scan_witnesses(&settings).unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
@@ -525,14 +525,14 @@ mod tests {
     fn scans_glob_members_with_mosaika() {
         let temp = tempfile::tempdir().unwrap();
         std::fs::create_dir_all(temp.path().join("crates/core/src")).unwrap();
-        std::fs::write(temp.path().join("crates/core/src/lib.rs"), witness_block("code-member"))
+        std::fs::write(temp.path().join("crates/core/src/lib.rs"), witness_block("repo-member"))
             .unwrap();
         let settings =
-            WitnessCheckSettings::new(temp.path(), [CodeMember::new("crates/*/src").unwrap()]);
+            WitnessCheckSettings::new(temp.path(), [RepoMember::new("crates/*/src").unwrap()]);
 
         let index = scan_witnesses(&settings).unwrap();
 
-        assert!(index.contains_entry(&EntryId::new("code-member").unwrap()));
+        assert!(index.contains_entry(&EntryId::new("repo-member").unwrap()));
     }
 
     #[test]
@@ -541,7 +541,7 @@ mod tests {
         let src = temp.path().join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), indented_witness_block("witness-lookup")).unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
 
         let index = scan_witnesses(&settings).unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
@@ -563,7 +563,7 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), witness_block_with_end("witness-lookup", "query"))
             .unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
 
         let error = scan_witnesses(&settings).unwrap_err();
 

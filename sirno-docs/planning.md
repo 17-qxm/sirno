@@ -26,7 +26,7 @@ The benefit is continuity.
 A plan written as Sirno entries can refer to the same concepts and implementation commitments as the design lake.
 It can place related tasks in a review neighborhood,
 refine broader design entries,
-or mark work that should be witnessed by code.
+or mark work that should be witnessed by repository artifacts.
 The plan remains inspectable as Markdown rather than being hidden in a separate task system.
 
 Planning entries should still respect the lake.

@@ -18,10 +18,10 @@ It contains compact Markdown entries with exact metadata.
 When Sirno Frost is configured, it is versioned through a separate `eter` Frost root,
 so one lake version names one immutable entry set.
 
-`code` is the repository implementation form.
+`repo` is the repository artifact form.
 It contains source, tests, configuration, generated files, assets,
 and any artifact that can realize or witness design.
-Sirno scans code witnesses only when `[code].members` is configured.
+Sirno scans repository witnesses only when `[repo].members` is configured.
 
 The forms are not just storage locations.
 They are roles in a design workflow.
@@ -29,10 +29,10 @@ The monograph is optimized for continuity,
 so a reader can build a mental model in a deliberate order.
 The lake is optimized for addressability,
 so a person or tool can find the named object that matters to a local change.
-The code form is optimized for execution and evidence,
+The repo form is optimized for execution and evidence,
 so design commitments have concrete artifacts to inspect.
 
-Before the lake exists, the user chooses whether the codebase or monograph carries more authority.
+Before the lake exists, the user chooses whether the repo or monograph carries more authority.
 Once the lake is established, Sirno treats it as the structured intermediate form.
 
 That authority can still be revised by deliberate work.
@@ -44,7 +44,7 @@ Realizing lets entries guide implementation.
 Keeping the three forms distinct prevents one document from trying to serve every reader at once.
 The monograph can stay fluent.
 Entries can stay compact and named.
-Code can stay focused on behavior while still having a place to point for intent.
+Repository artifacts can stay focused on behavior while still having a place to point for intent.
 
 ---
 
@@ -56,8 +56,8 @@ Belongs (to):
 - [sirno](sirno.md)
 
 Refines (from):
-- [code-form](code-form.md)
 - [mono](mono.md)
+- [repo](repo.md)
 - [sirno-lake](sirno-lake.md)
 
 Refines (to): (none)

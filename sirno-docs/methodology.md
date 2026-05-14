@@ -36,7 +36,7 @@ Use `belongs` for review locality.
 Use `refines` for semantic narrowing.
 Use repository witness blocks when the repository contains evidence for the entry claim.
 Leave a structural field out when it does not improve navigation, review, or accountability.
-Run `sirno witness ENTRY_ID --full` and read the entry prose for what the code evidence should mean.
+Run `sirno witness ENTRY_ID --full` and read the entry prose for what the repo evidence should mean.
 
 Lower when intent is too broad for the next local change.
 Lowering turns narrative design into compact lake entries.
@@ -49,7 +49,7 @@ read the entries that govern the work.
 Inspect their `belongs`, `refines`, and witnesses.
 Implementation should be able to answer which entry explains an important commitment.
 
-Reflect while the code change is fresh.
+Reflect while the repo change is fresh.
 Reflect when implementation changes a representation,
 narrows an invariant,
 introduces a boundary,

@@ -19,7 +19,7 @@ Sirno works through three forms:
 
 - `sirno`: a configured lake of named Markdown entries, often `docs/`
 - `mono`: an optional configured Markdown narrative, often raised from the lake
-- `code`: the repository implementation form
+- `repo`: the repository artifact form
 
 The `sirno` lake is the human-readable intermediate representation.
 It is readable as documentation,
@@ -32,8 +32,8 @@ Sirno names four transforms between its three forms.
 
 - `lower`: `mono -> sirno`
 - `raise`: `sirno -> mono`
-- `realize`: `sirno -> code`
-- `reflect`: `code -> sirno`
+- `realize`: `sirno -> repo`
+- `reflect`: `repo -> sirno`
 
 These names describe work that a human, an agent, or a skill can perform.
 They are not promises that Sirno understands project semantics by itself.
@@ -79,7 +79,7 @@ Witness blocks mark repository artifacts that evidence entry claims.
 Sirno does not store a separate witness query in entry metadata.
 The entry id is the query key used by `mosaika`.
 Repository witness blocks open with `sirno:witness:<entry-id>:begin` and close
-with `sirno:witness:<entry-id>:end` inside paths selected by `[code].members`.
+with `sirno:witness:<entry-id>:end` inside paths selected by `[repo].members`.
 Use `sirno witness ENTRY_ID --full` to discover those regions mechanically.
 
 ## Narratives

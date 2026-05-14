@@ -10,7 +10,7 @@ belongs:
 A witness is repository evidence for an entry claim.
 
 The witness entry is the front door for repository evidence.
-Its local entries cover lookup behavior and the code artifact surface where witnesses live.
+Its local entries cover lookup behavior and the repo artifact surface where witnesses live.
 
 Sirno discovers witness status mechanically.
 It queries witnesses through `mosaika` by entry id.
@@ -21,7 +21,7 @@ The witness may be source code, tests, configuration, generated files, assets,
 or any repository artifact that `mosaika` can delimit and query.
 A test may witness an entry when the test itself is the relevant code.
 
-Repository artifacts are selected by `[code].members`.
+Repository artifacts are selected by `[repo].members`.
 Directory members are scanned recursively.
 The repository witness block opens with `sirno:witness:<entry-id>:begin`
 and closes with `sirno:witness:<entry-id>:end`.
@@ -35,7 +35,7 @@ The entry states the design claim in project language.
 The witness block identifies the artifact region that should be inspected.
 The entry id ties them together.
 
-Witness evidence is useful when a claim should be reviewable in code.
+Witness evidence is useful when a claim should be reviewable in the repo.
 An implementation module can witness an interface decision.
 A test can witness a behavioral property.
 A configuration file can witness a storage or tool boundary.
@@ -55,7 +55,7 @@ and spans after `mosaika` finds the delimited repository regions.
 > **Sirno generated links begin. Do not edit this section.**
 
 Belongs (from):
-- [code-form](code-form.md)
+- [repo](repo.md)
 - [witness-fixture-isolation](witness-fixture-isolation.md)
 
 Belongs (to):

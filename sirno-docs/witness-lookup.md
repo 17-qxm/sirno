@@ -7,9 +7,9 @@ refines:
   - witness
 ---
 
-Witness lookup resolves repository evidence by scanning configured code members with `mosaika`.
+Witness lookup resolves repository evidence by scanning configured repo members with `mosaika`.
 
-`[code].members` defines the repository artifact surface when witness lookup is configured.
+`[repo].members` defines the repository artifact surface when witness lookup is configured.
 File members are scanned directly.
 Directory members are scanned recursively.
 Glob members expand to matching files.

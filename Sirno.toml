@@ -4,7 +4,7 @@ path = "sirno-docs"
 # Lake-root paths Sirno skips while reading, checking, querying, and generating links.
 ignore = [".obsidian"]
 
-[code]
+[repo]
 # Repository files, directories, or globs scanned for witness blocks.
 members = ["src"]
 

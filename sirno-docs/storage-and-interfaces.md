@@ -11,7 +11,7 @@ Sirno uses one required storage surface and several optional surfaces.
 
 The public Markdown lake is the editable working form.
 The configured monograph is optional.
-Configured code members are optional and enable witness lookup.
+Configured repo members are optional and enable witness lookup.
 The private Frost root is optional and managed through `eter`.
 `eter` provides durable storage, indexing, immutable snapshots,
 field history, version retirement, and garbage collection.
@@ -19,7 +19,7 @@ field history, version retirement, and garbage collection.
 Sirno exposes the lake through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
 
-Repository witnesses are managed through `mosaika` when code members are configured.
+Repository witnesses are managed through `mosaika` when repo members are configured.
 The entry id is the query key Sirno uses when locating witness blocks.
 
 The storage design separates the public Markdown form from the durable substrate.
@@ -58,9 +58,9 @@ It refuses to overwrite an existing entry file.
 Its default mode is vague text query.
 Exact structural predicates live behind explicit exact flags.
 
-`sirno witness ENTRY_ID` scans configured code members through `mosaika`
+`sirno witness ENTRY_ID` scans configured repo members through `mosaika`
 and reports repository witness blocks for the selected entry id.
-`sirno witness ENTRY_ID --full` also prints the full matched code regions.
+`sirno witness ENTRY_ID --full` also prints the full matched repository regions.
 Witness output reports the opening and closing delimiter ranges.
 Delimiter ranges start at the sentinel text and exclude leading indentation.
 In full mode, the summary line contains only the range.
@@ -86,7 +86,7 @@ generated footer regions are Sirno-owned,
 and prose outside generated regions remains user-owned.
 
 Witness lookup stays separate through `mosaika`.
-That lets witness blocks evolve with code navigation needs
+That lets witness blocks evolve with repository navigation needs
 while Sirno keeps the entry id as the shared nominal handle.
 
 ---

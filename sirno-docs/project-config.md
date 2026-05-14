@@ -21,10 +21,10 @@ Generated config files include concise comments that describe how each written f
 `[mono].path` optionally names the monograph.
 `[lake].path` names the Markdown entry lake.
 `[frost].path` optionally names the private Sirno Frost root.
-`[code].members` optionally lists repository paths or globs scanned for witness blocks.
+`[repo].members` optionally lists repository paths or globs scanned for witness blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
-A project can use Sirno without a configured monograph, code members, or Sirno Frost.
+A project can use Sirno without a configured monograph, repo members, or Sirno Frost.
 `sirno init` creates the config and public entry lake.
 `sirno mv PATH` changes `[lake].path` and renames the public lake directory.
 `sirno frost init` adds the Frost config and freezes the current public lake.
@@ -40,7 +40,7 @@ Sirno skips those paths and their descendants while reading, checking,
 querying, and changing generated links.
 Ignored paths are for adjacent tool state, not for entries.
 
-`[code].members` lists paths and globs relative to `Sirno.toml` when code witnesses are enabled.
+`[repo].members` lists paths and globs relative to `Sirno.toml` when repo witnesses are enabled.
 File members are scanned directly.
 Directory members are scanned recursively.
 Glob members may match files or directories.

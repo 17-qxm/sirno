@@ -14,7 +14,7 @@ refines:
 Sirno compiles between design forms for design-aware programming work,
 moving among an optional long-form project narrative,
 a lake of compact named Markdown entries,
-and the repository codebase.
+and the repository artifact form.
 
 Design needs a form that humans can read,
 tools can index,
@@ -49,15 +49,15 @@ The point is to preserve the design object that a later edit or review should be
 
 Sirno also names movements between forms.
 `lower` moves narrative design into lake entries.
-`realize` uses entries to guide code.
-`reflect` records durable design facts learned from code back into the lake.
+`realize` uses entries to guide repo work.
+`reflect` records durable design facts learned from the repo back into the lake.
 `raise` composes lake entries into a readable monograph when a project wants one.
 These transforms are vocabulary for work.
 They do not make Sirno a judge of design quality.
 They make the relevant design objects easier to name and inspect.
 
 Repository witnesses close the loop with implementation.
-A witness block lives in a configured code member,
+A witness block lives in a configured repo member,
 opens with `sirno:witness:<entry-id>:begin`,
 and closes with `sirno:witness:<entry-id>:end`.
 Sirno asks `mosaika` to locate those regions by entry id.

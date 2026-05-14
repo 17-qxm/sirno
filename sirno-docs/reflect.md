@@ -1,6 +1,6 @@
 ---
 name: Reflect
-description: The movement from changed code back into Sirno entries.
+description: The movement from changed repository artifacts back into Sirno entries.
 category:
   - concept
   - narrative
@@ -8,14 +8,14 @@ refines:
   - transform
 ---
 
-`reflect` moves from `code` to `sirno`.
+`reflect` moves from `repo` to `sirno`.
 
 Reflection records durable design facts learned during implementation.
-Reflect when code changes a representation, narrows an invariant,
+Reflect when repo work changes a representation, narrows an invariant,
 introduces a boundary, invalidates an explanation,
 or reveals a clearer local design than the current entries record.
 
-Reflection should happen while the code change is fresh.
+Reflection should happen while the repository change is fresh.
 The reflected entry records the design fact future work needs,
 not a full narrative of the edit.
 
