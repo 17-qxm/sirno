@@ -11,7 +11,7 @@ refiner:
 
 A ripple is the named delta between two Sirno Lake states.
 It describes what changed across entries, metadata, generated projections,
-or future history snapshots without treating the whole lake as new.
+or future frozen snapshots without treating the whole lake as new.
 
 The term fits the lake model.
 A lake is the readable body of project knowledge.

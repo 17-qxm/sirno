@@ -15,7 +15,7 @@ It carries the whole project design as a readable monograph.
 
 `sirno` is one configured entry lake.
 It contains compact Markdown entries with exact metadata.
-When history is configured, it is versioned through a separate `eter` history root,
+When Sirno Frost is configured, it is versioned through a separate `eter` Frost root,
 so one lake version names one immutable entry set.
 
 `code` is the repository implementation form.

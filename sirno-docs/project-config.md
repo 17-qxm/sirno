@@ -16,25 +16,25 @@ The file configures the public entry lake
 and the operational policies that Sirno applies to the lake.
 It may also configure a monograph,
 repository witness members,
-and a private history root.
+and Sirno Frost.
 Generated config files include concise comments that describe how each written field is used.
 
 `[mono].path` optionally names the monograph.
 `[lake].path` names the Markdown entry lake.
-`[history].path` optionally names the private `eter` history root.
+`[frost].path` optionally names the private Sirno Frost root.
 `[code].members` optionally lists repository paths or globs scanned for witness blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
-A project can use Sirno without a configured monograph, code members, or history.
+A project can use Sirno without a configured monograph, code members, or Sirno Frost.
 `sirno init` creates the config and public entry lake.
 `sirno mv PATH` changes `[lake].path` and renames the public lake directory.
-`sirno history init` adds the history config and commits the current public lake.
-`sirno history mv PATH` changes `[history].path` and renames the private history root.
+`sirno frost init` adds the Frost config and freezes the current public lake.
+`sirno frost mv PATH` changes `[frost].path` and renames the private Frost root.
 
-`Sirno.lock` records the public lake's history state when history is configured.
+`Sirno.lock` records the public lake's Frost state when Sirno Frost is configured.
 It lives next to `Sirno.toml`.
 The lock says whether the lake is current
-or checked out to a historical version.
+or checked out to a frozen version.
 
 `[lake].ignore` lists paths relative to the lake root.
 Sirno skips those paths and their descendants while reading, checking,

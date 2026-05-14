@@ -26,8 +26,8 @@ The move refuses to replace an existing destination.
 The lake is the human-readable intermediate representation:
 text first, structured enough for tools,
 and compact enough for humans and agents to inspect locally.
-When history is configured,
-its committed state is versioned through a separate `eter` history root,
+When Sirno Frost is configured,
+its frozen state is versioned through a separate `eter` Frost root,
 so one version names one immutable set of entries.
 
 Each entry is an ordinary Markdown file with a YAML metadata block and prose body.
@@ -50,8 +50,8 @@ An editor can use generated footers to expose navigation.
 All of those forms use the same filenames and metadata.
 
 The lake is a working form.
-Direct edits become versioned history only when history is configured
-and Sirno commits the lake into the history root.
+Direct edits become frozen versions only when Sirno Frost is configured
+and Sirno freezes the lake into the Frost root.
 
 Some files under a lake root may belong to adjacent tools.
 `[lake].ignore` lists lake-root-relative paths that Sirno skips.

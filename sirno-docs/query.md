@@ -11,8 +11,8 @@ witness:
 ---
 
 Query selects parsed entries from the public lake or,
-when history is configured,
-from one history version.
+when Sirno Frost is configured,
+from one Frost version.
 
 It reads entry ids, metadata, and bodies.
 Generated footers are projections for navigation,

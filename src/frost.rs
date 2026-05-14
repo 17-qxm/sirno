@@ -1,6 +1,6 @@
-//! Sirno Lake facade.
+//! Sirno Frost facade.
 //!
-//! The facade exposes typed Sirno entries.
+//! Sirno Frost exposes frozen snapshots as typed Sirno entries.
 //! The current backend uses `eter` filesystem snapshots as durable storage.
 //! That layout is private to this module.
 
@@ -9,8 +9,7 @@ use std::path::{Path, PathBuf};
 
 use eter::filesystem::{FilesystemBackend, FilesystemEntryId, FilesystemError, FilesystemWriteTxn};
 use eter::{
-    EntryFacet, EntryFacetStoreExt, Eter, Eterator, Field, Lifecycle, LiveEntries, Resolution,
-    SnapshotRef, WriteTxn,
+    EntryFacet, Eter, Eterator, Field, Lifecycle, LiveEntries, Resolution, SnapshotRef, WriteTxn,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -68,84 +67,84 @@ impl Field for WitnessField {
     type Content = WitnessMarker;
 }
 
-/// History store facade for Sirno entries.
+/// Sirno Frost facade for Sirno entries.
 ///
 /// Invariant: all entries written through this type are represented through
 /// typed metadata fields and a Markdown body in the configured `eter` backend.
 #[derive(Debug)]
-// sirno:witness:history-store:begin
-pub struct SirnoStore {
+// sirno:witness:sirno-frost:begin
+pub struct SirnoFrost {
     root: PathBuf,
     backend: SirnoBackend,
 }
-// sirno:witness:history-store:end
+// sirno:witness:sirno-frost:end
 
-impl SirnoStore {
-    /// Open or initialize a history store rooted at `root`.
-    // sirno:witness:history-store:begin
-    pub fn open(root: impl Into<PathBuf>) -> Result<Self, StoreError> {
-        trace!("sirno history store open begin");
+impl SirnoFrost {
+    /// Open or initialize Sirno Frost rooted at `root`.
+    // sirno:witness:sirno-frost:begin
+    pub fn open(root: impl Into<PathBuf>) -> Result<Self, FrostError> {
+        trace!("sirno frost open begin");
         let root = root.into();
         let backend = SirnoBackend::open(&root, sirno_registry())?;
-        trace!("sirno history store open end");
+        trace!("sirno frost open end");
         Ok(Self { root, backend })
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
-    /// The root path used by this lake.
+    /// The private Frost root path.
     pub fn root(&self) -> &Path {
         &self.root
     }
 
     /// Return the current backend snapshot reference.
-    // sirno:witness:history-store:begin
-    pub fn current_snapshot(&self) -> Result<SnapshotRef, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    pub fn current_snapshot(&self) -> Result<SnapshotRef, FrostError> {
         Ok(self.backend.current_snapshot()?)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Return the current backend snapshot version coordinate.
-    // sirno:witness:history-store:begin
-    pub fn current_version(&self) -> Result<Eterator, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    pub fn current_version(&self) -> Result<Eterator, FrostError> {
         Ok(self.backend.current_version()?)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Pair a version coordinate with the current backend GC generation.
     ///
     /// `eter` rejects stale snapshot references.
     /// Sirno exposes version coordinates at the CLI and resolves them against the current generation.
-    // sirno:witness:history-store:begin
-    pub fn snapshot_for_version(&self, version: Eterator) -> Result<SnapshotRef, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    pub fn snapshot_for_version(&self, version: Eterator) -> Result<SnapshotRef, FrostError> {
         Ok(SnapshotRef::new(self.backend.gc_generation()?, version))
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Write or replace one entry.
-    // sirno:witness:history-store:begin
-    pub fn put_entry(&mut self, entry: &Entry) -> Result<SnapshotRef, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    pub fn put_entry(&mut self, entry: &Entry) -> Result<SnapshotRef, FrostError> {
         trace!("sirno put_entry begin: id={}", entry.id);
         let fs_id = entry.id.to_filesystem_id()?;
         let facet = StoredEntryFacet::from_entry(entry);
-        let snapshot = self.backend.write_facet(&fs_id, &facet)?;
+        let snapshot = facet.apply_to(self.backend.write(), &fs_id).commit()?;
         trace!("sirno put_entry end: version={}", snapshot.version());
         Ok(snapshot)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Read one entry at the current snapshot.
-    pub fn read_entry(&self, id: &EntryId) -> Result<Option<Entry>, StoreError> {
+    pub fn read_entry(&self, id: &EntryId) -> Result<Option<Entry>, FrostError> {
         self.read_entry_at_snapshot(self.current_snapshot()?, id)
     }
 
-    /// Read one entry at a selected history snapshot.
-    // sirno:witness:history-store:begin
+    /// Read one entry at a selected frozen snapshot.
+    // sirno:witness:sirno-frost:begin
     pub fn read_entry_at_snapshot(
         &self, at: SnapshotRef, id: &EntryId,
-    ) -> Result<Option<Entry>, StoreError> {
+    ) -> Result<Option<Entry>, FrostError> {
         trace!("sirno read_entry_at begin: id={id} at={}", at.version());
         let fs_id = id.to_filesystem_id()?;
-        let Some(facet) = self.backend.load_facet::<StoredEntryFacet>(at, &fs_id)? else {
+        let Some(facet) = StoredEntryFacet::load_from(&self.backend, at, &fs_id)? else {
             trace!("sirno read_entry_at end: absent");
             return Ok(None);
         };
@@ -153,16 +152,16 @@ impl SirnoStore {
         trace!("sirno read_entry_at end: present");
         Ok(Some(entry))
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Read every active entry at the current snapshot.
-    pub fn read_all_entries(&self) -> Result<Vec<Entry>, StoreError> {
+    pub fn read_all_entries(&self) -> Result<Vec<Entry>, FrostError> {
         self.read_all_entries_at_snapshot(self.current_snapshot()?)
     }
 
-    /// Read every active entry at a selected history snapshot.
-    // sirno:witness:history-store:begin
-    pub fn read_all_entries_at_snapshot(&self, at: SnapshotRef) -> Result<Vec<Entry>, StoreError> {
+    /// Read every active entry at a selected frozen snapshot.
+    // sirno:witness:sirno-frost:begin
+    pub fn read_all_entries_at_snapshot(&self, at: SnapshotRef) -> Result<Vec<Entry>, FrostError> {
         trace!("sirno read_all_entries begin: at={}", at.version());
         let mut entries = Vec::new();
         for fs_id in self.backend.live_entries(at)? {
@@ -174,40 +173,40 @@ impl SirnoStore {
         trace!("sirno read_all_entries end: entries={}", entries.len());
         Ok(entries)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Check current entries at the selected boundary.
-    pub fn check_current(&self, mode: CheckMode) -> Result<CheckReport, StoreError> {
+    pub fn check_current(&self, mode: CheckMode) -> Result<CheckReport, FrostError> {
         let entries = self.read_all_entries()?;
         Ok(check_entries(&entries, mode))
     }
 
-    /// Commit a public Markdown entry directory into this history store.
+    /// Freeze a public Markdown entry directory into Sirno Frost.
     ///
-    /// The directory must pass review-mode checks before any history row is written.
+    /// The directory must pass review-mode checks before any frozen row is written.
     /// Generated-link regions are stripped from the committed snapshot.
-    // sirno:witness:history-store:begin
+    // sirno:witness:sirno-frost:begin
     pub fn commit_entry_directory(
         &mut self, root: impl Into<PathBuf>, settings: &EntryDirectoryCheckSettings,
-    ) -> Result<SnapshotRef, StoreError> {
+    ) -> Result<SnapshotRef, FrostError> {
         let root = root.into();
         trace!("sirno commit_entry_directory begin: root={}", root.display());
         let report = check_entry_directory_with_settings(&root, CheckMode::Review, settings)?;
         if report.has_errors() {
-            return Err(StoreError::InvalidEntryDirectory(root));
+            return Err(FrostError::InvalidEntryDirectory(root));
         }
         let entries = entries_without_generated_links(report.entries())?;
         let version = self.commit_entries(&entries)?;
         trace!("sirno commit_entry_directory end: version={}", version.version());
         Ok(version)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
-    /// Materialize a history snapshot into a public Markdown entry directory.
-    // sirno:witness:history-store:begin
+    /// Materialize a frozen snapshot into a public Markdown entry directory.
+    // sirno:witness:sirno-frost:begin
     pub fn checkout_entry_directory(
         &self, at: SnapshotRef, root: impl Into<PathBuf>, policy: EntryDirectoryWritePolicy,
-    ) -> Result<Vec<PathBuf>, StoreError> {
+    ) -> Result<Vec<PathBuf>, FrostError> {
         let root = root.into();
         trace!("sirno checkout_entry_directory begin: at={} root={}", at.version(), root.display());
         let entries = self.read_all_entries_at_snapshot(at)?;
@@ -215,30 +214,30 @@ impl SirnoStore {
         trace!("sirno checkout_entry_directory end: entries={}", paths.len());
         Ok(paths)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
     /// Initialize ordinary seed entries.
     ///
     /// The initialized entries are ordinary Sirno entries.
     /// They are created together and are not privileged by later operations.
-    // sirno:witness:history-store:begin
-    pub fn init_default_entries(&mut self) -> Result<SnapshotRef, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    pub fn init_default_entries(&mut self) -> Result<SnapshotRef, FrostError> {
         trace!("sirno init_default_entries begin");
         let entries = default_seed_entries()?;
         for entry in &entries {
             let fs_id = entry.id.to_filesystem_id()?;
             if self.backend.entry_id_in_use(&fs_id)? {
-                return Err(StoreError::EntryAlreadyExists(entry.id.clone()));
+                return Err(FrostError::EntryAlreadyExists(entry.id.clone()));
             }
         }
         let version = self.commit_entries(&entries)?;
         trace!("sirno init_default_entries end: version={}", version.version());
         Ok(version)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 
-    // sirno:witness:history-store:begin
-    fn commit_entries(&mut self, entries: &[Entry]) -> Result<SnapshotRef, StoreError> {
+    // sirno:witness:sirno-frost:begin
+    fn commit_entries(&mut self, entries: &[Entry]) -> Result<SnapshotRef, FrostError> {
         let current = self.current_snapshot()?;
         if self.read_all_entries_at_snapshot(current)? == entries {
             return Ok(current);
@@ -263,10 +262,10 @@ impl SirnoStore {
         }
         Ok(txn.commit()?)
     }
-    // sirno:witness:history-store:end
+    // sirno:witness:sirno-frost:end
 }
 
-fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, StoreError> {
+fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, FrostError> {
     entries
         .iter()
         .map(|entry| {
@@ -317,14 +316,14 @@ impl StoredEntryFacet {
         }
     }
 
-    fn into_entry(self, id: EntryId) -> Result<Entry, StoreError> {
+    fn into_entry(self, id: EntryId) -> Result<Entry, FrostError> {
         let name =
-            self.name.ok_or_else(|| StoreError::CorruptEntry { id: id.clone(), field: "name" })?;
+            self.name.ok_or_else(|| FrostError::CorruptEntry { id: id.clone(), field: "name" })?;
         let description = self
             .description
-            .ok_or_else(|| StoreError::CorruptEntry { id: id.clone(), field: "description" })?;
+            .ok_or_else(|| FrostError::CorruptEntry { id: id.clone(), field: "description" })?;
         let body =
-            self.body.ok_or_else(|| StoreError::CorruptEntry { id: id.clone(), field: "body" })?;
+            self.body.ok_or_else(|| FrostError::CorruptEntry { id: id.clone(), field: "body" })?;
         let mut metadata = EntryMetadata::new(name, description)?;
         metadata.category = self.category;
         metadata.clustee = self.clustee;
@@ -336,23 +335,23 @@ impl StoredEntryFacet {
 
 impl EntryFacet<SirnoBackend> for StoredEntryFacet {
     fn load_from(
-        store: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
+        backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
     ) -> Result<Option<Self>, FilesystemError> {
-        if !store.entry_exists(at, id)? {
+        if !backend.entry_exists(at, id)? {
             return Ok(None);
         }
 
         Ok(Some(Self {
-            name: resolve_optional_text::<NameField>(store, at, id)?,
-            description: resolve_optional_text::<DescriptionField>(store, at, id)?,
-            category: resolve_optional_list::<CategoryField>(store, at, id)?,
-            clustee: resolve_optional_list::<ClusteeField>(store, at, id)?,
-            refiner: resolve_optional_list::<RefinerField>(store, at, id)?,
-            witness: match store.resolve::<WitnessField>(at, id)? {
+            name: resolve_optional_text::<NameField>(backend, at, id)?,
+            description: resolve_optional_text::<DescriptionField>(backend, at, id)?,
+            category: resolve_optional_list::<CategoryField>(backend, at, id)?,
+            clustee: resolve_optional_list::<ClusteeField>(backend, at, id)?,
+            refiner: resolve_optional_list::<RefinerField>(backend, at, id)?,
+            witness: match backend.resolve::<WitnessField>(at, id)? {
                 | Resolution::Content(marker) => Some(marker),
                 | Resolution::Deleted | Resolution::Absent => None,
             },
-            body: match store.resolve_body(at, id)? {
+            body: match backend.resolve_body(at, id)? {
                 | Resolution::Content(body) => Some(body),
                 | Resolution::Deleted | Resolution::Absent => None,
             },
@@ -380,18 +379,18 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
 }
 
 fn resolve_optional_text<F: Field<Content = String>>(
-    store: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
+    backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
 ) -> Result<Option<String>, FilesystemError> {
-    match store.resolve::<F>(at, id)? {
+    match backend.resolve::<F>(at, id)? {
         | Resolution::Content(value) => Ok(Some(value)),
         | Resolution::Deleted | Resolution::Absent => Ok(None),
     }
 }
 
 fn resolve_optional_list<F: Field<Content = Vec<EntryId>>>(
-    store: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
+    backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
 ) -> Result<Vec<EntryId>, FilesystemError> {
-    match store.resolve::<F>(at, id)? {
+    match backend.resolve::<F>(at, id)? {
         | Resolution::Content(value) => Ok(value),
         | Resolution::Deleted | Resolution::Absent => Ok(Vec::new()),
     }
@@ -409,13 +408,13 @@ where
 fn required_facet_text(value: &Option<String>, field: &'static str) -> String {
     value
         .clone()
-        .unwrap_or_else(|| panic!("stored Sirno entry facet is missing required `{field}` field"))
+        .unwrap_or_else(|| panic!("Sirno Frost entry facet is missing required `{field}` field"))
 }
 
-/// Error raised by Sirno Lake operations.
+/// Error raised by Sirno Frost operations.
 #[derive(Debug, Error)]
-pub enum StoreError {
-    /// The backend reported a filesystem-store error.
+pub enum FrostError {
+    /// The backend reported a filesystem backend error.
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
     /// Filesystem scanning failed.
@@ -427,14 +426,14 @@ pub enum StoreError {
     /// A filesystem directory cannot be interpreted as a Sirno entry id.
     #[error(transparent)]
     EntryId(#[from] EntryIdError),
-    /// Public Markdown entry directory must pass review checks before history commit.
-    #[error("entry directory must pass review checks before history commit: {0}")]
+    /// Public Markdown entry directory must pass review checks before Frost commit.
+    #[error("entry directory must pass review checks before Frost commit: {0}")]
     InvalidEntryDirectory(PathBuf),
     /// Seed initialization would overwrite an existing entry.
     #[error("entry `{0}` already exists")]
     EntryAlreadyExists(EntryId),
-    /// A stored entry is missing a required Sirno field.
-    #[error("stored entry `{id}` is missing required field `{field}`")]
+    /// A frozen entry is missing a required Sirno field.
+    #[error("frozen entry `{id}` is missing required field `{field}`")]
     CorruptEntry {
         /// Entry containing the corrupt field state.
         id: EntryId,
@@ -457,27 +456,27 @@ mod tests {
     #[test]
     fn init_creates_ordinary_seed_entries() {
         let temp = tempfile::tempdir().unwrap();
-        let mut store = SirnoStore::open(temp.path()).unwrap();
+        let mut frost = SirnoFrost::open(temp.path()).unwrap();
 
-        store.init_default_entries().unwrap();
-        let entries = store.read_all_entries().unwrap();
+        frost.init_default_entries().unwrap();
+        let entries = frost.read_all_entries().unwrap();
         let ids = entries.iter().map(|entry| entry.id.as_str()).collect::<Vec<_>>();
 
         assert_eq!(ids, ["concept", "meta", "narrative"]);
-        assert!(store.check_current(CheckMode::Review).unwrap().is_clean());
+        assert!(frost.check_current(CheckMode::Review).unwrap().is_clean());
     }
 
     #[test]
     fn put_and_read_entry_round_trips_metadata_and_body() {
         let temp = tempfile::tempdir().unwrap();
-        let mut store = SirnoStore::open(temp.path()).unwrap();
+        let mut frost = SirnoFrost::open(temp.path()).unwrap();
         let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
         metadata.category.push(EntryId::new("concept").unwrap());
         metadata.witness = Some(WitnessMarker::Present);
         let entry = Entry::new(EntryId::new("witness").unwrap(), metadata, "Body.\n");
 
-        store.put_entry(&entry).unwrap();
-        let read = store.read_entry(&entry.id).unwrap().unwrap();
+        frost.put_entry(&entry).unwrap();
+        let read = frost.read_entry(&entry.id).unwrap().unwrap();
 
         assert_eq!(read, entry);
     }
@@ -485,45 +484,45 @@ mod tests {
     #[test]
     fn init_refuses_to_overwrite_existing_seed_entries() {
         let temp = tempfile::tempdir().unwrap();
-        let mut store = SirnoStore::open(temp.path()).unwrap();
+        let mut frost = SirnoFrost::open(temp.path()).unwrap();
 
-        store.init_default_entries().unwrap();
-        let error = store.init_default_entries().unwrap_err();
+        frost.init_default_entries().unwrap();
+        let error = frost.init_default_entries().unwrap_err();
 
-        assert!(matches!(error, StoreError::EntryAlreadyExists(_)));
+        assert!(matches!(error, FrostError::EntryAlreadyExists(_)));
     }
 
     #[test]
     fn commit_entry_directory_round_trips_single_entry() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let entry = test_entry("alpha", "Alpha");
         write_public_entry(public.path(), &entry);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let version = store
+        let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
-        let read = store.read_entry_at_snapshot(version, &entry.id).unwrap();
+        let read = frost.read_entry_at_snapshot(version, &entry.id).unwrap();
 
         assert_eq!(read, Some(entry));
     }
 
     #[test]
-    fn commit_entry_directory_strips_generated_links_from_history() {
+    fn commit_entry_directory_strips_generated_links_from_frost() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let mut entry = test_entry("alpha", "Alpha");
         let footer = GeneratedLinkIndex::from_entries(std::slice::from_ref(&entry))
             .render_entry(&entry, &GeneratedLinkSettings::default());
         entry.body = apply_generated_links(&entry.body, &footer).unwrap();
         write_public_entry(public.path(), &entry);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let version = store
+        let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
-        let read = store.read_entry_at_snapshot(version, &entry.id).unwrap().unwrap();
+        let read = frost.read_entry_at_snapshot(version, &entry.id).unwrap().unwrap();
 
         assert!(entry.body.contains(crate::BEGIN_LINKS_GUARD));
         assert_eq!(read.body, "Alpha body.\n");
@@ -532,84 +531,84 @@ mod tests {
     #[test]
     fn multi_entry_commit_uses_one_snapshot() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let version = store
+        let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
 
-        assert_eq!(store.current_snapshot().unwrap(), version);
-        assert_entry_snapshot_file(history.path(), &alpha.id, version);
-        assert_entry_snapshot_file(history.path(), &beta.id, version);
+        assert_eq!(frost.current_snapshot().unwrap(), version);
+        assert_entry_snapshot_file(frost_root.path(), &alpha.id, version);
+        assert_entry_snapshot_file(frost_root.path(), &beta.id, version);
     }
 
     #[test]
     fn no_op_commit_returns_current_snapshot() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let entry = test_entry("alpha", "Alpha");
         write_public_entry(public.path(), &entry);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let first = store
+        let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
-        let second = store
+        let second = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
 
         assert_eq!(first, second);
-        assert_eq!(store.current_snapshot().unwrap(), first);
+        assert_eq!(frost.current_snapshot().unwrap(), first);
     }
 
     #[test]
-    fn removing_public_entry_creates_history_lifecycle_deletion() {
+    fn removing_public_entry_creates_frost_lifecycle_deletion() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let first = store
+        let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
         fs::remove_file(public.path().join("beta.md")).unwrap();
-        let second = store
+        let second = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
 
         assert_ne!(first, second);
-        assert!(store.read_entry_at_snapshot(first, &beta.id).unwrap().is_some());
-        assert!(store.read_entry_at_snapshot(second, &alpha.id).unwrap().is_some());
-        assert_eq!(store.read_entry_at_snapshot(second, &beta.id).unwrap(), None);
+        assert!(frost.read_entry_at_snapshot(first, &beta.id).unwrap().is_some());
+        assert!(frost.read_entry_at_snapshot(second, &alpha.id).unwrap().is_some());
+        assert_eq!(frost.read_entry_at_snapshot(second, &beta.id).unwrap(), None);
     }
 
     #[test]
-    fn checkout_entry_directory_materializes_historical_state() {
+    fn checkout_entry_directory_materializes_frozen_state() {
         let public = tempfile::tempdir().unwrap();
-        let history = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
         let checkout = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut store = SirnoStore::open(history.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 
-        let first = store
+        let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
         fs::remove_file(public.path().join("beta.md")).unwrap();
-        store
+        frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
-        store
+        frost
             .checkout_entry_directory(
                 first,
                 checkout.path(),

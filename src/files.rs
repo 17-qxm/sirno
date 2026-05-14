@@ -25,7 +25,7 @@ use crate::links::{
 use crate::witness::{WitnessCheckSettings, WitnessError, scan_witnesses};
 
 const READONLY_CHECKOUT_WARNING: &str = "\
-> This file is a read-only Sirno history checkout.
+> This file is a read-only Sirno Frost checkout.
 > Do not edit it by hand.
 
 ";
@@ -1302,7 +1302,7 @@ Body.
         let checked = check_entry_directory(&root, CheckMode::Review).unwrap();
 
         assert!(source.contains(
-            "\n---\n\n> This file is a read-only Sirno history checkout.\n\
+            "\n---\n\n> This file is a read-only Sirno Frost checkout.\n\
              > Do not edit it by hand.\n\nBody.\n"
         ));
         assert_eq!(checked.entries()[0].metadata, entry.metadata);

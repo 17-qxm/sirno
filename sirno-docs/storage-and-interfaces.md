@@ -13,7 +13,7 @@ Sirno uses one required storage surface and several optional surfaces.
 The public Markdown lake is the editable working form.
 The configured monograph is optional.
 Configured code members are optional and enable witness lookup.
-The private history root is optional and managed through `eter`.
+The private Frost root is optional and managed through `eter`.
 `eter` provides durable storage, indexing, immutable snapshots,
 field history, version retirement, and garbage collection.
 
@@ -28,7 +28,7 @@ Markdown entries are the human-facing form.
 They are easy to read, review, diff, and edit.
 `eter` provides the storage and indexing foundation beneath that form,
 so Sirno can grow more capable without making the entry files opaque.
-It also gives Sirno Lake snapshots in `sirno-history`
+It also gives Sirno Lake snapshots in `sirno-frost`
 without adding version fields to entry metadata.
 
 The CLI is the first operational interface.
@@ -38,18 +38,18 @@ Those commands should remain plain enough to use from a terminal
 and stable enough for agents and skills to call.
 
 `sirno status` summarizes the configured repository.
-It reports the config path, monograph state, lake path, optional history path,
-history lock state, entry count, check policy, link policy, and current check result.
+It reports the config path, monograph state, lake path, optional Frost path,
+Frost lock state, entry count, check policy, link policy, and current check result.
 
 `sirno mv PATH` changes the configured public lake path
 and renames the current lake directory on the filesystem.
 
-`sirno history init` configures the private history root and commits the current public lake.
-`sirno history mv PATH` changes the configured history path
-and renames the current history root on the filesystem.
-`sirno history commit` commits the current public lake into history
+`sirno frost init` configures the private Frost root and freezes the current public lake.
+`sirno frost mv PATH` changes the configured Frost path
+and renames the current Frost root on the filesystem.
+`sirno frost commit` freezes the current public lake
 and writes the resulting current snapshot reference to `Sirno.lock`.
-`sirno history checkout VERSION` materializes one version into the public lake.
+`sirno frost checkout VERSION` materializes one version into the public lake.
 The checkout is immutable unless `--unsafe-mutable` is supplied.
 
 `sirno new` creates one Markdown entry from typed command-line metadata.

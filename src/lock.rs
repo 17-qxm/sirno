@@ -1,7 +1,7 @@
-//! Project-local lock state for Sirno history.
+//! Project-local lock state for Sirno Frost.
 //!
 //! `Sirno.toml` configures paths and policy.
-//! `Sirno.lock` records the history snapshot reference represented by the public lake.
+//! `Sirno.lock` records the Frost snapshot reference represented by the public lake.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -21,16 +21,16 @@ const LOCK_FILE_HEADER: &str = "\
 
 ";
 
-/// Project-local history state.
+/// Project-local Frost state.
 ///
-/// Invariant: `history.generation` and `history.version` name the `eter` snapshot represented
+/// Invariant: `frost.generation` and `frost.version` name the `eter` snapshot represented
 /// by the public lake.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // sirno:witness:sirno-lock:begin
 pub struct SirnoLock {
-    /// Current public-lake history state.
-    pub history: HistoryLock,
+    /// Current public-lake Frost state.
+    pub frost: FrostLock,
 }
 // sirno:witness:sirno-lock:end
 
@@ -38,14 +38,14 @@ impl SirnoLock {
     /// Construct a lock for the current editable public lake.
     // sirno:witness:sirno-lock:begin
     pub fn current(snapshot: SnapshotRef) -> Self {
-        Self { history: HistoryLock::current(snapshot) }
+        Self { frost: FrostLock::current(snapshot) }
     }
     // sirno:witness:sirno-lock:end
 
-    /// Construct a lock for a checked-out history snapshot.
+    /// Construct a lock for a checked-out Frost snapshot.
     // sirno:witness:sirno-lock:begin
     pub fn checked_out(snapshot: SnapshotRef, mutable: bool) -> Self {
-        Self { history: HistoryLock::checked_out(snapshot, mutable) }
+        Self { frost: FrostLock::checked_out(snapshot, mutable) }
     }
     // sirno:witness:sirno-lock:end
 
@@ -85,7 +85,7 @@ impl SirnoLock {
 
     // sirno:witness:sirno-lock:begin
     fn validate(&self) -> Result<(), LockError> {
-        self.history.validate()
+        self.frost.validate()
     }
 
     fn to_toml(&self) -> Result<String, LockError> {
@@ -97,31 +97,31 @@ impl SirnoLock {
     // sirno:witness:sirno-lock:end
 }
 
-/// History state recorded in `Sirno.lock`.
+/// Frost state recorded in `Sirno.lock`.
 ///
 /// Invariant: `mutable` is true only for checked-out snapshots created with `--unsafe-mutable`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 // sirno:witness:versioning:begin
-pub struct HistoryLock {
-    /// Public lake status relative to the configured history root.
-    pub status: HistoryLockStatus,
+pub struct FrostLock {
+    /// Public lake status relative to the configured Frost root.
+    pub status: FrostLockStatus,
     /// GC generation for the represented snapshot.
     pub generation: u64,
     /// Raw `Eterator` coordinate represented by the public lake.
     pub version: u64,
-    /// Whether a checked-out historical snapshot was intentionally left writable.
+    /// Whether a checked-out frozen snapshot was intentionally left writable.
     #[serde(default, skip_serializing_if = "is_false")]
     pub mutable: bool,
 }
 // sirno:witness:versioning:end
 
-impl HistoryLock {
+impl FrostLock {
     /// Construct state for the current editable public lake.
     // sirno:witness:versioning:begin
     pub fn current(snapshot: SnapshotRef) -> Self {
         Self {
-            status: HistoryLockStatus::Current,
+            status: FrostLockStatus::Current,
             generation: snapshot.generation.number(),
             version: snapshot.version(),
             mutable: false,
@@ -129,11 +129,11 @@ impl HistoryLock {
     }
     // sirno:witness:versioning:end
 
-    /// Construct state for a checked-out history snapshot.
+    /// Construct state for a checked-out Frost snapshot.
     // sirno:witness:versioning:begin
     pub fn checked_out(snapshot: SnapshotRef, mutable: bool) -> Self {
         Self {
-            status: HistoryLockStatus::CheckedOut,
+            status: FrostLockStatus::CheckedOut,
             generation: snapshot.generation.number(),
             version: snapshot.version(),
             mutable,
@@ -148,10 +148,10 @@ impl HistoryLock {
     }
     // sirno:witness:versioning:end
 
-    /// Returns true when the public lake is a historical checkout.
+    /// Returns true when the public lake is a Frost checkout.
     // sirno:witness:versioning:begin
     pub fn is_checked_out(&self) -> bool {
-        self.status == HistoryLockStatus::CheckedOut
+        self.status == FrostLockStatus::CheckedOut
     }
 
     /// Returns true when the public lake is a writable historical checkout.
@@ -162,7 +162,7 @@ impl HistoryLock {
 
     // sirno:witness:versioning:begin
     fn validate(&self) -> Result<(), LockError> {
-        if self.status == HistoryLockStatus::Current && self.mutable {
+        if self.status == FrostLockStatus::Current && self.mutable {
             return Err(LockError::CurrentMutable);
         }
         Ok(())
@@ -170,14 +170,14 @@ impl HistoryLock {
     // sirno:witness:versioning:end
 }
 
-/// Public-lake status relative to history.
+/// Public-lake status relative to Sirno Frost.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 // sirno:witness:versioning:begin
-pub enum HistoryLockStatus {
+pub enum FrostLockStatus {
     /// The public lake is the current editable version.
     Current,
-    /// The public lake is a materialized historical snapshot.
+    /// The public lake is a materialized frozen snapshot.
     CheckedOut,
 }
 // sirno:witness:versioning:end
@@ -216,7 +216,7 @@ pub enum LockError {
     #[error("failed to render lock file")]
     Render(#[source] toml::ser::Error),
     /// Current public-lake state must be editable.
-    #[error("current history state cannot be marked mutable")]
+    #[error("current frost state cannot be marked mutable")]
     CurrentMutable,
     /// The lock file could not be created.
     #[error("failed to create lock file {path}")]
@@ -243,7 +243,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn renders_current_history_lock() {
+    fn renders_current_frost_lock() {
         let lock = SirnoLock::current(SnapshotRef::new(GcGeneration::INITIAL, Eterator(7)));
         let rendered = lock.to_toml().unwrap();
 
@@ -253,7 +253,7 @@ mod tests {
 # This file is generated and managed by Sirno.
 # Do not edit it by hand.
 
-[history]
+[frost]
 status = \"current\"
 generation = 0
 version = 7
@@ -272,7 +272,7 @@ version = 7
 # This file is generated and managed by Sirno.
 # Do not edit it by hand.
 
-[history]
+[frost]
 status = \"checked-out\"
 generation = 2
 version = 3
@@ -285,7 +285,7 @@ mutable = true
     fn rejects_mutable_current_lock() {
         let error = toml::from_str::<SirnoLock>(
             r#"
-[history]
+[frost]
 status = "current"
 generation = 0
 version = 3

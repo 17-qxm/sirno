@@ -43,8 +43,8 @@ The footer is derived from metadata.
 Changing a generated link by hand does not change the metadata.
 Changing the metadata and regenerating the footer is the correct path.
 The sentinels make that ownership boundary visible in the entry file itself.
-History commits remove the generated footer before writing the entry snapshot.
-The history store keeps canonical metadata and prose,
+Frost commits remove the generated footer before writing the entry snapshot.
+Sirno Frost keeps canonical metadata and prose,
 not navigation projections.
 
 The configured link policy controls which structural fields appear.

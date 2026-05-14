@@ -10,9 +10,9 @@ use clap_complete::{Shell, generate};
 use sirno::{
     CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
-    EntryMetadata, EntryParseError, EntryQuery, Eterator, GenLinkDirectoryReport,
-    GeneratedLinkSettings, HistoryLockStatus, LockError, SirnoConfig, SirnoLock, SirnoStore,
-    StoreError, VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessMarker, WitnessRecord,
+    EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
+    GenLinkDirectoryReport, GeneratedLinkSettings, LockError, SirnoConfig, SirnoFrost, SirnoLock,
+    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessMarker, WitnessRecord,
     add_readonly_checkout_warnings, check_entry_directory_with_settings,
     check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
     delete_gen_link_entry_directory_with_ignored_paths,
@@ -115,11 +115,11 @@ enum Command {
     /// Check current entry structure.
     // sirno:witness:storage-and-interfaces:begin
     Check {
-        /// Eter-backed history store root.
-        #[arg(long = "history-store", conflicts_with = "entries")]
-        history_store: Option<PathBuf>,
+        /// Sirno Frost root.
+        #[arg(long = "frost-root", conflicts_with = "entries")]
+        frost_root: Option<PathBuf>,
         /// Public Markdown entry directory.
-        #[arg(long, conflicts_with = "history_store")]
+        #[arg(long, conflicts_with = "frost_root")]
         entries: Option<PathBuf>,
         /// Check boundary.
         #[arg(long, value_enum)]
@@ -155,12 +155,12 @@ enum Command {
         full: bool,
     },
     // sirno:witness:storage-and-interfaces:end
-    /// Manage optional eter-backed history.
+    /// Manage optional Sirno Frost snapshots.
     // sirno:witness:storage-and-interfaces:begin
-    History {
-        /// History command.
+    Frost {
+        /// Frost command.
         #[command(subcommand)]
-        command: HistoryCommand,
+        command: FrostCommand,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Utility commands.
@@ -220,25 +220,25 @@ enum UtilCommand {
     },
 }
 
-/// Supported history commands.
+/// Supported Sirno Frost commands.
 #[derive(Debug, Subcommand)]
-enum HistoryCommand {
-    /// Configure history and commit the current public Markdown lake.
+enum FrostCommand {
+    /// Configure Sirno Frost and freeze the current public Markdown lake.
     Init {
-        /// Private eter history store path written to Sirno.toml.
+        /// Sirno Frost root path written to Sirno.toml.
         #[arg(long)]
-        history: Option<PathBuf>,
+        frost: Option<PathBuf>,
     },
-    /// Move the configured private history store.
+    /// Move the configured Sirno Frost root.
     Mv {
-        /// New private eter history store path written to Sirno.toml.
-        history: PathBuf,
+        /// New Sirno Frost root path written to Sirno.toml.
+        frost: PathBuf,
     },
-    /// Commit the current public Markdown lake into history.
+    /// Freeze the current public Markdown lake.
     Commit,
-    /// Check out one history version into the public Markdown lake.
+    /// Check out one Frost version into the public Markdown lake.
     Checkout {
-        /// Version coordinate to materialize in the current history generation.
+        /// Version coordinate to materialize in the current Frost generation.
         version: u64,
         /// Leave the checked-out version writable.
         #[arg(long)]
@@ -382,7 +382,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Check { history_store, entries, mode } => {
+        | Command::Check { frost_root, entries, mode } => {
             let mode = mode.unwrap_or(CliCheckMode::Review);
             if let Some(entries) = entries {
                 let settings = explicit_entries_check_settings(&config_path)?;
@@ -395,7 +395,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 };
             }
 
-            let Some(history_store) = history_store else {
+            let Some(frost_root) = frost_root else {
                 let config = SirnoConfig::from_file(&config_path)?;
                 let report = check_entry_directory_with_settings(
                     config.resolve_lake(&config_path),
@@ -410,10 +410,10 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 };
             };
 
-            let store = SirnoStore::open(history_store)?;
-            let report = store.check_current(mode.into())?;
+            let frost = SirnoFrost::open(frost_root)?;
+            let report = frost.check_current(mode.into())?;
             if report.is_clean() {
-                println!("ok: {}", store.root().display());
+                println!("ok: {}", frost.root().display());
                 return Ok(ExitCode::SUCCESS);
             }
 
@@ -471,9 +471,9 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
         | Command::Status => {
             let config = SirnoConfig::from_file(&config_path)?;
             let mono = config.resolve_mono(&config_path);
-            let history = config.resolve_history(&config_path);
+            let frost = config.resolve_frost(&config_path);
             let lock_path = resolve_lock_path(&config_path);
-            let lock = if history.is_some() { read_lock_if_exists(&lock_path)? } else { None };
+            let lock = if frost.is_some() { read_lock_if_exists(&lock_path)? } else { None };
             let lake = config.resolve_lake(&config_path);
             let report = check_entry_directory_with_settings(
                 &lake,
@@ -483,7 +483,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             print_status(
                 &config_path,
                 mono.as_deref(),
-                history.as_deref(),
+                frost.as_deref(),
                 lock.as_ref(),
                 &config,
                 &report,
@@ -491,36 +491,35 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
         | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
-        | Command::History { command } => run_history_command(command, &config_path),
+        | Command::Frost { command } => run_frost_command(command, &config_path),
         | Command::Util { command } => run_util_command(command),
     }
 }
 
-fn run_history_command(
-    command: HistoryCommand, config_path: &std::path::Path,
+fn run_frost_command(
+    command: FrostCommand, config_path: &std::path::Path,
 ) -> Result<ExitCode, CliError> {
     match command {
-        | HistoryCommand::Init { history } => {
+        | FrostCommand::Init { frost } => {
             let config = SirnoConfig::from_file(config_path)?;
-            let existing_history = config.history.as_ref().map(|settings| settings.path.clone());
-            let history_path =
-                history.or_else(|| existing_history.clone()).unwrap_or_else(default_history_path);
-            if let Some(existing_history) = existing_history
-                && existing_history != history_path
+            let existing_frost = config.frost.as_ref().map(|settings| settings.path.clone());
+            let frost_path =
+                frost.or_else(|| existing_frost.clone()).unwrap_or_else(default_frost_path);
+            if let Some(existing_frost) = existing_frost
+                && existing_frost != frost_path
             {
-                return Err(CliError::HistoryAlreadyConfigured(existing_history));
+                return Err(CliError::FrostAlreadyConfigured(existing_frost));
             }
 
-            let needs_config_write = config.history.is_none();
-            let config =
-                if needs_config_write { config.with_history(history_path) } else { config };
+            let needs_config_write = config.frost.is_none();
+            let config = if needs_config_write { config.with_frost(frost_path) } else { config };
             config.validate_for_file(config_path)?;
 
-            let history_root =
-                config.resolve_history(config_path).expect("history path configured by init");
+            let frost_root =
+                config.resolve_frost(config_path).expect("frost path configured by init");
             let lake_path = config.resolve_lake(config_path);
-            let mut store = SirnoStore::open(&history_root)?;
-            let version = store.commit_entry_directory(
+            let mut frost = SirnoFrost::open(&frost_root)?;
+            let version = frost.commit_entry_directory(
                 &lake_path,
                 &entry_directory_check_settings(config_path, &config),
             )?;
@@ -529,51 +528,41 @@ fn run_history_command(
             }
             SirnoLock::current(version).write(resolve_lock_path(config_path))?;
             println!(
-                "initialized history {} at version {} from {}",
-                history_root.display(),
+                "initialized frost {} at version {} from {}",
+                frost_root.display(),
                 version.version(),
                 lake_path.display()
             );
             Ok(ExitCode::SUCCESS)
         }
-        | HistoryCommand::Mv { history } => {
+        | FrostCommand::Mv { frost } => {
             let config = SirnoConfig::from_file(config_path)?;
-            let Some(old_history) = config.resolve_history(config_path) else {
-                return Err(CliError::HistoryNotConfigured);
+            let Some(old_frost) = config.resolve_frost(config_path) else {
+                return Err(CliError::FrostNotConfigured);
             };
-            let config = config.with_history(history);
+            let config = config.with_frost(frost);
             config.validate_for_file(config_path)?;
-            let new_history =
-                config.resolve_history(config_path).expect("history path configured by mv");
-            move_configured_path_and_write_config(
-                &old_history,
-                &new_history,
-                &config,
-                config_path,
-            )?;
-            println!("moved history {} to {}", old_history.display(), new_history.display());
+            let new_frost = config.resolve_frost(config_path).expect("frost path configured by mv");
+            move_configured_path_and_write_config(&old_frost, &new_frost, &config, config_path)?;
+            println!("moved frost {} to {}", old_frost.display(), new_frost.display());
             Ok(ExitCode::SUCCESS)
         }
-        | HistoryCommand::Commit => {
-            let context = HistoryContext::load(config_path)?;
+        | FrostCommand::Commit => {
+            let context = FrostContext::load(config_path)?;
             reject_immutable_checkout(&context.lock_path)?;
-            let mut store = SirnoStore::open(&context.history_root)?;
-            let version = store.commit_entry_directory(&context.lake_path, &context.settings)?;
+            let mut frost = SirnoFrost::open(&context.frost_root)?;
+            let version = frost.commit_entry_directory(&context.lake_path, &context.settings)?;
             set_entry_directory_writable(&context.lake_path, &context.settings)?;
             SirnoLock::current(version).write(&context.lock_path)?;
-            println!(
-                "committed history version {} from {}",
-                version.version(),
-                context.lake_path.display()
-            );
+            println!("froze version {} from {}", version.version(), context.lake_path.display());
             Ok(ExitCode::SUCCESS)
         }
-        | HistoryCommand::Checkout { version, unsafe_mutable } => {
-            let context = HistoryContext::load(config_path)?;
-            let version = history_version(version)?;
-            let store = SirnoStore::open(&context.history_root)?;
-            let snapshot = store.snapshot_for_version(version)?;
-            let paths = store.checkout_entry_directory(
+        | FrostCommand::Checkout { version, unsafe_mutable } => {
+            let context = FrostContext::load(config_path)?;
+            let version = frost_version(version)?;
+            let frost = SirnoFrost::open(&context.frost_root)?;
+            let snapshot = frost.snapshot_for_version(version)?;
+            let paths = frost.checkout_entry_directory(
                 snapshot,
                 &context.lake_path,
                 EntryDirectoryWritePolicy::ReplaceDirectory {
@@ -588,7 +577,7 @@ fn run_history_command(
             }
             SirnoLock::checked_out(snapshot, unsafe_mutable).write(&context.lock_path)?;
             println!(
-                "checked out history version {} into {} ({} entries, {})",
+                "checked out frost version {} into {} ({} entries, {})",
                 snapshot.version(),
                 context.lake_path.display(),
                 paths.len(),
@@ -636,21 +625,21 @@ fn move_configured_path(source: &Path, destination: &Path) -> Result<bool, CliEr
     Ok(true)
 }
 
-struct HistoryContext {
-    history_root: PathBuf,
+struct FrostContext {
+    frost_root: PathBuf,
     lock_path: PathBuf,
     settings: EntryDirectoryCheckSettings,
     lake_path: PathBuf,
 }
 
-impl HistoryContext {
+impl FrostContext {
     fn load(config_path: &Path) -> Result<Self, CliError> {
         let config = SirnoConfig::from_file(config_path)?;
-        let Some(history_root) = config.resolve_history(config_path) else {
-            return Err(CliError::HistoryNotConfigured);
+        let Some(frost_root) = config.resolve_frost(config_path) else {
+            return Err(CliError::FrostNotConfigured);
         };
         Ok(Self {
-            history_root,
+            frost_root,
             lock_path: resolve_lock_path(config_path),
             settings: entry_directory_check_settings(config_path, &config),
             lake_path: config.resolve_lake(config_path),
@@ -670,15 +659,15 @@ fn reject_immutable_checkout(lock_path: &Path) -> Result<(), CliError> {
     let Some(lock) = read_lock_if_exists(lock_path)? else {
         return Ok(());
     };
-    if lock.history.is_checked_out() && !lock.history.is_unsafe_mutable_checkout() {
-        return Err(CliError::ImmutableHistoryCheckout(lock.history.version));
+    if lock.frost.is_checked_out() && !lock.frost.is_unsafe_mutable_checkout() {
+        return Err(CliError::ImmutableFrostCheckout(lock.frost.version));
     }
     Ok(())
 }
 
-fn history_version(version: u64) -> Result<Eterator, CliError> {
+fn frost_version(version: u64) -> Result<Eterator, CliError> {
     if version == Eterator::EMPTY.version() {
-        return Err(CliError::InvalidHistoryVersion(version));
+        return Err(CliError::InvalidFrostVersion(version));
     }
     Ok(Eterator(version))
 }
@@ -792,8 +781,8 @@ fn default_lake_path() -> PathBuf {
     PathBuf::from("docs")
 }
 
-fn default_history_path() -> PathBuf {
-    PathBuf::from("sirno-history")
+fn default_frost_path() -> PathBuf {
+    PathBuf::from("sirno-frost")
 }
 
 fn explicit_entries_check_settings(
@@ -863,9 +852,8 @@ fn title_name_from_id(id: &EntryId) -> String {
 }
 
 fn print_status(
-    config_path: &std::path::Path, mono: Option<&std::path::Path>,
-    history: Option<&std::path::Path>, lock: Option<&SirnoLock>, config: &SirnoConfig,
-    report: &EntryDirectoryReport,
+    config_path: &std::path::Path, mono: Option<&std::path::Path>, frost: Option<&std::path::Path>,
+    lock: Option<&SirnoLock>, config: &SirnoConfig, report: &EntryDirectoryReport,
 ) {
     println!("config: {}", config_path.display());
     if let Some(mono) = mono {
@@ -874,11 +862,11 @@ fn print_status(
         println!("mono: (not configured)");
     }
     println!("lake: {}", report.root().display());
-    if let Some(history) = history {
-        println!("history: {}", history.display());
-        println!("history-state: {}", history_state_label(lock));
+    if let Some(frost) = frost {
+        println!("frost: {}", frost.display());
+        println!("frost-state: {}", frost_state_label(lock));
     } else {
-        println!("history: (not configured)");
+        println!("frost: (not configured)");
     }
     println!("entries: {}", report.entries().len());
     println!("checks:");
@@ -896,27 +884,24 @@ fn print_status(
     }
 }
 
-fn history_state_label(lock: Option<&SirnoLock>) -> String {
+fn frost_state_label(lock: Option<&SirnoLock>) -> String {
     let Some(lock) = lock else {
         return "(unlocked)".to_owned();
     };
-    match lock.history.status {
-        | HistoryLockStatus::Current => {
-            format!(
-                "current version {} (generation {})",
-                lock.history.version, lock.history.generation
-            )
+    match lock.frost.status {
+        | FrostLockStatus::Current => {
+            format!("current version {} (generation {})", lock.frost.version, lock.frost.generation)
         }
-        | HistoryLockStatus::CheckedOut if lock.history.mutable => {
+        | FrostLockStatus::CheckedOut if lock.frost.mutable => {
             format!(
                 "checked-out version {} (generation {}, unsafe mutable)",
-                lock.history.version, lock.history.generation
+                lock.frost.version, lock.frost.generation
             )
         }
-        | HistoryLockStatus::CheckedOut => {
+        | FrostLockStatus::CheckedOut => {
             format!(
                 "checked-out version {} (generation {}, immutable)",
-                lock.history.version, lock.history.generation
+                lock.frost.version, lock.frost.generation
             )
         }
     }
@@ -1007,18 +992,18 @@ fn severity_label(severity: CheckSeverity) -> &'static str {
 /// Error raised while running the CLI.
 #[derive(Debug, Error)]
 enum CliError {
-    /// History has already been configured at another path.
-    #[error("history is already configured at {0}")]
-    HistoryAlreadyConfigured(PathBuf),
-    /// History is required for a history command but is not configured.
-    #[error("history is not configured; run `sirno history init` first")]
-    HistoryNotConfigured,
-    /// Immutable history checkouts cannot be committed.
-    #[error("history version {0} is checked out immutably; use checkout --unsafe-mutable first")]
-    ImmutableHistoryCheckout(u64),
-    /// Empty history cannot be checked out as a version.
-    #[error("history version {0} is not a check-outable snapshot")]
-    InvalidHistoryVersion(u64),
+    /// Sirno Frost has already been configured at another path.
+    #[error("frost is already configured at {0}")]
+    FrostAlreadyConfigured(PathBuf),
+    /// Sirno Frost is required for a frost command but is not configured.
+    #[error("frost is not configured; run `sirno frost init` first")]
+    FrostNotConfigured,
+    /// Immutable Frost checkouts cannot be committed.
+    #[error("frost version {0} is checked out immutably; use checkout --unsafe-mutable first")]
+    ImmutableFrostCheckout(u64),
+    /// Empty Frost cannot be checked out as a version.
+    #[error("frost version {0} is not a check-outable snapshot")]
+    InvalidFrostVersion(u64),
     /// A configured lake move cannot replace an existing destination.
     #[error("move destination already exists: {0}")]
     MoveDestinationExists(PathBuf),
@@ -1069,9 +1054,9 @@ enum CliError {
     /// Lock-backed command failed.
     #[error(transparent)]
     Lock(#[from] LockError),
-    /// History-store-backed command failed.
+    /// Sirno-Frost-backed command failed.
     #[error(transparent)]
-    Store(#[from] StoreError),
+    Frost(#[from] FrostError),
     /// Witness lookup failed.
     #[error(transparent)]
     Witness(#[from] WitnessError),
@@ -1094,29 +1079,28 @@ mod tests {
     use clap::Parser;
 
     use sirno::{
-        CONFIG_FILE_NAME, EntryId, HistorySettings, SirnoConfig, WitnessRecord, WitnessSpan,
+        CONFIG_FILE_NAME, EntryId, FrostSettings, SirnoConfig, WitnessRecord, WitnessSpan,
     };
 
     use crate::{
-        Cli, CliError, Command, HistoryCommand, format_gen_link_report, format_witness_record,
+        Cli, CliError, Command, FrostCommand, format_gen_link_report, format_witness_record,
         format_witness_records, run,
     };
 
     #[test]
-    fn init_does_not_accept_history_path() {
-        let error =
-            Cli::try_parse_from(["sirno", "init", "--history", "sirno-history"]).unwrap_err();
+    fn init_does_not_accept_frost_path() {
+        let error = Cli::try_parse_from(["sirno", "init", "--frost", "sirno-frost"]).unwrap_err();
 
         assert!(error.to_string().contains("unexpected argument"));
     }
 
     #[test]
-    fn history_init_accepts_history_path() {
-        let cli = Cli::parse_from(["sirno", "history", "init", "--history", "sirno-history"]);
+    fn frost_init_accepts_frost_path() {
+        let cli = Cli::parse_from(["sirno", "frost", "init", "--frost", "sirno-frost"]);
 
         assert!(matches!(
             cli.command,
-            Command::History { command: HistoryCommand::Init { history: Some(_) } }
+            Command::Frost { command: FrostCommand::Init { frost: Some(_) } }
         ));
     }
 
@@ -1128,25 +1112,23 @@ mod tests {
     }
 
     #[test]
-    fn history_mv_accepts_history_path() {
-        let cli = Cli::parse_from(["sirno", "history", "mv", "sirno-history-2"]);
+    fn frost_mv_accepts_frost_path() {
+        let cli = Cli::parse_from(["sirno", "frost", "mv", "sirno-frost-2"]);
 
         assert!(matches!(
             cli.command,
-            Command::History { command: HistoryCommand::Mv { history } }
-                if history == Path::new("sirno-history-2")
+            Command::Frost { command: FrostCommand::Mv { frost } }
+                if frost == Path::new("sirno-frost-2")
         ));
     }
 
     #[test]
-    fn history_checkout_accepts_unsafe_mutable_flag() {
-        let cli = Cli::parse_from(["sirno", "history", "checkout", "3", "--unsafe-mutable"]);
+    fn frost_checkout_accepts_unsafe_mutable_flag() {
+        let cli = Cli::parse_from(["sirno", "frost", "checkout", "3", "--unsafe-mutable"]);
 
         assert!(matches!(
             cli.command,
-            Command::History {
-                command: HistoryCommand::Checkout { version: 3, unsafe_mutable: true }
-            }
+            Command::Frost { command: FrostCommand::Checkout { version: 3, unsafe_mutable: true } }
         ));
     }
 
@@ -1201,29 +1183,29 @@ mod tests {
     }
 
     #[test]
-    fn history_mv_moves_history_and_rewrites_config() {
+    fn frost_mv_moves_frost_and_rewrites_config() {
         let temp = tempfile::tempdir().unwrap();
         let config_path = temp.path().join(CONFIG_FILE_NAME);
-        let old_history = temp.path().join("sirno-history");
-        let new_history = temp.path().join("history");
-        SirnoConfig::new("docs").with_history("sirno-history").write_new(&config_path).unwrap();
-        fs::create_dir(&old_history).unwrap();
-        fs::write(old_history.join("row"), "history").unwrap();
+        let old_frost = temp.path().join("sirno-frost");
+        let new_frost = temp.path().join("frost");
+        SirnoConfig::new("docs").with_frost("sirno-frost").write_new(&config_path).unwrap();
+        fs::create_dir(&old_frost).unwrap();
+        fs::write(old_frost.join("row"), "frost").unwrap();
 
         run(Cli::parse_from([
             "sirno",
             "--config",
             config_path.to_str().unwrap(),
-            "history",
+            "frost",
             "mv",
-            "history",
+            "frost",
         ]))
         .unwrap();
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
-        assert_eq!(config.history, Some(HistorySettings { path: PathBuf::from("history") }));
-        assert!(!old_history.exists());
-        assert!(new_history.join("row").exists());
+        assert_eq!(config.frost, Some(FrostSettings { path: PathBuf::from("frost") }));
+        assert!(!old_frost.exists());
+        assert!(new_frost.join("row").exists());
     }
 
     #[test]

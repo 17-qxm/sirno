@@ -2,7 +2,7 @@
 //!
 //! A repository is Sirno-managed when it contains `Sirno.toml`.
 //! The config names the public Markdown entry lake.
-//! It may also opt into a monograph, repository witness members, and private `eter` history store.
+//! It may also opt into a monograph, repository witness members, and Sirno Frost.
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
@@ -88,18 +88,18 @@ impl LakeSettings {
     }
 }
 
-/// Configured private history store settings.
+/// Configured Sirno Frost settings.
 ///
-/// Invariant: `path` points to the `eter` history root used for snapshots.
+/// Invariant: `path` points to the private `eter` root used by Sirno Frost.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct HistorySettings {
-    /// Configured private history store path.
+pub struct FrostSettings {
+    /// Configured Sirno Frost root path.
     pub path: PathBuf,
 }
 
-impl HistorySettings {
-    /// Construct history settings from a history root path.
+impl FrostSettings {
+    /// Construct Sirno Frost settings from a root path.
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self { path: path.into() }
     }
@@ -174,7 +174,7 @@ impl CodeSettings {
 ///
 /// `lake.path` points to the configured public Markdown entry lake path.
 /// `mono.path`, when present, points to the configured monograph path.
-/// `history.path`, when present, points to the configured private `eter` history root.
+/// `frost.path`, when present, points to the configured Sirno Frost root.
 /// `lake.ignore` contains paths relative to the lake root that Sirno skips.
 /// `code.members`, when present, contains relative member paths or globs for witness lookup.
 /// `check` controls optional structural check families.
@@ -189,9 +189,9 @@ pub struct SirnoConfig {
     pub mono: Option<MonoSettings>,
     /// Configured public Markdown entry lake settings.
     pub lake: LakeSettings,
-    /// Configured private history store settings.
+    /// Configured Sirno Frost settings.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub history: Option<HistorySettings>,
+    pub frost: Option<FrostSettings>,
     /// Configured repository artifact members.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<CodeSettings>,
@@ -211,7 +211,7 @@ impl SirnoConfig {
         Self {
             mono: None,
             lake: LakeSettings::new(lake),
-            history: None,
+            frost: None,
             code: None,
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
@@ -231,9 +231,9 @@ impl SirnoConfig {
         self
     }
 
-    /// Return this config with a configured history root.
-    pub fn with_history(mut self, history: impl Into<PathBuf>) -> Self {
-        self.history = Some(HistorySettings::new(history));
+    /// Return this config with a configured Sirno Frost root.
+    pub fn with_frost(mut self, frost: impl Into<PathBuf>) -> Self {
+        self.frost = Some(FrostSettings::new(frost));
         self
     }
 
@@ -309,11 +309,9 @@ impl SirnoConfig {
         resolve_config_relative(config_path.as_ref(), &self.lake.path)
     }
 
-    /// Resolve the history store path relative to a config file path when configured.
-    pub fn resolve_history(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
-        self.history
-            .as_ref()
-            .map(|history| resolve_config_relative(config_path.as_ref(), &history.path))
+    /// Resolve the Sirno Frost root path relative to a config file path when configured.
+    pub fn resolve_frost(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
+        self.frost.as_ref().map(|frost| resolve_config_relative(config_path.as_ref(), &frost.path))
     }
     // sirno:witness:project-config:end
 
@@ -325,12 +323,11 @@ impl SirnoConfig {
         if let Some(code) = &self.code {
             code.validate()?;
         }
-        if self.history.is_some() {
+        if self.frost.is_some() {
             let lake = self.resolve_lake(config_path);
-            let history =
-                self.resolve_history(config_path).expect("history path exists after is_some");
-            if lake == history || history.starts_with(&lake) || lake.starts_with(&history) {
-                return Err(ConfigError::HistoryLakePath { lake, history });
+            let frost = self.resolve_frost(config_path).expect("frost path exists after is_some");
+            if lake == frost || frost.starts_with(&lake) || lake.starts_with(&frost) {
+                return Err(ConfigError::FrostLakePath { lake, frost });
             }
         }
         Ok(())
@@ -383,15 +380,15 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
     }
     // sirno:witness:project-config-comments:end
 
-    if let Some(history) = &config.history {
+    if let Some(frost) = &config.frost {
         out.push('\n');
-        push_table(&mut out, "history");
+        push_table(&mut out, "frost");
         // sirno:witness:project-config-comments:begin
         push_field(
             &mut out,
             "path",
-            &history.path,
-            "Private eter history root, kept outside the public lake.",
+            &frost.path,
+            "Sirno Frost root, kept outside the public lake.",
         )?;
         // sirno:witness:project-config-comments:end
     }
@@ -507,13 +504,13 @@ pub enum ConfigError {
     /// A code member path or glob is not relative to the config directory.
     #[error("code.members path must be relative to the config directory: {0}")]
     CodeMemberPath(String),
-    /// The history root overlaps the public lake path.
-    #[error("history path must be separate from public lake path: lake={lake} history={history}")]
-    HistoryLakePath {
+    /// The Sirno Frost root overlaps the public lake path.
+    #[error("frost path must be separate from public lake path: lake={lake} frost={frost}")]
+    FrostLakePath {
         /// Resolved public lake path.
         lake: PathBuf,
-        /// Resolved history root path.
-        history: PathBuf,
+        /// Resolved Sirno Frost root path.
+        frost: PathBuf,
     },
     /// The config file could not be created.
     #[error("failed to create config file {path}")]
@@ -551,7 +548,7 @@ path = "docs"
 
         assert_eq!(config.mono, None);
         assert_eq!(config.lake.path, PathBuf::from("docs"));
-        assert_eq!(config.history, None);
+        assert_eq!(config.frost, None);
         assert!(config.lake.ignore.is_empty());
         assert_eq!(config.code, None);
         assert_eq!(config.check, CheckSettings::default());
@@ -575,7 +572,7 @@ path = "docs"
     }
 
     #[test]
-    fn parses_history_settings() {
+    fn parses_frost_settings() {
         let config: SirnoConfig = toml::from_str(
             r#"
 [mono]
@@ -584,13 +581,13 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[history]
-path = "sirno-history"
+[frost]
+path = "sirno-frost"
 "#,
         )
         .unwrap();
 
-        assert_eq!(config.history, Some(HistorySettings { path: PathBuf::from("sirno-history") }));
+        assert_eq!(config.frost, Some(FrostSettings { path: PathBuf::from("sirno-frost") }));
     }
 
     #[test]
@@ -741,10 +738,10 @@ extra = "no"
 
         assert_eq!(config.resolve_mono(config_path), Some(PathBuf::from("/tmp/project/DESIGN.md")));
         assert_eq!(config.resolve_lake(config_path), PathBuf::from("/tmp/project/docs"));
-        assert_eq!(config.resolve_history(config_path), None);
+        assert_eq!(config.resolve_frost(config_path), None);
         assert_eq!(
-            config.with_history("sirno-history").resolve_history(config_path),
-            Some(PathBuf::from("/tmp/project/sirno-history"))
+            config.with_frost("sirno-frost").resolve_frost(config_path),
+            Some(PathBuf::from("/tmp/project/sirno-frost"))
         );
     }
 
@@ -827,7 +824,7 @@ members = ["../outside"]
                 path: PathBuf::from("docs"),
                 ignore: vec![PathBuf::from(".obsidian")],
             },
-            history: Some(HistorySettings::new("sirno-history")),
+            frost: Some(FrostSettings::new("sirno-frost")),
             code: Some(CodeSettings { members: vec![CodeMember::new("src").unwrap()] }),
             check: CheckSettings { link: false },
             links: GeneratedLinkSettings {
@@ -845,7 +842,7 @@ members = ["../outside"]
         assert!(source.contains("# Markdown monograph path"));
         assert!(source.contains("# Markdown entry lake path"));
         assert!(source.contains("# Lake-root paths Sirno skips"));
-        assert!(source.contains("# Private eter history root"));
+        assert!(source.contains("# Sirno Frost root"));
         assert!(source.contains("# Repository files, directories, or globs"));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include category links"));
@@ -855,7 +852,7 @@ members = ["../outside"]
     }
 
     #[test]
-    fn rejects_history_path_inside_public_lake() {
+    fn rejects_frost_path_inside_public_lake() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
@@ -867,14 +864,14 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[history]
-path = "docs/history"
+[frost]
+path = "docs/frost"
 "#,
         )
         .unwrap();
 
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
-        assert!(matches!(error, ConfigError::HistoryLakePath { .. }));
+        assert!(matches!(error, ConfigError::FrostLakePath { .. }));
     }
 }

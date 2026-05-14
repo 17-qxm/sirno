@@ -118,8 +118,8 @@ Use [`sirno-docs/methodology.md`](sirno-docs/methodology.md) as the compact work
 The implementation is expected to expose CLI and MCP interfaces,
 with possible lightweight GUI or Obsidian integration later.
 Entry storage is built around `eter`.
-History is optional and initialized separately with `sirno history init`.
+Sirno Frost is optional and initialized separately with `sirno frost init`.
 The configured lake can be renamed with `sirno mv`.
-The history root can be renamed with `sirno history mv`.
-`Sirno.lock` records whether the public lake is current or checked out to a history version.
+The Frost root can be renamed with `sirno frost mv`.
+`Sirno.lock` records whether the public lake is current or checked out to a frozen version.
 Repository witnesses are built around `mosaika`.

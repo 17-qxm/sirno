@@ -13,7 +13,7 @@ Sirno describes its own design through its own model.
 The lake makes Sirno's design addressable in small entries.
 A materialized introduction entry gives the lake a first narrative route.
 A materialized methodology entry gives the lake a working guide.
-An optional history root can preserve committed lake snapshots.
+An optional Frost root can preserve frozen lake snapshots.
 Repository artifacts can witness entries through `mosaika`.
 
 The introduction should stay readable as one route.

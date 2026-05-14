@@ -21,7 +21,7 @@ The generated comments are:
 - `Markdown monograph path, resolved relative to this config file.`
 - `Markdown entry lake path, resolved relative to this config file.`
 - `Lake-root paths Sirno skips while reading, checking, querying, and generating links.`
-- `Private eter history root, kept outside the public lake.`
+- `Sirno Frost root, kept outside the public lake.`
 - `Repository files, directories, or globs scanned for witness blocks.`
 - `Require generated footers to match current metadata during checks.`
 - `Include category links; use a boolean or { to = bool, from = bool }.`
