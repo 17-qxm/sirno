@@ -45,6 +45,10 @@ Use repository *witness* blocks when the *repository* contains evidence for the 
 Leave a *structural field* out when it does not improve navigation, review, or accountability.
 Run `sirno witness ENTRY_ID --full` and read the *entry* prose for what the evidence should mean.
 
+Use `meta` for the project's Sirno-facing documentation method.
+A `meta` *entry* should answer how the project wants its documentation to develop:
+terms, splitting rules, narrative habits, review expectations, or agent-facing guidance.
+
 Lower when intent is too broad for the next local change.
 Lowering turns narrative design into compact *lake entries*.
 It should preserve the route that made the narrative readable

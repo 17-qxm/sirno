@@ -39,6 +39,10 @@ This self-application exercises the design under its own constraints.
 When implementation work changes the model,
 that change can be reflected into the *lake* before any narrative route is revised.
 
+The `meta` category is the bootstrap surface.
+It contains *entries* that answer how a Sirno-managed project wants its documentation to develop.
+Those *entries* are available to people, agents, and tools before they revise the rest of the *lake*.
+
 The *lake* should name the objects the project expects future work to cite:
 *forms*, *entries*, *structural fields*, *transforms*, metadata,
 checks, *generated footers*, *witnesses*, and storage boundaries.
@@ -52,6 +56,9 @@ Ordinary words stay plain when they describe normal project work.
 That vocabulary boundary lets Sirno explain any project,
 including this repository,
 without making every sentence sound like it belongs to the tool's internal model.
+
+Sirno does not just document the project;
+it lets the project document its own documentation method.
 
 Repository *witnesses* make self-application stronger.
 When code realizes *entry* parsing, *generated footer* handling, or *structural checks*,

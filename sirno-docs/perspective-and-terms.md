@@ -2,6 +2,7 @@
 name: Perspective and Terms
 description: The reader-facing distinction between Sirno as tool and this self-hosted lake.
 category:
+  - meta
   - concept
 belongs:
   - sirno
