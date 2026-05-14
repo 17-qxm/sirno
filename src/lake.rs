@@ -1,4 +1,4 @@
-//! Public Markdown entry directory support.
+//! Public Sirno Lake support.
 //!
 //! This module reads the human-facing Sirno Lake shape:
 //! a flat directory of `*.md` files whose filename stems are entry ids.

@@ -17,11 +17,11 @@ use tracing::trace;
 
 use crate::check::{CheckMode, CheckReport, check_entries};
 use crate::entry::{Entry, EntryMetadata, WitnessMarker, default_seed_entries};
-use crate::files::{
+use crate::id::{EntryId, EntryIdError};
+use crate::lake::{
     EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryWritePolicy,
     check_entry_directory_with_settings, write_entry_directory,
 };
-use crate::id::{EntryId, EntryIdError};
 use crate::links::delete_generated_links;
 
 /// Lifecycle state used by Sirno entries in the `eter` backend.
@@ -450,7 +450,7 @@ mod tests {
     use super::*;
     use std::fs;
 
-    use crate::files::EntryDirectoryWritePolicy;
+    use crate::lake::EntryDirectoryWritePolicy;
     use crate::links::{GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links};
 
     #[test]
