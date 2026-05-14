@@ -81,7 +81,12 @@ then follow the clustees, refiners, and witnesses to the local design you need.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to):
 - [sirno](sirno.md)
+
+Refiner (to):
+- [narrative](narrative.md)
 
 > **Sirno generated links end.**

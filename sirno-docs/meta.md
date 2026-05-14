@@ -34,6 +34,12 @@ and to entries about implementation commitments.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from):
+- [concept](concept.md)
+- [narrative](narrative.md)
+
 Clustee (to): (none)
+
+Refiner (to): (none)
 
 > **Sirno generated links end.**

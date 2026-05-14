@@ -100,7 +100,14 @@ People and agents keep the meaning alive.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to):
 - [sirno](sirno.md)
+
+Refiner (to):
+- [concept-driven-development](concept-driven-development.md)
+- [transform](transform.md)
+- [witness](witness.md)
 
 > **Sirno generated links end.**

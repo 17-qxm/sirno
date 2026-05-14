@@ -34,7 +34,12 @@ which entries appear in order, and which details remain deferred. The local
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to):
 - [sirno](sirno.md)
+
+Refiner (to):
+- [narrative](narrative.md)
 
 > **Sirno generated links end.**

@@ -48,7 +48,12 @@ The concept becomes a compact bridge between broad intent and detailed code.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to):
 - [sirno](sirno.md)
+
+Refiner (to):
+- [concept](concept.md)
 
 > **Sirno generated links end.**

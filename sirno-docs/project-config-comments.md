@@ -34,6 +34,11 @@ The Rust config types and TOML parser remain the schema boundary.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to): (none)
+
+Refiner (to):
+- [project-config](project-config.md)
 
 > **Sirno generated links end.**

@@ -28,7 +28,15 @@ to carry its own meaning and other clustee memberships.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from):
+- [category](category.md)
+- [clustee](clustee.md)
+- [refiner](refiner.md)
+- [witness](witness.md)
+
 Clustee (to):
 - [sirno](sirno.md)
+
+Refiner (to): (none)
 
 > **Sirno generated links end.**

@@ -30,7 +30,12 @@ or formatter.
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to):
 - [witness](witness.md)
+
+Refiner (to):
+- [witness-lookup](witness-lookup.md)
 
 > **Sirno generated links end.**

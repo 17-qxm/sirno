@@ -23,6 +23,11 @@ so Sirno Frost keeps canonical metadata and prose rather than navigation project
 
 > **Sirno generated links begin. Do not edit this section.**
 
+Clustee (from): (none)
+
 Clustee (to): (none)
+
+Refiner (to):
+- [generated-footer](generated-footer.md)
 
 > **Sirno generated links end.**
