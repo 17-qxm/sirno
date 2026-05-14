@@ -40,7 +40,7 @@ Version retention is another example.
 Sirno still needs policy for which snapshots stay live.
 That policy should preserve reviewable lake states without making entry metadata harder to read.
 
-Transform names may also evolve.
+The *transform* names may also evolve.
 The current names are compact and memorable,
 but they should remain subordinate to the model they describe.
 If the project learns a clearer vocabulary,

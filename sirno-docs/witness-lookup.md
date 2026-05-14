@@ -7,7 +7,7 @@ refines:
   - witness
 ---
 
-Witness lookup resolves repository evidence by scanning configured repo members with `mosaika`.
+The *witness* lookup resolves repository evidence by scanning configured repo members with `mosaika`.
 
 `[repo].members` defines the repository artifact surface when witness lookup is configured.
 File members are scanned directly.
@@ -23,7 +23,7 @@ Full output displays every line spanned by the matched block,
 then dedents that line set for review.
 
 The lookup path keeps witness syntax out of entry prose.
-Entries remain design claims.
+The *entries* remain design claims.
 Repository artifacts carry the precise source spans that witness those claims.
 
 ---

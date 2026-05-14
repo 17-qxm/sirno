@@ -30,7 +30,7 @@ It should also preserve its place in the larger design through metadata.
 Categories describe the kind of object.
 Belongss give local neighborhoods.
 Refiness connect local entries back to broader design.
-Witnesses are added only when repository evidence exists.
+Repository *witnesses* are added only when repository evidence exists.
 
 Lowering is especially valuable before implementation work becomes local.
 Without entries, the source of intent may live in chat context or memory.

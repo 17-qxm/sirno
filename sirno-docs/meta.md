@@ -12,7 +12,7 @@ It is also the review front door for initialized vocabulary entries.
 `concept` and `narrative` belong to it because changes to those entries
 affect how the lake vocabulary is read.
 
-Entries categorized by `meta` are ordinary entries.
+The *entries* categorized by `meta` are ordinary entries.
 They are not privileged built-ins.
 They give the lake a documented way to name categories and structural concepts.
 

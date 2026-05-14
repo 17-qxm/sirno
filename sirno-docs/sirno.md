@@ -8,12 +8,18 @@ category:
 
 Sirno is the Semantic Intermediate Representation of Nominal Objects.
 
-This lake focuses on Sirno's general design as a tool and as a philosophical system for design work.
+This *lake* focuses on Sirno's general design as a tool and as a philosophical system for design work.
+
+Perspective matters because this repository is also a Sirno-managed project.
+General claims describe Sirno as the tool and project model.
+`this repository` names the implementation workspace for Sirno.
+`this lake` names `sirno-docs/`,
+the self-hosted Sirno Lake that describes Sirno.
 
 It compiles between design forms for design-aware programming work.
-It moves among one long-form project narrative,
-a lake of compact named Markdown entries,
-and the repository artifact form.
+It moves among one long-form *monograph*,
+a *lake* of compact named Markdown *entries*,
+and the *repository*.
 
 The central problem is project memory.
 Design tends to begin as a narrative, then scatter across code, tests, comments,
@@ -27,8 +33,8 @@ The names are readable by humans, stable for tools,
 and small enough for agents to inspect without carrying the whole project in context.
 
 Sirno maintains structure:
-entry ids, metadata fields, structural fields, generated footers,
-storage conventions, and witness lookup.
+*entry* ids, metadata fields, *structural fields*, *generated footers*,
+storage conventions, and *witness* lookup.
 People, agents, and other tools still judge design quality and semantic truth.
 
 This division is important.
@@ -37,14 +43,14 @@ whether a test proves the right property,
 or whether a repository path truly satisfies a design claim.
 It gives those claims stable handles.
 That makes the conversation around design more precise:
-a person can ask for an entry to be realized,
-a reviewer can ask for the witness of an entry,
-and an agent can inspect a bounded set of related entries before editing code.
+a person can ask for an *entry* to be realized,
+a reviewer can ask for the *witness* of an *entry*,
+and an agent can inspect a bounded set of related *entries* before editing code.
 
 The result should feel like a project with good names for its important ideas.
 Narratives give the reader routes through the design.
-The lake gives the project durable local objects.
-The repo gives those objects consequences.
+The *lake* gives the project durable local objects.
+The *repository* gives those objects consequences.
 Sirno keeps the edges between those forms explicit.
 
 ---
@@ -59,6 +65,7 @@ Belongs (from):
 - [introduction](introduction.md)
 - [methodology](methodology.md)
 - [mono](mono.md)
+- [perspective-and-terms](perspective-and-terms.md)
 - [planning](planning.md)
 - [project-self-application](project-self-application.md)
 - [sirno-lake](sirno-lake.md)

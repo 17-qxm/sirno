@@ -10,7 +10,7 @@ belongs:
 
 Planning lives in skills built on top of Sirno.
 
-Entries are durable, named, and structured by metadata.
+The *entries* are durable, named, and structured by metadata.
 That structure can support persistent planning without adding a planning primitive to Sirno.
 
 A skill may represent a worklist as ordinary entries.
