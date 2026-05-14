@@ -53,6 +53,9 @@ Belongs (from): (none)
 Belongs (to):
 - [sirno](sirno.md)
 
+Refines (from):
+- [methodology](methodology.md)
+
 Refines (to):
 - [concept](concept.md)
 

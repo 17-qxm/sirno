@@ -34,6 +34,9 @@ Belongs (from): (none)
 
 Belongs (to): (none)
 
+Refines (from):
+- [witness-fixture-isolation](witness-fixture-isolation.md)
+
 Refines (to):
 - [witness](witness.md)
 

@@ -44,6 +44,9 @@ Belongs (from): (none)
 Belongs (to):
 - [meta](meta.md)
 
+Refines (from):
+- [concept-driven-development](concept-driven-development.md)
+
 Refines (to): (none)
 
 > **Sirno generated links end.**

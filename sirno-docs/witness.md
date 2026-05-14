@@ -61,6 +61,10 @@ Belongs (from):
 Belongs (to):
 - [sirno](sirno.md)
 
+Refines (from):
+- [methodology](methodology.md)
+- [witness-lookup](witness-lookup.md)
+
 Refines (to): (none)
 
 > **Sirno generated links end.**
