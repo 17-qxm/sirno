@@ -21,6 +21,9 @@ Sirno projects each member file into a `mosaika` transform that logs witness blo
 The opening and closing delimiters both capture the entry id.
 Sirno rejects a witness block when the delimiter ids differ.
 Sirno parses the log stream into witness records keyed by entry id.
+The stored delimiter spans exclude leading indentation.
+Full output displays every line spanned by the matched block,
+then dedents that line set for review.
 
 The lookup path keeps witness syntax out of entry prose.
 Entries remain design claims.

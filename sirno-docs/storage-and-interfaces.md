@@ -63,8 +63,11 @@ Exact structural predicates live behind explicit exact flags.
 and reports repository witness blocks for the selected entry id.
 `sirno witness ENTRY_ID --full` also prints the full matched code regions.
 Witness output reports the opening and closing delimiter ranges.
+Delimiter ranges start at the sentinel text and exclude leading indentation.
 In full mode, the summary line contains only the range.
-A blank line separates the summary from the dedented region.
+The displayed region is the complete set of lines spanned by the witness block,
+then dedented for reading.
+A blank line separates the summary from that region.
 Multiple full regions are separated by a blank line, `---`, and another blank line.
 
 `sirno gen-link` creates or replaces Sirno-owned generated footer regions.

@@ -312,8 +312,8 @@ fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
             entry,
             path: PathBuf::from(record.file),
             region: record.region.into(),
-            opening: marker.span.into(),
-            closing: closing.span.into(),
+            opening: delimiter_span(marker.span, &marker.matched),
+            closing: delimiter_span(closing.span, &closing.matched),
             marker: marker.matched.clone(),
             body: record.body,
         });
@@ -358,6 +358,16 @@ impl From<MosaikaSourceSpan> for WitnessSpan {
             end_column: span.end_column,
         }
     }
+}
+
+fn delimiter_span(span: MosaikaSourceSpan, matched: &str) -> WitnessSpan {
+    let mut span = WitnessSpan::from(span);
+    span.start_column += leading_whitespace_len(matched);
+    span
+}
+
+fn leading_whitespace_len(line: &str) -> usize {
+    line.bytes().take_while(|byte| matches!(byte, b' ' | b'\t')).count()
 }
 
 /// Error raised while scanning repository witnesses.
@@ -480,6 +490,10 @@ mod tests {
     }
     // sirno:witness:witness-fixture-isolation:end
 
+    fn indented_witness_block(id: &str) -> String {
+        format!("    {}\n        body\n    {}\n", witness_begin(id), witness_end(id))
+    }
+
     #[test]
     fn scans_recursive_directory_members_with_mosaika() {
         let temp = tempfile::tempdir().unwrap();
@@ -519,6 +533,27 @@ mod tests {
         let index = scan_witnesses(&settings).unwrap();
 
         assert!(index.contains_entry(&EntryId::new("code-member").unwrap()));
+    }
+
+    #[test]
+    fn delimiter_spans_exclude_prefixing_spaces() {
+        let temp = tempfile::tempdir().unwrap();
+        let src = temp.path().join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(src.join("lib.rs"), indented_witness_block("witness-lookup")).unwrap();
+        let settings = WitnessCheckSettings::new(temp.path(), [CodeMember::new("src").unwrap()]);
+
+        let index = scan_witnesses(&settings).unwrap();
+        let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
+
+        assert_eq!(
+            records[0].opening,
+            WitnessSpan { start_line: 1, start_column: 5, end_line: 1, end_column: 42 }
+        );
+        assert_eq!(
+            records[0].closing,
+            WitnessSpan { start_line: 3, start_column: 5, end_line: 3, end_column: 40 }
+        );
     }
 
     #[test]
