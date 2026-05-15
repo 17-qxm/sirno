@@ -23,7 +23,7 @@ pub use crate::check::{
 };
 pub use crate::config::{
     CONFIG_FILE_NAME, CheckSettings, ConfigError, FrostSettings, LakeSettings, MonoSettings,
-    RepoMember, RepoSettings, SirnoConfig,
+    RepoMember, RepoSettings, SirnoConfig, WitnessDelimiterSettings, WitnessSettings,
 };
 pub use crate::entry::{
     Entry, EntryMetadata, EntryParseError, WitnessMarker, default_seed_entries,

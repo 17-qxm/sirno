@@ -25,6 +25,8 @@ and closes with `sirno:witness:<entry-id>:end`.
 Both sentinels name the same *entry* id.
 Line-commented artifacts can carry the sentinels with `//`.
 Markdown artifacts can carry them as hidden HTML comments.
+That standard syntax can be replaced through `[[witness.delimiters]]`
+when a project needs different delimiters.
 
 The *repository* is where design becomes costly in the useful sense.
 Names, invariants, parser choices, storage boundaries, user interfaces,

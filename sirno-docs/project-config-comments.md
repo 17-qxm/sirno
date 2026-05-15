@@ -20,6 +20,9 @@ The generated comments are:
 - `Lake-root paths Sirno skips while reading, checking, querying, and generating links.`
 - `Sirno Frost root, kept outside the public lake.`
 - `Repository files, directories, or globs scanned for witness blocks.`
+- `Witness delimiter regex pairs; each first capture group is the entry id.`
+- `Opening witness delimiter regex.`
+- `Closing witness delimiter regex.`
 - `Require generated footers to match current metadata during checks.`
 - `Include category links; use a boolean or { to = bool, from = bool }.`
 - `Include belongs links; use a boolean or { to = bool, from = bool }.`

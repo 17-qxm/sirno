@@ -8,6 +8,16 @@ ignore = [".obsidian"]
 # Repository files, directories, or globs scanned for witness blocks.
 members = ["src", "README.md"]
 
+[witness]
+# Witness delimiter regex pairs; each first capture group is the entry id.
+[[witness.delimiters]]
+begin = '(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin'
+end = '(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):end'
+
+[[witness.delimiters]]
+begin = '(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin[ \t]*-->'
+end = '(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):end[ \t]*-->'
+
 [check]
 # Require generated footers to match current metadata during checks.
 link = true

@@ -817,6 +817,7 @@ fn witness_check_settings(
     Some(WitnessCheckSettings::new(
         config_path.parent().unwrap_or_else(|| Path::new(".")),
         repo.members.clone(),
+        config.witness.clone(),
     ))
 }
 

@@ -19,30 +19,33 @@ use thiserror::Error;
 use tracing::trace;
 
 use crate::config::RepoMember;
+use crate::config::WitnessSettings;
 use crate::id::{EntryId, EntryIdError};
 
 const WITNESS_TRANSFORM: &str = "sirno-witness";
-const WITNESS_BEGIN_REGEX: &str =
-    r"(?m)^[ \t]*(?://[ \t]*|<!--[ \t]*)sirno:witness:([A-Za-z0-9_-]+):begin(?:[ \t]*-->)?";
-const WITNESS_END_REGEX: &str =
-    r"(?m)^[ \t]*(?://[ \t]*|<!--[ \t]*)sirno:witness:([A-Za-z0-9_-]+):end(?:[ \t]*-->)?";
 
 /// Settings for a witness scan.
 ///
 /// Invariant: `root` is the directory relative to which members are resolved.
 /// `members` are already validated config-relative member patterns.
+/// `witness` contains the delimiter regex pairs used by `mosaika`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WitnessCheckSettings {
     /// Directory relative to which repo members are resolved.
     pub root: PathBuf,
     /// Configured repository members scanned for witness markers.
     pub members: Vec<RepoMember>,
+    /// Configured witness delimiter syntax.
+    pub witness: WitnessSettings,
 }
 
 impl WitnessCheckSettings {
-    /// Construct witness settings from a config root and repo members.
-    pub fn new(root: impl Into<PathBuf>, members: impl IntoIterator<Item = RepoMember>) -> Self {
-        Self { root: root.into(), members: members.into_iter().collect() }
+    /// Construct witness settings from a config root, repo members, and delimiter syntax.
+    pub fn new(
+        root: impl Into<PathBuf>, members: impl IntoIterator<Item = RepoMember>,
+        witness: WitnessSettings,
+    ) -> Self {
+        Self { root: root.into(), members: members.into_iter().collect(), witness }
     }
 
     /// Returns true when there is no repository surface to scan.
@@ -130,8 +133,7 @@ pub struct WitnessSpan {
 // sirno:witness:witness-lookup:begin
 /// Scan configured repository members for Sirno witness blocks.
 ///
-/// The scan accepts `//` line-comment sentinels
-/// and hidden Markdown HTML-comment sentinels.
+/// The scan uses configured delimiter regexes.
 pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, WitnessError> {
     trace!(
         root = %settings.root.display(),
@@ -139,7 +141,7 @@ pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, W
         "scan_witnesses begin"
     );
     let files = resolve_member_files(settings)?;
-    let output = run_mosaika_witness_scan(&settings.root, &files)?;
+    let output = run_mosaika_witness_scan(&settings.root, &files, &settings.witness)?;
     let index = parse_witness_output(&output)?;
     trace!(file_count = files.len(), "scan_witnesses end");
     Ok(index)
@@ -237,12 +239,14 @@ fn collect_directory_files(
 // sirno:witness:witness-lookup:end
 
 // sirno:witness:witness-lookup:begin
-fn run_mosaika_witness_scan(root: &Path, files: &[PathBuf]) -> Result<String, WitnessError> {
+fn run_mosaika_witness_scan(
+    root: &Path, files: &[PathBuf], witness: &WitnessSettings,
+) -> Result<String, WitnessError> {
     if files.is_empty() {
         return Ok(String::new());
     }
 
-    let projection = witness_projection(files);
+    let projection = witness_projection(files, witness);
     let scheme = Scheme::from_syntax(projection, root).map_err(WitnessError::Scheme)?;
     let mut output = Vec::new();
     Engine::new("sirno witness scan", scheme)
@@ -253,16 +257,24 @@ fn run_mosaika_witness_scan(root: &Path, files: &[PathBuf]) -> Result<String, Wi
 // sirno:witness:witness-lookup:end
 
 // sirno:witness:witness-lookup:begin
-fn witness_projection(files: &[PathBuf]) -> syn::Projection {
-    syn::Projection {
-        transforms: vec![Transform {
-            name: WITNESS_TRANSFORM.to_owned(),
+fn witness_projection(files: &[PathBuf], witness: &WitnessSettings) -> syn::Projection {
+    let transforms = witness
+        .delimiters
+        .iter()
+        .enumerate()
+        .map(|(index, delimiter)| Transform {
+            name: witness_transform_name(index),
             delimiters: vec![
-                Delimiter::Regex(RegexDelimiter { regex: WITNESS_BEGIN_REGEX.to_owned() }),
-                Delimiter::Regex(RegexDelimiter { regex: WITNESS_END_REGEX.to_owned() }),
+                Delimiter::Regex(RegexDelimiter { regex: delimiter.begin.clone() }),
+                Delimiter::Regex(RegexDelimiter { regex: delimiter.end.clone() }),
             ],
             effects: vec![Effect::Log { log: true }],
-        }],
+        })
+        .collect::<Vec<_>>();
+    let transform_names =
+        (0..witness.delimiters.len()).map(witness_transform_name).collect::<Vec<_>>();
+    syn::Projection {
+        transforms,
         transactions: files
             .iter()
             .map(|path| Transaction {
@@ -272,13 +284,17 @@ fn witness_projection(files: &[PathBuf]) -> syn::Projection {
                     log: Some(LogDestination::Pipe(LogPipe { pipe: PipeName::Stdout })),
                     pattern: None,
                 },
-                transform: vec![WITNESS_TRANSFORM.to_owned()],
+                transform: transform_names.clone(),
             })
             .collect(),
         posts: Vec::new(),
     }
 }
 // sirno:witness:witness-lookup:end
+
+fn witness_transform_name(index: usize) -> String {
+    format!("{WITNESS_TRANSFORM}-{index}")
+}
 
 // sirno:witness:witness-lookup:begin
 fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
@@ -471,6 +487,7 @@ pub enum WitnessError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::WitnessDelimiterSettings;
 
     // sirno:witness:witness-fixture-isolation:begin
     const WITNESS_COMMENT_PREFIX: &str = "// sirno";
@@ -499,6 +516,10 @@ mod tests {
         format!("<!-- sirno:witness:{id}:begin -->\nbody\n<!-- sirno:witness:{id}:end -->\n")
     }
 
+    fn custom_witness_block(id: &str) -> String {
+        format!("BEGIN {id}\nbody\nEND {id}\n")
+    }
+
     fn indented_witness_block(id: &str) -> String {
         format!("    {}\n        body\n    {}\n", witness_begin(id), witness_end(id))
     }
@@ -509,7 +530,11 @@ mod tests {
         let src = temp.path().join("src/nested");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), witness_block("witness-lookup")).unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("src").unwrap()],
+            WitnessSettings::standard(),
+        );
 
         let index = scan_witnesses(&settings).unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
@@ -536,8 +561,11 @@ mod tests {
         std::fs::create_dir_all(temp.path().join("crates/core/src")).unwrap();
         std::fs::write(temp.path().join("crates/core/src/lib.rs"), witness_block("repo-member"))
             .unwrap();
-        let settings =
-            WitnessCheckSettings::new(temp.path(), [RepoMember::new("crates/*/src").unwrap()]);
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("crates/*/src").unwrap()],
+            WitnessSettings::standard(),
+        );
 
         let index = scan_witnesses(&settings).unwrap();
 
@@ -548,8 +576,11 @@ mod tests {
     fn scans_markdown_comment_witness_blocks() {
         let temp = tempfile::tempdir().unwrap();
         std::fs::write(temp.path().join("README.md"), markdown_witness_block("readme")).unwrap();
-        let settings =
-            WitnessCheckSettings::new(temp.path(), [RepoMember::new("README.md").unwrap()]);
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("README.md").unwrap()],
+            WitnessSettings::standard(),
+        );
 
         let index = scan_witnesses(&settings).unwrap();
         let records = index.records_for(&EntryId::new("readme").unwrap());
@@ -567,12 +598,38 @@ mod tests {
     }
 
     #[test]
+    fn scans_configured_witness_syntax() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("notes.txt"), custom_witness_block("custom")).unwrap();
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("notes.txt").unwrap()],
+            WitnessSettings {
+                delimiters: vec![WitnessDelimiterSettings::new(
+                    r"(?m)^BEGIN ([A-Za-z0-9_-]+)$",
+                    r"(?m)^END ([A-Za-z0-9_-]+)$",
+                )],
+            },
+        );
+
+        let index = scan_witnesses(&settings).unwrap();
+        let records = index.records_for(&EntryId::new("custom").unwrap());
+
+        assert!(index.contains_entry(&EntryId::new("custom").unwrap()));
+        assert_eq!(records[0].body, custom_witness_block("custom").trim_end());
+    }
+
+    #[test]
     fn delimiter_spans_exclude_prefixing_spaces() {
         let temp = tempfile::tempdir().unwrap();
         let src = temp.path().join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), indented_witness_block("witness-lookup")).unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("src").unwrap()],
+            WitnessSettings::standard(),
+        );
 
         let index = scan_witnesses(&settings).unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
@@ -594,7 +651,11 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(src.join("lib.rs"), witness_block_with_end("witness-lookup", "query"))
             .unwrap();
-        let settings = WitnessCheckSettings::new(temp.path(), [RepoMember::new("src").unwrap()]);
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("src").unwrap()],
+            WitnessSettings::standard(),
+        );
 
         let error = scan_witnesses(&settings).unwrap_err();
 

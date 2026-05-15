@@ -67,6 +67,8 @@ If no repo members are configured, configure the intended repository artifact su
 ```
 
 For Markdown artifacts, use hidden HTML comment sentinels instead of visible line comments.
+Always check `[[witness.delimiters]]` before adding markers.
+Use the configured delimiter syntax.
 
 For Rust, place witness comments around stable items or focused implementation spans.
 Avoid wrapping unrelated helpers just because they are nearby.

@@ -8,6 +8,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::trace;
@@ -16,6 +17,22 @@ use crate::links::GeneratedLinkSettings;
 
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
+
+/// Standard opening delimiter regex for line-comment repository witness blocks.
+pub const STANDARD_LINE_WITNESS_BEGIN_REGEX: &str =
+    r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin";
+
+/// Standard closing delimiter regex for line-comment repository witness blocks.
+pub const STANDARD_LINE_WITNESS_END_REGEX: &str =
+    r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):end";
+
+/// Standard opening delimiter regex for Markdown repository witness blocks.
+pub const STANDARD_MARKDOWN_WITNESS_BEGIN_REGEX: &str =
+    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin[ \t]*-->";
+
+/// Standard closing delimiter regex for Markdown repository witness blocks.
+pub const STANDARD_MARKDOWN_WITNESS_END_REGEX: &str =
+    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):end[ \t]*-->";
 
 // sirno:witness:mono:begin
 /// Optional configured monograph settings.
@@ -170,6 +187,90 @@ impl RepoSettings {
     }
 }
 
+/// Configured witness delimiter pair.
+///
+/// Invariant: `begin` and `end` are non-empty regex strings.
+/// Each regex captures the entry id as its first capture group.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+// sirno:witness:project-config:begin
+pub struct WitnessDelimiterSettings {
+    /// Regex that matches an opening witness delimiter.
+    pub begin: String,
+    /// Regex that matches a closing witness delimiter.
+    pub end: String,
+}
+// sirno:witness:project-config:end
+
+/// Configured witness delimiter syntax.
+///
+/// Invariant: `delimiters` is non-empty.
+/// Each delimiter pair is validated by `WitnessDelimiterSettings`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+// sirno:witness:project-config:begin
+pub struct WitnessSettings {
+    /// Configured witness delimiter pairs.
+    pub delimiters: Vec<WitnessDelimiterSettings>,
+}
+// sirno:witness:project-config:end
+
+impl WitnessDelimiterSettings {
+    /// Construct one delimiter pair from regex strings.
+    pub fn new(begin: impl Into<String>, end: impl Into<String>) -> Self {
+        Self { begin: begin.into(), end: end.into() }
+    }
+}
+
+impl WitnessSettings {
+    /// Construct the standard syntax written by generated configs.
+    pub fn standard() -> Self {
+        Self {
+            delimiters: vec![
+                WitnessDelimiterSettings::new(
+                    STANDARD_LINE_WITNESS_BEGIN_REGEX,
+                    STANDARD_LINE_WITNESS_END_REGEX,
+                ),
+                WitnessDelimiterSettings::new(
+                    STANDARD_MARKDOWN_WITNESS_BEGIN_REGEX,
+                    STANDARD_MARKDOWN_WITNESS_END_REGEX,
+                ),
+            ],
+        }
+    }
+
+    fn validate(&self) -> Result<(), ConfigError> {
+        if self.delimiters.is_empty() {
+            return Err(ConfigError::WitnessDelimiterList);
+        }
+        for (index, delimiter) in self.delimiters.iter().enumerate() {
+            validate_witness_regex("witness.delimiters.begin", index, &delimiter.begin)?;
+            validate_witness_regex("witness.delimiters.end", index, &delimiter.end)?;
+        }
+        Ok(())
+    }
+}
+
+fn validate_witness_regex(
+    field: &'static str, index: usize, source: &str,
+) -> Result<(), ConfigError> {
+    if source.trim().is_empty() {
+        return Err(ConfigError::WitnessRegex { field, index });
+    }
+    let regex = Regex::new(source).map_err(|source| ConfigError::WitnessRegexSyntax {
+        field,
+        index,
+        source,
+    })?;
+    if regex.captures_len() < 2 {
+        return Err(ConfigError::WitnessRegexCapture { field, index });
+    }
+    if regex.is_match("") {
+        return Err(ConfigError::WitnessRegexEmptyMatch { field, index });
+    }
+    Ok(())
+}
+
 /// Sirno project configuration.
 ///
 /// `lake.path` points to the configured public Markdown entry lake path.
@@ -177,6 +278,7 @@ impl RepoSettings {
 /// `frost.path`, when present, points to the configured Sirno Frost root.
 /// `lake.ignore` contains paths relative to the lake root that Sirno skips.
 /// `repo.members`, when present, contains relative member paths or globs for witness lookup.
+/// `witness` controls the delimiter syntax for repository witness blocks.
 /// `check` controls optional structural check families.
 /// `links` controls generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
@@ -195,6 +297,8 @@ pub struct SirnoConfig {
     /// Configured repository artifact members.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repo: Option<RepoSettings>,
+    /// Configured repository witness delimiter syntax.
+    pub witness: WitnessSettings,
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
@@ -213,6 +317,7 @@ impl SirnoConfig {
             lake: LakeSettings::new(lake),
             frost: None,
             repo: None,
+            witness: WitnessSettings::standard(),
             check: CheckSettings::default(),
             links: GeneratedLinkSettings::default(),
         }
@@ -323,6 +428,7 @@ impl SirnoConfig {
         if let Some(repo) = &self.repo {
             repo.validate()?;
         }
+        self.witness.validate()?;
         if self.frost.is_some() {
             let lake = self.resolve_lake(config_path);
             let frost = self.resolve_frost(config_path).expect("frost path exists after is_some");
@@ -409,6 +515,12 @@ fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
     }
 
     out.push('\n');
+    push_table(&mut out, "witness");
+    // sirno:witness:project-config-comments:begin
+    push_witness_delimiters(&mut out, &config.witness.delimiters)?;
+    // sirno:witness:project-config-comments:end
+
+    out.push('\n');
     push_table(&mut out, "check");
     // sirno:witness:project-config-comments:begin
     push_field(
@@ -470,6 +582,29 @@ fn push_field<T: Serialize + ?Sized>(
     Ok(())
 }
 
+// sirno:witness:project-config-comments:begin
+fn push_witness_delimiters(
+    out: &mut String, delimiters: &[WitnessDelimiterSettings],
+) -> Result<(), toml::ser::Error> {
+    out.push_str("# Witness delimiter regex pairs; each first capture group is the entry id.\n");
+    for (index, delimiter) in delimiters.iter().enumerate() {
+        if index > 0 {
+            out.push('\n');
+        }
+        push_array_table(out, "witness.delimiters");
+        push_field(out, "begin", &delimiter.begin, "Opening witness delimiter regex.")?;
+        push_field(out, "end", &delimiter.end, "Closing witness delimiter regex.")?;
+    }
+    Ok(())
+}
+// sirno:witness:project-config-comments:end
+
+fn push_array_table(out: &mut String, name: &str) {
+    out.push_str("[[");
+    out.push_str(name);
+    out.push_str("]]\n");
+}
+
 fn toml_value<T: Serialize + ?Sized>(value: &T) -> Result<String, toml::ser::Error> {
     Ok(toml::Value::try_from(value)?.to_string())
 }
@@ -504,6 +639,44 @@ pub enum ConfigError {
     /// A repo member path or glob is not relative to the config directory.
     #[error("repo.members path must be relative to the config directory: {0}")]
     RepoMemberPath(String),
+    /// No witness delimiter pairs are configured.
+    #[error("witness.delimiters must contain at least one delimiter pair")]
+    WitnessDelimiterList,
+    /// A witness delimiter regex is empty.
+    #[error("{field} at index {index} must not be empty")]
+    WitnessRegex {
+        /// Config field that contained an empty regex.
+        field: &'static str,
+        /// Zero-based delimiter pair index.
+        index: usize,
+    },
+    /// A witness delimiter regex is invalid.
+    #[error("{field} at index {index} contains an invalid regex")]
+    WitnessRegexSyntax {
+        /// Config field that contained an invalid regex.
+        field: &'static str,
+        /// Zero-based delimiter pair index.
+        index: usize,
+        /// Regex parser error.
+        #[source]
+        source: regex::Error,
+    },
+    /// A witness delimiter regex does not capture an entry id.
+    #[error("{field} at index {index} must capture the entry id")]
+    WitnessRegexCapture {
+        /// Config field that did not declare a capture group.
+        field: &'static str,
+        /// Zero-based delimiter pair index.
+        index: usize,
+    },
+    /// A witness delimiter regex can match empty text.
+    #[error("{field} at index {index} must not match empty text")]
+    WitnessRegexEmptyMatch {
+        /// Config field that can match empty text.
+        field: &'static str,
+        /// Zero-based delimiter pair index.
+        index: usize,
+    },
     /// The Sirno Frost root overlaps the public lake path.
     #[error("frost path must be separate from public lake path: lake={lake} frost={frost}")]
     FrostLakePath {
@@ -536,28 +709,52 @@ pub enum ConfigError {
 mod tests {
     use super::*;
 
+    const TEST_WITNESS_BEGIN_REGEX: &str = "(?m)^BEGIN ([A-Za-z0-9_-]+)$";
+    const TEST_WITNESS_END_REGEX: &str = "(?m)^END ([A-Za-z0-9_-]+)$";
+
+    fn test_witness_syntax() -> WitnessSettings {
+        WitnessSettings {
+            delimiters: vec![WitnessDelimiterSettings::new(
+                TEST_WITNESS_BEGIN_REGEX,
+                TEST_WITNESS_END_REGEX,
+            )],
+        }
+    }
+
+    fn config_source(source: &str) -> String {
+        format!(
+            "{source}\n[witness]\n[[witness.delimiters]]\nbegin = '{begin}'\nend = '{end}'\n",
+            begin = TEST_WITNESS_BEGIN_REGEX,
+            end = TEST_WITNESS_END_REGEX,
+        )
+    }
+
+    fn parse_config(source: &str) -> SirnoConfig {
+        toml::from_str(&config_source(source)).unwrap()
+    }
+
     #[test]
     fn parses_minimal_config() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [lake]
 path = "docs"
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(config.mono, None);
         assert_eq!(config.lake.path, PathBuf::from("docs"));
         assert_eq!(config.frost, None);
         assert!(config.lake.ignore.is_empty());
         assert_eq!(config.repo, None);
+        assert_eq!(config.witness, test_witness_syntax());
         assert_eq!(config.check, CheckSettings::default());
         assert_eq!(config.links, GeneratedLinkSettings::default());
     }
 
     #[test]
     fn parses_optional_mono_settings() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -565,15 +762,14 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(config.mono, Some(MonoSettings { path: PathBuf::from("DESIGN.md") }));
     }
 
     #[test]
     fn parses_frost_settings() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -584,15 +780,14 @@ path = "docs"
 [frost]
 path = "sirno-frost"
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(config.frost, Some(FrostSettings { path: PathBuf::from("sirno-frost") }));
     }
 
     #[test]
     fn parses_check_settings() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -603,15 +798,14 @@ path = "docs"
 [check]
 link = false
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(config.check, CheckSettings { link: false });
     }
 
     #[test]
     fn parses_repo_members() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -622,8 +816,7 @@ path = "docs"
 [repo]
 members = ["src", "Cargo.toml", "crates/*/src"]
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             config.repo,
@@ -638,8 +831,44 @@ members = ["src", "Cargo.toml", "crates/*/src"]
     }
 
     #[test]
-    fn parses_link_settings() {
+    fn parses_witness_syntax_settings() {
         let config: SirnoConfig = toml::from_str(
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+[[witness.delimiters]]
+begin = '(?m)^BEGIN ([A-Za-z0-9_-]+)$'
+end = '(?m)^END ([A-Za-z0-9_-]+)$'
+
+[[witness.delimiters]]
+begin = '(?m)^START ([A-Za-z0-9_-]+)$'
+end = '(?m)^STOP ([A-Za-z0-9_-]+)$'
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.witness,
+            WitnessSettings {
+                delimiters: vec![
+                    WitnessDelimiterSettings::new(
+                        "(?m)^BEGIN ([A-Za-z0-9_-]+)$",
+                        "(?m)^END ([A-Za-z0-9_-]+)$",
+                    ),
+                    WitnessDelimiterSettings::new(
+                        "(?m)^START ([A-Za-z0-9_-]+)$",
+                        "(?m)^STOP ([A-Za-z0-9_-]+)$",
+                    ),
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn parses_link_settings() {
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -653,8 +882,7 @@ belongs = false
 clique = true
 refines = true
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             config.links,
@@ -669,7 +897,7 @@ refines = true
 
     #[test]
     fn parses_link_side_settings() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -682,8 +910,7 @@ category = { to = true, from = false }
 belongs = true
 refines = { to = false, from = true }
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(
             config.links,
@@ -698,7 +925,7 @@ refines = { to = false, from = true }
 
     #[test]
     fn parses_lake_ignore_settings() {
-        let config: SirnoConfig = toml::from_str(
+        let config = parse_config(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -707,8 +934,7 @@ path = "DESIGN.md"
 path = "docs"
 ignore = [".obsidian", "drafts"]
 "#,
-        )
-        .unwrap();
+        );
 
         assert_eq!(config.lake.path, PathBuf::from("docs"));
         assert_eq!(config.lake.ignore, vec![PathBuf::from(".obsidian"), PathBuf::from("drafts")]);
@@ -716,7 +942,7 @@ ignore = [".obsidian", "drafts"]
 
     #[test]
     fn rejects_unknown_fields() {
-        let error = toml::from_str::<SirnoConfig>(
+        let source = config_source(
             r#"
 [mono]
 path = "DESIGN.md"
@@ -725,10 +951,23 @@ path = "DESIGN.md"
 path = "docs"
 extra = "no"
 "#,
+        );
+        let error = toml::from_str::<SirnoConfig>(&source).unwrap_err();
+
+        assert!(error.to_string().contains("unknown field"));
+    }
+
+    #[test]
+    fn rejects_missing_witness_syntax() {
+        let error = toml::from_str::<SirnoConfig>(
+            r#"
+[lake]
+path = "docs"
+"#,
         )
         .unwrap_err();
 
-        assert!(error.to_string().contains("unknown field"));
+        assert!(error.to_string().contains("missing field `witness`"));
     }
 
     #[test]
@@ -751,7 +990,8 @@ extra = "no"
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
             &path,
-            r#"
+            config_source(
+                r#"
 [mono]
 path = "DESIGN.md"
 
@@ -759,6 +999,7 @@ path = "DESIGN.md"
 path = "docs"
 ignore = ["../outside"]
 "#,
+            ),
         )
         .unwrap();
 
@@ -773,7 +1014,8 @@ ignore = ["../outside"]
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
             &path,
-            r#"
+            config_source(
+                r#"
 [mono]
 path = "DESIGN.md"
 
@@ -783,12 +1025,142 @@ path = "docs"
 [repo]
 members = ["../outside"]
 "#,
+            ),
         )
         .unwrap();
 
         let error = SirnoConfig::from_file(&path).unwrap_err();
 
         assert!(matches!(error, ConfigError::RepoMemberPath(_)));
+    }
+
+    #[test]
+    fn rejects_empty_witness_regex() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+[[witness.delimiters]]
+begin = ""
+end = '(?m)^END ([A-Za-z0-9_-]+)$'
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ConfigError::WitnessRegex { field, index: 0 }
+                if field == "witness.delimiters.begin"
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_witness_regex() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+[[witness.delimiters]]
+begin = '('
+end = '(?m)^END ([A-Za-z0-9_-]+)$'
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ConfigError::WitnessRegexSyntax { field, index: 0, .. }
+                if field == "witness.delimiters.begin"
+        ));
+    }
+
+    #[test]
+    fn rejects_witness_regex_without_capture() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+[[witness.delimiters]]
+begin = '(?m)^BEGIN$'
+end = '(?m)^END ([A-Za-z0-9_-]+)$'
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ConfigError::WitnessRegexCapture { field, index: 0 }
+                if field == "witness.delimiters.begin"
+        ));
+    }
+
+    #[test]
+    fn rejects_empty_matching_witness_regex() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+[[witness.delimiters]]
+begin = '()'
+end = '(?m)^END ([A-Za-z0-9_-]+)$'
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(
+            error,
+            ConfigError::WitnessRegexEmptyMatch { field, index: 0 }
+                if field == "witness.delimiters.begin"
+        ));
+    }
+
+    #[test]
+    fn rejects_empty_witness_delimiter_list() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join(CONFIG_FILE_NAME);
+        fs::write(
+            &path,
+            r#"
+[lake]
+path = "docs"
+
+[witness]
+delimiters = []
+"#,
+        )
+        .unwrap();
+
+        let error = SirnoConfig::from_file(&path).unwrap_err();
+
+        assert!(matches!(error, ConfigError::WitnessDelimiterList));
     }
 
     #[test]
@@ -805,11 +1177,16 @@ members = ["../outside"]
     }
 
     #[test]
-    fn default_project_omits_optional_tables_when_rendered() {
+    fn default_project_writes_witness_syntax_and_omits_optional_tables() {
         let source = SirnoConfig::default_project().to_toml().unwrap();
 
         assert!(source.contains("[lake]"));
+        assert!(source.contains("[witness]"));
+        assert!(source.contains("[[witness.delimiters]]"));
         assert!(source.contains("# Markdown entry lake path"));
+        assert!(source.contains("# Witness delimiter regex pairs"));
+        assert!(source.contains("# Opening witness delimiter regex."));
+        assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include belongs links"));
         assert!(!source.contains("[mono]"));
@@ -826,6 +1203,7 @@ members = ["../outside"]
             },
             frost: Some(FrostSettings::new("sirno-frost")),
             repo: Some(RepoSettings { members: vec![RepoMember::new("src").unwrap()] }),
+            witness: test_witness_syntax(),
             check: CheckSettings { link: false },
             links: GeneratedLinkSettings {
                 category: true.into(),
@@ -844,6 +1222,9 @@ members = ["../outside"]
         assert!(source.contains("# Lake-root paths Sirno skips"));
         assert!(source.contains("# Sirno Frost root"));
         assert!(source.contains("# Repository files, directories, or globs"));
+        assert!(source.contains("# Witness delimiter regex pairs"));
+        assert!(source.contains("# Opening witness delimiter regex."));
+        assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("# Include category links"));
         assert!(source.contains("# Include belongs links"));
@@ -857,7 +1238,8 @@ members = ["../outside"]
         let path = temp.path().join(CONFIG_FILE_NAME);
         fs::write(
             &path,
-            r#"
+            config_source(
+                r#"
 [mono]
 path = "DESIGN.md"
 
@@ -867,6 +1249,7 @@ path = "docs"
 [frost]
 path = "docs/frost"
 "#,
+            ),
         )
         .unwrap();
 

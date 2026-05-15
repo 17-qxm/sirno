@@ -22,6 +22,7 @@ Generated config files include concise comments that describe how each written f
 `[lake].path` names the Markdown *entry lake*.
 `[frost].path` optionally names the private Sirno Frost root.
 `[repo].members` optionally lists repository paths or globs scanned for *witness* blocks.
+`[witness]` configures the delimiter regexes used to find *witness* blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
 
 A project can use Sirno without a configured *monograph*, repo members, or Sirno Frost.
@@ -44,6 +45,14 @@ Ignored paths are for adjacent tool state, not for *entries*.
 File members are scanned directly.
 Directory members are scanned recursively.
 Glob members may match files or directories.
+
+`[[witness.delimiters]]` configures one *witness* delimiter syntax.
+Each delimiter table has `begin` and `end` regex fields.
+Each regex should capture the *entry* id as its first capture group.
+Sirno rejects empty, invalid, captureless, or empty-matching delimiter regexes.
+At least one delimiter table is required so the repository syntax is explicit.
+Generated configs write the standard syntax,
+which accepts `//` line comments and hidden Markdown HTML comments.
 
 `[check].link` controls generated-link freshness checks.
 It is enabled by default.

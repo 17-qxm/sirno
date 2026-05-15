@@ -917,7 +917,7 @@ pub enum EntryDirectoryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EntryMetadata, RepoMember, WitnessCheckSettings};
+    use crate::{EntryMetadata, RepoMember, WitnessCheckSettings, WitnessSettings};
 
     fn write_entry(root: &Path, name: &str, body: &str) {
         fs::write(root.join(name), body).unwrap();
@@ -925,7 +925,11 @@ mod tests {
 
     fn witness_settings(root: &Path) -> EntryDirectoryCheckSettings {
         EntryDirectoryCheckSettings {
-            witness: Some(WitnessCheckSettings::new(root, [RepoMember::new("src").unwrap()])),
+            witness: Some(WitnessCheckSettings::new(
+                root,
+                [RepoMember::new("src").unwrap()],
+                WitnessSettings::standard(),
+            )),
             ..EntryDirectoryCheckSettings::default()
         }
     }

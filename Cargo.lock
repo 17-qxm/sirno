@@ -533,6 +533,7 @@ dependencies = [
  "eter",
  "glob",
  "mosaika",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

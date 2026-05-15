@@ -28,6 +28,9 @@ and closes with `sirno:witness:<entry-id>:end`.
 The opening and closing *entry* ids must match.
 Rust and other line-commented files can write the sentinels with `//`.
 Markdown files can write them as hidden HTML comments.
+This is the standard syntax written by generated configs.
+A project can override the delimiter regex pairs with `[[witness.delimiters]]`
+when another repository surface needs a different marker shape.
 
 The *entry* body may explain how to find or interpret evidence as fallback guidance.
 The convention is the *entry* id plus the repository *witness* block.
