@@ -179,7 +179,7 @@ This repository keeps its current design source in `sirno-docs/`.
 
 ```sh
 cargo run -- check --mode review
-cargo run -- query --format id,desc --human
+cargo run -- query --fields id,desc --format human
 cargo run -- witness readme --full
 ```
 

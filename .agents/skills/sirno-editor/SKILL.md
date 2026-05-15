@@ -175,7 +175,7 @@ Do not hard-code `docs/` when `Sirno.toml` names a different lake.
 Prefer these checks when the CLI provides them:
 
 ```text
-sirno query --format id
+sirno query --fields id
 sirno check --mode edit
 sirno gen-link
 sirno check

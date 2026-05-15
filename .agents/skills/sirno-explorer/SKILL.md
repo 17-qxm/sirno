@@ -29,17 +29,17 @@ entry ids, why they matter, witness locations, and the code or docs they point t
    Use vague query for discovery:
 
 ```sh
-cargo run -- query TERMS --format id,desc
+cargo run -- query TERMS --fields id,desc
 ```
 
 Use exact structural predicates when the route is known:
 
 ```sh
-cargo run -- query --exact belongs=sirno-lake --format id,desc
-cargo run -- query --exact category=concept --exact refines=storage-and-interfaces --format id,desc
+cargo run -- query --exact belongs=sirno-lake --fields id,desc
+cargo run -- query --exact category=concept --exact refines=storage-and-interfaces --fields id,desc
 ```
 
-Read the `desc` column before narrowing the route.
+Read the `desc` field before narrowing the route.
 It gives each candidate's intended meaning and prevents id-only matching.
 
 3. Read the most relevant entry files from the configured lake.
@@ -73,22 +73,22 @@ Then inspect the entry prose and related entries before falling back to text sea
 Start vague when the user's language is conceptual:
 
 ```sh
-cargo run -- query parser metadata --format id,desc
+cargo run -- query parser metadata --fields id,desc
 ```
 
 Start exact when the user names a structural field or known entry id:
 
 ```sh
-cargo run -- query --exact belongs=structural-field --format id,desc
+cargo run -- query --exact belongs=structural-field --fields id,desc
 ```
 
 Combine vague and exact filters when useful:
 
 ```sh
-cargo run -- query generated footer --exact category=concept --format id,desc
+cargo run -- query generated footer --exact category=concept --fields id,desc
 ```
 
-Use `--format id,path,desc` when you need entry file paths from the result set.
+Use `--fields id,path,desc` when you need entry file paths from the result set.
 Use the configured structural field names from `Sirno.toml`.
 Do not assume every project uses only `category`, `belongs`, and `refines`.
 

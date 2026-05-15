@@ -9,6 +9,7 @@ use std::str::FromStr;
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
+use serde::ser::SerializeMap;
 use sirno::{
     CONFIG_FILE_NAME, CheckMode, ConfigError, Entry, EntryDirectory, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
@@ -105,10 +106,10 @@ enum Command {
         exact: Vec<CliExactPredicate>,
         /// Comma-separated output fields: id, name, path, desc.
         #[arg(long, value_name = "FIELDS")]
-        format: Option<CliQueryFormat>,
-        /// Print query results as a human-readable table.
-        #[arg(long)]
-        human: bool,
+        fields: Option<CliQueryFields>,
+        /// Output format.
+        #[arg(long, value_enum)]
+        format: Option<CliQueryOutputFormat>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Check current entry structure.
@@ -175,31 +176,40 @@ enum CliCheckMode {
     Review,
 }
 
+/// CLI query output renderer.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum CliQueryOutputFormat {
+    /// Print a JSON array of objects.
+    Json,
+    /// Print an aligned table.
+    Human,
+}
+
 /// CLI query output field list.
 #[derive(Clone, Debug, PartialEq, Eq)]
-struct CliQueryFormat {
+struct CliQueryFields {
     fields: Vec<CliQueryField>,
 }
 
-impl Default for CliQueryFormat {
+impl Default for CliQueryFields {
     fn default() -> Self {
         Self { fields: vec![CliQueryField::Id, CliQueryField::Path, CliQueryField::Name] }
     }
 }
 
-impl FromStr for CliQueryFormat {
-    type Err = CliQueryFormatParseError;
+impl FromStr for CliQueryFields {
+    type Err = CliQueryFieldsParseError;
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
         if raw.trim().is_empty() {
-            return Err(CliQueryFormatParseError::Empty);
+            return Err(CliQueryFieldsParseError::Empty);
         }
 
         let mut fields = Vec::new();
         for raw_field in raw.split(',') {
             let field = raw_field.trim();
             if field.is_empty() {
-                return Err(CliQueryFormatParseError::EmptyField);
+                return Err(CliQueryFieldsParseError::EmptyField);
             }
             fields.push(field.parse()?);
         }
@@ -222,7 +232,7 @@ enum CliQueryField {
 }
 
 impl FromStr for CliQueryField {
-    type Err = CliQueryFormatParseError;
+    type Err = CliQueryFieldsParseError;
 
     fn from_str(raw: &str) -> Result<Self, Self::Err> {
         match raw {
@@ -230,7 +240,7 @@ impl FromStr for CliQueryField {
             | "name" => Ok(Self::Name),
             | "path" => Ok(Self::Path),
             | "desc" => Ok(Self::Desc),
-            | field => Err(CliQueryFormatParseError::UnknownField(field.to_owned())),
+            | field => Err(CliQueryFieldsParseError::UnknownField(field.to_owned())),
         }
     }
 }
@@ -246,17 +256,17 @@ impl CliQueryField {
     }
 }
 
-/// Error raised while parsing one `--format` field list.
+/// Error raised while parsing one `--fields` field list.
 #[derive(Debug, Error)]
-enum CliQueryFormatParseError {
+enum CliQueryFieldsParseError {
     /// The list contains no fields.
-    #[error("query format must include at least one field")]
+    #[error("query fields must include at least one field")]
     Empty,
     /// The list contains a separator without a field.
-    #[error("query format contains an empty field")]
+    #[error("query fields contain an empty field")]
     EmptyField,
     /// The list contains an unknown output field.
-    #[error("unknown query format field `{0}`; expected id, name, path, or desc")]
+    #[error("unknown query field `{0}`; expected id, name, path, or desc")]
     UnknownField(String),
 }
 
@@ -450,7 +460,7 @@ impl Cli {
                 println!("melted entry {id} at {}", path.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Query { terms, exact_terms, exact, format, human } => {
+            | Command::Query { terms, exact_terms, exact, fields, format } => {
                 let (lake, mut settings) =
                     resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.link = false;
@@ -470,8 +480,9 @@ impl Cli {
                 )?;
                 let vague_matches = vague_query.select_entries(report.entries());
                 let matches = exact_query.select_entries(vague_matches);
-                let format = format.unwrap_or_default();
-                print_query_results(&report, &matches, &format, human)?;
+                let fields = fields.unwrap_or_default();
+                let format = format.unwrap_or(CliQueryOutputFormat::Json);
+                print_query_results(&report, &matches, &fields, format)?;
                 Ok(ExitCode::SUCCESS)
             }
             | Command::Check { frost_root, mode } => {
@@ -1044,27 +1055,28 @@ fn format_gen_link_report(root: &Path, entry_count: usize, changed_paths: &[Path
 }
 
 fn print_query_results(
-    report: &EntryDirectoryReport, entries: &[&Entry], format: &CliQueryFormat, human: bool,
+    report: &EntryDirectoryReport, entries: &[&Entry], fields: &CliQueryFields,
+    format: CliQueryOutputFormat,
 ) -> Result<(), CliError> {
-    let rows = query_result_rows(report, entries, format)?;
-    if human {
-        print!("{}", format_query_table(format, &rows));
-        return Ok(());
-    }
-
-    for row in rows {
-        println!("{}", row.join("\t"));
+    let rows = query_result_rows(report, entries, fields)?;
+    match format {
+        | CliQueryOutputFormat::Json => {
+            println!("{}", format_query_json(fields, &rows)?);
+        }
+        | CliQueryOutputFormat::Human => {
+            print!("{}", format_query_table(fields, &rows));
+        }
     }
     Ok(())
 }
 
 fn query_result_rows(
-    report: &EntryDirectoryReport, entries: &[&Entry], format: &CliQueryFormat,
+    report: &EntryDirectoryReport, entries: &[&Entry], fields: &CliQueryFields,
 ) -> Result<Vec<Vec<String>>, CliError> {
     entries
         .iter()
         .map(|entry| {
-            format
+            fields
                 .fields
                 .iter()
                 .map(|field| format_query_field(report, entry, *field))
@@ -1089,8 +1101,31 @@ fn format_query_field(
     }
 }
 
-fn format_query_table(format: &CliQueryFormat, rows: &[Vec<String>]) -> String {
-    let headers = format.fields.iter().map(|field| field.label()).collect::<Vec<_>>();
+fn format_query_json(fields: &CliQueryFields, rows: &[Vec<String>]) -> Result<String, CliError> {
+    let records = rows.iter().map(|row| QueryJsonRecord { fields, row }).collect::<Vec<_>>();
+    Ok(serde_json::to_string_pretty(&records)?)
+}
+
+struct QueryJsonRecord<'a> {
+    fields: &'a CliQueryFields,
+    row: &'a [String],
+}
+
+impl serde::Serialize for QueryJsonRecord<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.fields.fields.len()))?;
+        for (field, value) in self.fields.fields.iter().zip(self.row) {
+            map.serialize_entry(field.label(), value)?;
+        }
+        map.end()
+    }
+}
+
+fn format_query_table(fields: &CliQueryFields, rows: &[Vec<String>]) -> String {
+    let headers = fields.fields.iter().map(|field| field.label()).collect::<Vec<_>>();
     let mut widths = headers.iter().map(|header| cell_width(header)).collect::<Vec<_>>();
     for row in rows {
         for (index, cell) in row.iter().enumerate() {
@@ -1252,6 +1287,9 @@ enum CliError {
     /// Entry metadata construction failed.
     #[error(transparent)]
     EntryParse(#[from] EntryParseError),
+    /// Query JSON rendering failed.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
 }
 
 #[cfg(test)]
@@ -1267,9 +1305,9 @@ mod tests {
     };
 
     use crate::{
-        Cli, CliError, CliExactPredicate, CliQueryField, CliQueryFormat, Command, FrostCommand,
-        exact_query_from_predicates, format_gen_link_report, format_query_table,
-        format_witness_record, format_witness_records,
+        Cli, CliError, CliExactPredicate, CliQueryField, CliQueryFields, CliQueryOutputFormat,
+        Command, FrostCommand, exact_query_from_predicates, format_gen_link_report,
+        format_query_json, format_query_table, format_witness_record, format_witness_records,
     };
 
     #[test]
@@ -1385,44 +1423,91 @@ mod tests {
     }
 
     #[test]
-    fn query_accepts_comma_separated_format_fields() {
-        let cli = Cli::parse_from(["sirno", "query", "--format", "id,name,path,desc"]);
-        let Command::Query { format: Some(format), .. } = cli.command else {
-            panic!("expected query command with format");
+    fn query_accepts_comma_separated_fields() {
+        let cli = Cli::parse_from(["sirno", "query", "--fields", "id,name,path,desc"]);
+        let Command::Query { fields: Some(fields), .. } = cli.command else {
+            panic!("expected query command with fields");
         };
 
         assert_eq!(
-            format.fields,
+            fields.fields,
             vec![CliQueryField::Id, CliQueryField::Name, CliQueryField::Path, CliQueryField::Desc,]
         );
     }
 
     #[test]
-    fn query_accepts_human_table_flag() {
-        let cli = Cli::parse_from(["sirno", "query", "--human"]);
+    fn query_accepts_json_format() {
+        let cli = Cli::parse_from(["sirno", "query", "--format", "json"]);
 
-        assert!(matches!(cli.command, Command::Query { human: true, .. }));
+        assert!(matches!(
+            cli.command,
+            Command::Query { format: Some(CliQueryOutputFormat::Json), .. }
+        ));
     }
 
     #[test]
-    fn query_rejects_unknown_format_field() {
-        let error = Cli::try_parse_from(["sirno", "query", "--format", "id,summary"]).unwrap_err();
+    fn query_accepts_human_format() {
+        let cli = Cli::parse_from(["sirno", "query", "--format", "human"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::Query { format: Some(CliQueryOutputFormat::Human), .. }
+        ));
+    }
+
+    #[test]
+    fn query_rejects_old_human_flag() {
+        let error = Cli::try_parse_from(["sirno", "query", "--human"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    #[test]
+    fn query_rejects_old_format_field_list() {
+        let error = Cli::try_parse_from(["sirno", "query", "--format", "id,desc"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::InvalidValue);
+    }
+
+    #[test]
+    fn query_rejects_unknown_field() {
+        let error = Cli::try_parse_from(["sirno", "query", "--fields", "id,summary"]).unwrap_err();
 
         assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation);
     }
 
     #[test]
-    fn query_rejects_empty_format_field() {
-        let error = Cli::try_parse_from(["sirno", "query", "--format", "id,,desc"]).unwrap_err();
+    fn query_rejects_empty_field() {
+        let error = Cli::try_parse_from(["sirno", "query", "--fields", "id,,desc"]).unwrap_err();
 
         assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation);
+    }
+
+    #[test]
+    fn query_json_uses_selected_field_names() {
+        let fields = "id,desc".parse::<CliQueryFields>().unwrap();
+        let json = format_query_json(&fields, &[vec!["query".to_owned(), "Selection".to_owned()]])
+            .unwrap();
+        let parsed = serde_json::from_str::<serde_json::Value>(&json).unwrap();
+
+        assert_eq!(
+            json,
+            "\
+[
+  {
+    \"id\": \"query\",
+    \"desc\": \"Selection\"
+  }
+]"
+        );
+        assert_eq!(parsed, serde_json::json!([{ "id": "query", "desc": "Selection" }]));
     }
 
     #[test]
     fn query_table_uses_selected_field_headers_and_widths() {
-        let format = "id,desc".parse::<CliQueryFormat>().unwrap();
+        let fields = "id,desc".parse::<CliQueryFields>().unwrap();
         let table =
-            format_query_table(&format, &[vec!["query".to_owned(), "Selection".to_owned()]]);
+            format_query_table(&fields, &[vec!["query".to_owned(), "Selection".to_owned()]]);
 
         assert_eq!(
             table,
