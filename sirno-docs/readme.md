@@ -40,12 +40,12 @@ because the joke makes the invitation memorable without changing the design clai
 - Third, Sirno lets a project define its own documentation paradigm through `meta` *entries*.
   The method for growing the *lake* can live inside the *lake* itself.
 - Lastly, interactive narrative invites the reader into a task-shaped route.
-  It appears before the entry example
+  It closes the principle sequence
   and gives a `$sirno-narrative-session` prompt grounded in `sirno-docs/introduction.md`.
 
 The README should not become the whole design document.
 It should give the reader the motivation,
-show a concise demonstration of the solution,
+show concrete commands for trying the lake,
 and point into the *lake* for durable detail.
 
 The repository *witnesses* for this *entry* are hidden Markdown comments in `README.md`.
