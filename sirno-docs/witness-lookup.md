@@ -22,8 +22,8 @@ Generated configs write the standard syntax,
 which accepts `//` line comments and hidden Markdown HTML comments.
 Sirno parses the log stream into witness records keyed by entry id.
 The stored delimiter spans exclude leading indentation.
-Full output displays every line spanned by the matched block,
-then dedents that line set for review.
+Full output displays every line spanned by the matched block
+and preserves the matched text.
 
 The lookup path keeps witness syntax out of entry prose.
 The *entries* remain design claims.

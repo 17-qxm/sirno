@@ -64,8 +64,8 @@ and reports repository *witness* blocks for the selected *entry* id.
 The *witness* output reports the opening and closing delimiter ranges.
 Delimiter ranges start at the sentinel text and exclude leading indentation.
 In full mode, the summary line contains only the range.
-The displayed region is the complete set of lines spanned by the *witness* block,
-then dedented for reading.
+The displayed region is the complete set of lines spanned by the *witness* block.
+Sirno preserves the matched indentation.
 A blank line separates the summary from that region.
 Multiple full regions are separated by a blank line, `---`, and another blank line.
 

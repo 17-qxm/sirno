@@ -97,4 +97,4 @@ cargo run -- gen-link
 ```
 
 Review the full witness output as a human would.
-The output should show concise ranges, dedented regions, and no broad unrelated code.
+The output should show concise ranges, literal matched regions, and no broad unrelated code.

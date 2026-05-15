@@ -704,20 +704,16 @@ fn format_witness_records(records: &[WitnessRecord], full: bool) -> String {
 }
 
 fn format_witness_record(record: &WitnessRecord, full: bool) -> String {
-    let body = dedent_witness_body(&record.body);
     let range = format_witness_summary(record);
     if !full {
-        let marker = body
-            .lines()
-            .next()
-            .map(str::to_owned)
-            .unwrap_or_else(|| dedent_witness_body(&record.marker));
+        let marker =
+            record.body.lines().next().map(str::to_owned).unwrap_or_else(|| record.marker.clone());
         return format!("{range}\t{marker}\n");
     }
 
     let mut out = format!("{range}\n\n");
-    out.push_str(&body);
-    if !body.ends_with('\n') {
+    out.push_str(&record.body);
+    if !record.body.ends_with('\n') {
         out.push('\n');
     }
     out.push('\n');
@@ -735,30 +731,6 @@ fn format_witness_summary(record: &WitnessRecord) -> String {
         record.closing.start_column,
         record.closing.end_column
     )
-}
-
-fn dedent_witness_body(body: &str) -> String {
-    let indent = body
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .map(leading_whitespace_len)
-        .min()
-        .unwrap_or(0);
-    let mut out =
-        body.lines().map(|line| strip_indent(line, indent)).collect::<Vec<_>>().join("\n");
-    if body.ends_with('\n') {
-        out.push('\n');
-    }
-    out
-}
-
-fn leading_whitespace_len(line: &str) -> usize {
-    line.bytes().take_while(|byte| matches!(byte, b' ' | b'\t')).count()
-}
-
-fn strip_indent(line: &str, indent: usize) -> &str {
-    let removable = leading_whitespace_len(line).min(indent);
-    &line[removable..]
 }
 
 fn run_util_command(command: UtilCommand) -> Result<ExitCode, CliError> {
@@ -1225,7 +1197,7 @@ mod tests {
 
     // sirno:witness:witness-fixture-isolation:begin
     #[test]
-    fn format_witness_record_prints_range_and_dedents_body() {
+    fn format_witness_record_prints_range_and_preserves_body() {
         let record = WitnessRecord {
             entry: EntryId::new("entry").unwrap(),
             path: PathBuf::from("src/lib.rs"),
@@ -1243,16 +1215,16 @@ mod tests {
 
         assert_eq!(
             format_witness_record(&record, false),
-            "src/lib.rs:10:5-33 :: 14:5-25\t// sample:start entry\n"
+            "src/lib.rs:10:5-33 :: 14:5-25\t    // sample:start entry\n"
         );
         assert_eq!(
             format_witness_record(&record, true),
             concat!(
                 "src/lib.rs:10:5-33 :: 14:5-25\n",
                 "\n",
-                "// sample:start entry\n",
-                "    fn main() {}\n",
-                "// sample:end\n",
+                "    // sample:start entry\n",
+                "        fn main() {}\n",
+                "    // sample:end\n",
                 "\n",
             )
         );
@@ -1280,7 +1252,7 @@ mod tests {
         second.closing = witness_span(24, 5, 24, 25);
 
         assert!(format_witness_records(&[first, second], true).contains(concat!(
-            "// sample:end\n",
+            "    // sample:end\n",
             "\n",
             "---\n",
             "\n",

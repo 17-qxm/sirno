@@ -17,7 +17,7 @@ The scanner still sees a real witness block in the fixture file.
 The Rust test source does not expose that fixture block as a standalone string literal.
 
 Tests that only format witness records use neutral comment text.
-They verify range rendering, marker selection, body dedenting,
+They verify range rendering, marker selection, body preservation,
 and record spacing without depending on witness syntax.
 
 Repository witness comments remain valid evidence in test modules.
