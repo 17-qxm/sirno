@@ -6,7 +6,7 @@ category:
 belongs:
   - sirno
 refines:
-  - storage-and-interfaces
+  - storage
 ---
 
 When Sirno Frost is configured,

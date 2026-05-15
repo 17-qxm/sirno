@@ -1,34 +1,14 @@
 ---
-name: Storage And Interfaces
-description: The design commitment to eter storage and CLI or MCP access interfaces.
+name: Interfaces
+description: The CLI and MCP surfaces that operate on Sirno project storage.
 category:
   - concept
 belongs:
   - sirno
 ---
 
-Sirno uses one required storage surface and several optional surfaces.
-
-The public Markdown *lake* is the editable working form.
-The configured *monograph* is optional.
-Configured repo members are optional and enable *witness* lookup.
-The private *frost* root is optional and managed through `eter`.
-`eter` provides durable storage, indexing, immutable snapshots,
-field history, version retirement, and garbage collection.
-
-Sirno exposes the *lake* through CLI and MCP interfaces.
+Sirno exposes configured project storage through CLI and MCP interfaces.
 A lightweight GUI or Obsidian extension may later provide a direct editing experience.
-
-Repository *witnesses* are managed through `mosaika` when repo members are configured.
-The *entry* id is the query key Sirno uses when locating *witness* blocks.
-
-The storage design separates the public Markdown form from the durable substrate.
-Markdown *entries* are the human-facing form.
-They are easy to read, review, diff, and edit.
-`eter` provides the storage and indexing foundation beneath that form,
-so Sirno can grow more capable without making the *entry* files opaque.
-It also gives Sirno Lake snapshots in `sirno-frost`
-without adding version fields to *entry* metadata.
 
 The CLI is the first operational interface.
 It can initialize *lakes*, create *entries*, query *entries*, check structure,
@@ -115,10 +95,6 @@ Future GUI or Obsidian work should keep the same ownership rules:
 metadata is structural,
 *generated footer* regions are Sirno-owned,
 and prose outside generated regions remains user-owned.
-
-The *witness* lookup stays separate through `mosaika`.
-That lets *witness* blocks evolve with repository navigation needs
-while Sirno keeps the *entry* id as the shared nominal handle.
 
 ---
 

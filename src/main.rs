@@ -44,7 +44,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     /// Create a Sirno config and ordinary seed entries.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Init {
         /// Monograph path written to Sirno.toml.
         #[arg(long)]
@@ -59,9 +59,9 @@ enum Command {
         /// New public Markdown entry lake path written to Sirno.toml.
         lake: PathBuf,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Create one Markdown entry.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     New {
         /// Entry id and filename stem.
         id: String,
@@ -84,24 +84,24 @@ enum Command {
         #[arg(short = 'b', long)]
         body: Option<String>,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Freeze one public Markdown entry and make its file read-only.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Freeze {
         /// Entry id to freeze.
         id: String,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Melt one public Markdown entry and make its file writable.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     #[command(visible_alias = "unfreeze")]
     Melt {
         /// Entry id to melt.
         id: String,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Query public Markdown entries.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     #[command(visible_alias = "q")]
     Query {
         /// Vague text terms matched against entries and structural target summaries.
@@ -119,9 +119,9 @@ enum Command {
         #[arg(short = 'o', long, value_enum)]
         format: Option<CliQueryOutputFormat>,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Run ripgrep in the configured public Markdown lake.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Rg {
         /// Search as if Sirno-owned generated-footer regions contain only whitespace.
         #[arg(long = "no-generated-footer")]
@@ -130,9 +130,9 @@ enum Command {
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<OsString>,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Check current entry structure.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Check {
         /// Sirno Frost root.
         #[arg(long = "frost-root", conflicts_with = "lake_path")]
@@ -141,9 +141,9 @@ enum Command {
         #[arg(short = 'm', long, value_enum)]
         mode: Option<CliCheckMode>,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Generate Markdown links in entry footers.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     #[command(name = "gen-link")]
     GenLink {
         /// Report generated-link changes without writing files.
@@ -153,14 +153,14 @@ enum Command {
         #[command(subcommand)]
         command: Option<GenLinkCommand>,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Show the current Sirno project status.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     #[command(visible_alias = "st")]
     Status,
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Show repository witness blocks for one entry id.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     #[command(visible_aliases = ["w", "wit"])]
     Witness {
         /// Entry id used as the witness query key.
@@ -169,23 +169,23 @@ enum Command {
         #[arg(short = 'f', long)]
         full: bool,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Manage optional Sirno Frost snapshots.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Frost {
         /// Frost command.
         #[command(subcommand)]
         command: FrostCommand,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
     /// Utility commands.
-    // sirno:witness:storage-and-interfaces:begin
+    // sirno:witness:interfaces:begin
     Util {
         /// Utility command.
         #[command(subcommand)]
         command: UtilCommand,
     },
-    // sirno:witness:storage-and-interfaces:end
+    // sirno:witness:interfaces:end
 }
 
 /// CLI representation of check boundaries.

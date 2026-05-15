@@ -6,7 +6,7 @@ category:
 belongs:
   - sirno-lake
 refines:
-  - storage-and-interfaces
+  - interfaces
 ---
 
 Query selects parsed *entries* from the public *lake* or,

@@ -6,7 +6,7 @@ category:
 belongs:
   - sirno-lake
 refines:
-  - storage-and-interfaces
+  - storage
 ---
 
 `Sirno.toml` marks a repository as Sirno-managed.
