@@ -57,26 +57,25 @@ Sirno keeps the edges between those forms explicit.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to): (none)
-
-belongs (from):
-- [bootstrap-resolution](bootstrap-resolution.md)
-- [concept-driven-development](concept-driven-development.md)
-- [form](form.md)
-- [future-work](future-work.md)
-- [interactive-narrative-session](interactive-narrative-session.md)
-- [interfaces](interfaces.md)
-- [introduction](introduction.md)
-- [methodology](methodology.md)
-- [mono](mono.md)
-- [perspective-and-terms](perspective-and-terms.md)
-- [planning](planning.md)
-- [project-self-application](project-self-application.md)
-- [readme](readme.md)
-- [sirno-lake](sirno-lake.md)
-- [storage](storage.md)
-- [structural-field](structural-field.md)
-- [versioning](versioning.md)
-- [witness](witness.md)
+- belongs (to): (none)
+- belongs (from):
+  - [bootstrap-resolution](bootstrap-resolution.md)
+  - [concept-driven-development](concept-driven-development.md)
+  - [form](form.md)
+  - [future-work](future-work.md)
+  - [interactive-narrative-session](interactive-narrative-session.md)
+  - [interfaces](interfaces.md)
+  - [introduction](introduction.md)
+  - [methodology](methodology.md)
+  - [mono](mono.md)
+  - [perspective-and-terms](perspective-and-terms.md)
+  - [planning](planning.md)
+  - [project-self-application](project-self-application.md)
+  - [readme](readme.md)
+  - [sirno-lake](sirno-lake.md)
+  - [storage](storage.md)
+  - [structural-field](structural-field.md)
+  - [versioning](versioning.md)
+  - [witness](witness.md)
 
 > **Sirno generated links end.**

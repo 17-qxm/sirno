@@ -57,9 +57,8 @@ The concept becomes a compact bridge between broad intent and detailed code.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno](sirno.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno](sirno.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

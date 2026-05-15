@@ -51,9 +51,8 @@ and which repository artifact witnesses an *entry*.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [witness](witness.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [witness](witness.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

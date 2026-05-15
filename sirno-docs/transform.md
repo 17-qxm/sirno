@@ -41,8 +41,7 @@ A raising skill should compose a readable *monograph*.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to): (none)
-
-belongs (from): (none)
+- belongs (to): (none)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

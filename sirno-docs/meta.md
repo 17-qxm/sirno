@@ -50,10 +50,9 @@ and to entries about implementation commitments.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to): (none)
-
-belongs (from):
-- [concept](concept.md)
-- [narrative](narrative.md)
+- belongs (to): (none)
+- belongs (from):
+  - [concept](concept.md)
+  - [narrative](narrative.md)
 
 > **Sirno generated links end.**

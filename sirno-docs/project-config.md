@@ -76,9 +76,8 @@ and an absent boolean means false.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno-lake](sirno-lake.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno-lake](sirno-lake.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

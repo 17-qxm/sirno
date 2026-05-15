@@ -384,6 +384,7 @@ impl GeneratedLinkIndex {
             for section in &sections {
                 section.render(&mut out);
             }
+            out.push('\n');
         }
 
         out.push_str(END_LINKS_GUARD);
@@ -455,21 +456,21 @@ impl GeneratedLinkSection {
 
     // sirno:witness:generated-footer:begin
     fn render(&self, out: &mut String) {
+        out.push_str("- ");
+        out.push_str(&self.title);
+        out.push(':');
+
         if self.targets.is_empty() {
-            out.push_str(&self.title);
-            out.push_str(": (none)\n\n");
+            out.push_str(" (none)\n");
             return;
         }
 
-        out.push_str(&self.title);
-        out.push(':');
         out.push('\n');
         for id in &self.targets {
-            out.push_str("- ");
+            out.push_str("  - ");
             out.push_str(&format!("[{}]({}.md)", id.as_str(), id.as_str()));
             out.push('\n');
         }
-        out.push('\n');
     }
     // sirno:witness:generated-footer:end
 }
@@ -586,11 +587,11 @@ mod tests {
         let footer = StructuralSettings::default().render_entry(&entry());
 
         assert!(!footer.contains("[meta](meta.md)"));
-        assert!(footer.contains("- [core](core.md)"));
+        assert!(footer.contains("  - [core](core.md)"));
         assert!(!footer.contains("[metadata](metadata.md)"));
         assert!(!footer.contains("## Sirno Links"));
-        assert!(footer.contains("belongs (from): (none)"));
-        assert!(footer.contains("belongs (to):\n- [core](core.md)"));
+        assert!(footer.contains("- belongs (from): (none)"));
+        assert!(footer.contains("- belongs (to):\n  - [core](core.md)"));
         assert!(footer.contains(BEGIN_LINKS_GUARD));
         assert!(footer.contains(END_LINKS_GUARD));
         assert!(footer.contains("> **Sirno generated links begin."));
@@ -601,9 +602,9 @@ mod tests {
         let footer = StructuralSettings::default().render_entry(&entry());
 
         assert!(footer.contains(&format!(
-            "{BEGIN_LINKS_GUARD}\n\nbelongs (to):\n- [core](core.md)\n\nbelongs (from): (none)"
+            "{BEGIN_LINKS_GUARD}\n\n- belongs (to):\n  - [core](core.md)\n- belongs (from): (none)"
         )));
-        assert!(footer.contains(&format!("belongs (from): (none)\n\n{END_LINKS_GUARD}")));
+        assert!(footer.contains(&format!("- belongs (from): (none)\n\n{END_LINKS_GUARD}")));
     }
 
     #[test]
@@ -615,15 +616,15 @@ mod tests {
         ]);
         let footer = settings.render_entry(&entry());
 
-        assert!(footer.contains("- [meta](meta.md)"));
-        assert!(footer.contains("- [core](core.md)"));
-        assert!(footer.contains("- [metadata](metadata.md)"));
-        assert!(footer.contains("category (from): (none)"));
-        assert!(footer.contains("category (to):"));
-        assert!(footer.contains("belongs (from): (none)"));
-        assert!(footer.contains("belongs (to):"));
-        assert!(footer.contains("refines (from): (none)"));
-        assert!(footer.contains("refines (to):"));
+        assert!(footer.contains("  - [meta](meta.md)"));
+        assert!(footer.contains("  - [core](core.md)"));
+        assert!(footer.contains("  - [metadata](metadata.md)"));
+        assert!(footer.contains("- category (from): (none)"));
+        assert!(footer.contains("- category (to):"));
+        assert!(footer.contains("- belongs (from): (none)"));
+        assert!(footer.contains("- belongs (to):"));
+        assert!(footer.contains("- refines (from): (none)"));
+        assert!(footer.contains("- refines (to):"));
     }
 
     #[test]
@@ -651,12 +652,12 @@ mod tests {
         let category_footer = index.render_entry(&category, &settings);
         let member_footer = index.render_entry(&member, &settings);
 
-        assert!(category_footer.contains("category (from):"));
-        assert!(category_footer.contains("- [member](member.md)"));
-        assert!(category_footer.contains("category (to): (none)"));
-        assert!(member_footer.contains("category (from): (none)"));
-        assert!(member_footer.contains("category (to):"));
-        assert!(member_footer.contains("- [meta](meta.md)"));
+        assert!(category_footer.contains("- category (from):"));
+        assert!(category_footer.contains("  - [member](member.md)"));
+        assert!(category_footer.contains("- category (to): (none)"));
+        assert!(member_footer.contains("- category (from): (none)"));
+        assert!(member_footer.contains("- category (to):"));
+        assert!(member_footer.contains("  - [meta](meta.md)"));
     }
 
     #[test]
@@ -676,9 +677,9 @@ mod tests {
         let category_footer = index.render_entry(&category, &settings);
         let member_footer = index.render_entry(&member, &settings);
 
-        assert!(category_footer.contains("category (from):"));
-        assert!(category_footer.contains("- [member](member.md)"));
-        assert!(member_footer.contains("category (from): (none)"));
+        assert!(category_footer.contains("- category (from):"));
+        assert!(category_footer.contains("  - [member](member.md)"));
+        assert!(member_footer.contains("- category (from): (none)"));
         assert!(!member_footer.contains("[meta](meta.md)"));
     }
 
@@ -707,16 +708,16 @@ mod tests {
         let closure_footer = index.render_entry(&closure, &settings);
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(closure_footer.contains("belongs (clique):"));
+        assert!(closure_footer.contains("- belongs (clique):"));
         assert!(!closure_footer.contains("belongs (from)"));
-        assert!(closure_footer.contains("- [left](left.md)"));
-        assert!(closure_footer.contains("- [right](right.md)"));
+        assert!(closure_footer.contains("  - [left](left.md)"));
+        assert!(closure_footer.contains("  - [right](right.md)"));
         assert!(!closure_footer.contains("[core](core.md)"));
         assert!(!closure_footer.contains("[outside](outside.md)"));
-        assert!(left_footer.contains("belongs (clique):"));
+        assert!(left_footer.contains("- belongs (clique):"));
         assert!(!left_footer.contains("belongs (to)"));
-        assert!(left_footer.contains("- [core](core.md)"));
-        assert!(left_footer.contains("- [right](right.md)"));
+        assert!(left_footer.contains("  - [core](core.md)"));
+        assert!(left_footer.contains("  - [right](right.md)"));
         assert!(!left_footer.contains("[left](left.md)"));
         assert!(!left_footer.contains("[outside](outside.md)"));
     }
@@ -742,9 +743,9 @@ mod tests {
 
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(left_footer.contains("belongs (to):\n- [core](core.md)"));
-        assert!(left_footer.contains("belongs (clique):"));
-        assert!(left_footer.contains("- [right](right.md)"));
+        assert!(left_footer.contains("- belongs (to):\n  - [core](core.md)"));
+        assert!(left_footer.contains("- belongs (clique):"));
+        assert!(left_footer.contains("  - [right](right.md)"));
     }
 
     #[test]
@@ -782,8 +783,8 @@ mod tests {
 
         let footer = StructuralSettings::default().render_entry(&entry);
 
-        assert!(footer.contains("belongs (from): (none)"));
-        assert!(footer.contains("belongs (to): (none)"));
+        assert!(footer.contains("- belongs (from): (none)"));
+        assert!(footer.contains("- belongs (to): (none)"));
         assert!(!footer.contains(&format!("{BEGIN_LINKS_GUARD}\n\n(none)\n\n{END_LINKS_GUARD}")));
         assert!(!footer.contains("- none"));
     }

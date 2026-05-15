@@ -44,9 +44,8 @@ The prose should explain the combined responsibility so a future reader can tell
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [structural-field](structural-field.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [structural-field](structural-field.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

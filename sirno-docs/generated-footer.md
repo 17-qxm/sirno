@@ -34,10 +34,10 @@ The generated body is grouped by configured *structural field*.
 Each enabled group appears in the region.
 Within one field,
 groups render in `to`, `from`, then `clique` order.
-A group with links begins with a colon-terminated label,
-such as `category (from):`, `belongs (to):`, or `belongs (clique):`.
-The group's links are ordinary Markdown list items.
-A group with no links is rendered inline, such as `belongs (from): (none)`.
+Each group is a top-level Markdown list item,
+such as `- category (from):`, `- belongs (to):`, or `- belongs (clique):`.
+The group's links are child list items indented under the group item.
+A group with no links is rendered inline, such as `- belongs (from): (none)`.
 If no generated-link group is enabled, the region contains `(none)`.
 
 The footer is derived from metadata.
@@ -67,9 +67,8 @@ not to become another place for design prose.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno-lake](sirno-lake.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno-lake](sirno-lake.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

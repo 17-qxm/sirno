@@ -27,9 +27,8 @@ On other platforms, Sirno uses the platform read-only flag when the filesystem s
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno-lake](sirno-lake.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno-lake](sirno-lake.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

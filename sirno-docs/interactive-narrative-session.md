@@ -34,9 +34,8 @@ which entries appear in order, and which details remain deferred. The local
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno](sirno.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno](sirno.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

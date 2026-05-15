@@ -49,9 +49,8 @@ its prose may briefly say what the *witness* is expected to demonstrate.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno-lake](sirno-lake.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno-lake](sirno-lake.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

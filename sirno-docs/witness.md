@@ -64,11 +64,10 @@ and accepted delimiter styles after `mosaika` finds the delimited repository reg
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno](sirno.md)
-
-belongs (from):
-- [repo](repo.md)
-- [witness-fixture-isolation](witness-fixture-isolation.md)
+- belongs (to):
+  - [sirno](sirno.md)
+- belongs (from):
+  - [repo](repo.md)
+  - [witness-fixture-isolation](witness-fixture-isolation.md)
 
 > **Sirno generated links end.**

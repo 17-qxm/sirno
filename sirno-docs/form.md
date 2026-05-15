@@ -52,9 +52,8 @@ Repository artifacts can stay focused on behavior while still having a place to 
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno](sirno.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno](sirno.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**

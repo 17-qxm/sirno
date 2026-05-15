@@ -55,9 +55,8 @@ They mark the motivation and the four principle sections.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-belongs (to):
-- [sirno](sirno.md)
-
-belongs (from): (none)
+- belongs (to):
+  - [sirno](sirno.md)
+- belongs (from): (none)
 
 > **Sirno generated links end.**
