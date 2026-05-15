@@ -174,7 +174,7 @@ impl EntryMetadata {
         let mut out = String::new();
         out.push_str(&format!("name: {}\n", render_yaml_scalar(&self.name)?));
         out.push_str(&format!("description: {}\n", render_yaml_scalar(&self.description)?));
-        render_structural_fields(&mut out, &self.structural);
+        render_structural_fields(&mut out, &self.structural)?;
         if self.frozen.is_some() {
             out.push_str("frozen:\n");
         }
@@ -324,31 +324,37 @@ fn validate_plain_string(field: &'static str, value: &str) -> Result<(), EntryPa
     Ok(())
 }
 
-fn render_id_list(out: &mut String, field: &str, values: &[EntryId]) {
+fn render_id_list(
+    out: &mut String, field: &str, values: &[EntryId],
+) -> Result<(), EntryRenderError> {
     if values.is_empty() {
-        return;
+        return Ok(());
     }
     out.push_str(field);
     out.push_str(":\n");
     for id in values {
         out.push_str("  - ");
-        out.push_str(id.as_str());
+        out.push_str(&render_yaml_scalar(id.as_str())?);
         out.push('\n');
     }
+    Ok(())
 }
 
-fn render_structural_fields(out: &mut String, structural: &BTreeMap<String, Vec<EntryId>>) {
+fn render_structural_fields(
+    out: &mut String, structural: &BTreeMap<String, Vec<EntryId>>,
+) -> Result<(), EntryRenderError> {
     for field in [CATEGORY_FIELD, BELONGS_FIELD, REFINES_FIELD] {
         if let Some(values) = structural.get(field) {
-            render_id_list(out, field, values);
+            render_id_list(out, field, values)?;
         }
     }
     for (field, values) in structural {
         if matches!(field.as_str(), CATEGORY_FIELD | BELONGS_FIELD | REFINES_FIELD) {
             continue;
         }
-        render_id_list(out, field, values);
+        render_id_list(out, field, values)?;
     }
+    Ok(())
 }
 
 fn render_yaml_scalar(value: &str) -> Result<String, EntryRenderError> {
@@ -480,6 +486,20 @@ witness:
             entry.metadata.structural_targets_for("witness"),
             &[EntryId::new("repository-evidence").unwrap()]
         );
+    }
+
+    #[test]
+    fn renders_structural_ids_as_yaml_scalars() {
+        let target = EntryId::new("Design Note #1").unwrap();
+        let mut metadata =
+            EntryMetadata::new("Evidence", "Metadata with a quoted target.").unwrap();
+        metadata.push_structural_target("witness", target.clone());
+        let entry = Entry::new(entry_id(), metadata, "Body.\n");
+
+        let rendered = entry.to_markdown().unwrap();
+        let reparsed = Entry::from_markdown(entry_id(), &rendered).unwrap();
+
+        assert_eq!(reparsed.metadata.structural_targets_for("witness"), &[target]);
     }
 
     #[test]

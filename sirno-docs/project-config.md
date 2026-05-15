@@ -56,6 +56,9 @@ Sirno rejects empty, invalid, captureless, or empty-matching delimiter regexes.
 At least one delimiter table is required so the repository syntax is explicit.
 Generated configs write the standard syntax,
 which accepts `//` line comments and hidden Markdown HTML comments.
+The standard regexes use one canonical capture for filename-like *entry* ids.
+Configured regexes may be narrower,
+but they should include every *entry* id allowed by the active project policy.
 
 `[check].link` controls generated-link freshness checks.
 It is enabled by default.

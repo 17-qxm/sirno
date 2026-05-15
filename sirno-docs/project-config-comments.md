@@ -21,6 +21,7 @@ The generated comments are:
 - `Sirno Frost root, kept outside the public lake.`
 - `Repository files, directories, or globs scanned for witness blocks.`
 - `Witness delimiter regex pairs; each first capture group is the entry id.`
+- `Canonical filename entry-id capture: ([^\x00-\x1F\x7F<>:"/\\|?*\r\n]+)`
 - `Opening witness delimiter regex.`
 - `Closing witness delimiter regex.`
 - `Require generated footers to match current metadata during checks.`

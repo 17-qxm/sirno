@@ -11,7 +11,14 @@ An *entry* is a Markdown file in the Sirno Lake.
 
 The filename stem is the *entry* id.
 The id is globally unique inside the *lake*,
-case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
+case-sensitive, and validated as a cross-platform filename stem.
+Write entry ids as lowercase ASCII kebab-case by default.
+That style is easy to type, quote, link, and compare across tools.
+It may use spaces, uppercase letters, punctuation, and Unicode when those characters are safe in common filesystems.
+It must not use path separators, control characters, Windows-reserved punctuation,
+reserved device names, or a trailing space or period.
+It can use at most 252 UTF-8 bytes,
+so the final `.md` filename stays inside common component limits.
 
 Each *entry* has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.

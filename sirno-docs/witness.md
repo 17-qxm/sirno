@@ -29,6 +29,9 @@ The opening and closing *entry* ids must match.
 Rust and other line-commented files can write the sentinels with `//`.
 Markdown files can write them as hidden HTML comments.
 This is the standard syntax written by generated configs.
+The standard delimiter regex uses one canonical capture for filename-like *entry* ids.
+It captures all legal ids that can fit between the sentinel colons.
+The parsed *entry* id then applies the remaining cross-platform filename checks.
 A project can override the delimiter regex pairs with `[[witness.delimiters]]`
 when another repository surface needs a different marker shape.
 

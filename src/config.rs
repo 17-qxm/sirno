@@ -19,21 +19,40 @@ use crate::links::StructuralSettings;
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
 
+// sirno:witness:project-config:begin
+macro_rules! witness_entry_id_capture_regex {
+    () => {
+        r#"([^\x00-\x1F\x7F<>:"/\\|?*\r\n]+)"#
+    };
+}
+
+/// Canonical witness delimiter capture for every legal entry id.
+///
+/// Reserved filename checks that cannot fit Rust regex syntax are enforced by `EntryId`.
+pub const WITNESS_ENTRY_ID_CAPTURE_REGEX: &str = witness_entry_id_capture_regex!();
+
 /// Standard opening delimiter regex for line-comment repository witness blocks.
 pub const STANDARD_LINE_WITNESS_BEGIN_REGEX: &str =
-    r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin";
+    concat!(r"(?m)^[ \t]*//[ \t]*sirno:witness:", witness_entry_id_capture_regex!(), r":begin");
 
 /// Standard closing delimiter regex for line-comment repository witness blocks.
 pub const STANDARD_LINE_WITNESS_END_REGEX: &str =
-    r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):end";
+    concat!(r"(?m)^[ \t]*//[ \t]*sirno:witness:", witness_entry_id_capture_regex!(), r":end");
 
 /// Standard opening delimiter regex for Markdown repository witness blocks.
-pub const STANDARD_MARKDOWN_WITNESS_BEGIN_REGEX: &str =
-    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin[ \t]*-->";
+pub const STANDARD_MARKDOWN_WITNESS_BEGIN_REGEX: &str = concat!(
+    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:",
+    witness_entry_id_capture_regex!(),
+    r":begin[ \t]*-->"
+);
 
 /// Standard closing delimiter regex for Markdown repository witness blocks.
-pub const STANDARD_MARKDOWN_WITNESS_END_REGEX: &str =
-    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):end[ \t]*-->";
+pub const STANDARD_MARKDOWN_WITNESS_END_REGEX: &str = concat!(
+    r"(?m)^[ \t]*<!--[ \t]*sirno:witness:",
+    witness_entry_id_capture_regex!(),
+    r":end[ \t]*-->"
+);
+// sirno:witness:project-config:end
 
 // sirno:witness:mono:begin
 /// Optional configured monograph settings.
@@ -596,6 +615,9 @@ impl ConfigRenderer {
         self.out.push_str(
             "# Witness delimiter regex pairs; each first capture group is the entry id.\n",
         );
+        self.out.push_str("# Canonical filename entry-id capture: ");
+        self.out.push_str(WITNESS_ENTRY_ID_CAPTURE_REGEX);
+        self.out.push('\n');
         for (index, delimiter) in delimiters.iter().enumerate() {
             if index > 0 {
                 self.out.push('\n');
@@ -1223,6 +1245,16 @@ delimiters = []
     }
 
     #[test]
+    fn standard_witness_regexes_use_canonical_entry_id_capture() {
+        let syntax = WitnessSettings::standard();
+
+        for delimiter in syntax.delimiters {
+            assert!(delimiter.begin.contains(WITNESS_ENTRY_ID_CAPTURE_REGEX));
+            assert!(delimiter.end.contains(WITNESS_ENTRY_ID_CAPTURE_REGEX));
+        }
+    }
+
+    #[test]
     fn writes_and_reads_config_without_overwrite() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join(CONFIG_FILE_NAME);
@@ -1244,6 +1276,9 @@ delimiters = []
         assert!(source.contains("[[witness.delimiters]]"));
         assert!(source.contains("# Markdown entry lake path"));
         assert!(source.contains("# Witness delimiter regex pairs"));
+        assert!(source.contains(&format!(
+            "# Canonical filename entry-id capture: {WITNESS_ENTRY_ID_CAPTURE_REGEX}"
+        )));
         assert!(source.contains("# Opening witness delimiter regex."));
         assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
@@ -1292,6 +1327,9 @@ delimiters = []
         assert!(source.contains("# Sirno Frost root"));
         assert!(source.contains("# Repository files, directories, or globs"));
         assert!(source.contains("# Witness delimiter regex pairs"));
+        assert!(source.contains(&format!(
+            "# Canonical filename entry-id capture: {WITNESS_ENTRY_ID_CAPTURE_REGEX}"
+        )));
         assert!(source.contains("# Opening witness delimiter regex."));
         assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));

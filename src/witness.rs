@@ -603,6 +603,22 @@ mod tests {
     }
 
     #[test]
+    fn scans_standard_witness_blocks_for_filename_like_entry_ids() {
+        let temp = tempfile::tempdir().unwrap();
+        let id = EntryId::new("Design Note_v2.1").unwrap();
+        std::fs::write(temp.path().join("README.md"), markdown_witness_block(id.as_str())).unwrap();
+        let settings = WitnessCheckSettings::new(
+            temp.path(),
+            [RepoMember::new("README.md").unwrap()],
+            WitnessSettings::standard(),
+        );
+
+        let index = settings.scan().unwrap();
+
+        assert!(index.contains_entry(&id));
+    }
+
+    #[test]
     fn scans_configured_witness_syntax() {
         let temp = tempfile::tempdir().unwrap();
         std::fs::write(temp.path().join("notes.txt"), custom_witness_block("custom")).unwrap();

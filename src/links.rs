@@ -4,7 +4,7 @@
 //! Prose outside the region remains user-owned.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fmt;
+use std::fmt::{self, Write};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -468,11 +468,42 @@ impl GeneratedLinkSection {
         out.push('\n');
         for id in &self.targets {
             out.push_str("  - ");
-            out.push_str(&format!("[{}]({}.md)", id.as_str(), id.as_str()));
+            out.push_str(&render_markdown_entry_link(id));
             out.push('\n');
         }
     }
     // sirno:witness:generated-footer:end
+}
+
+fn render_markdown_entry_link(id: &EntryId) -> String {
+    format!(
+        "[{}]({}.md)",
+        escape_markdown_link_label(id.as_str()),
+        percent_encode_path_segment(id.as_str())
+    )
+}
+
+fn escape_markdown_link_label(value: &str) -> String {
+    let mut out = String::new();
+    for character in value.chars() {
+        if matches!(character, '[' | ']') {
+            out.push('\\');
+        }
+        out.push(character);
+    }
+    out
+}
+
+fn percent_encode_path_segment(value: &str) -> String {
+    let mut out = String::new();
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            out.push(char::from(byte));
+        } else {
+            write!(&mut out, "%{byte:02X}").expect("writing to a string cannot fail");
+        }
+    }
+    out
 }
 
 /// Opening guard for Sirno-owned generated links.
@@ -636,6 +667,18 @@ mod tests {
         let footer = settings.render_entry(&entry);
 
         assert_eq!(footer.matches("[meta](meta.md)").count(), 1);
+    }
+
+    #[test]
+    fn generated_links_escape_filename_like_entry_ids() {
+        let target = id("Spec [A] #1");
+        let mut metadata = EntryMetadata::new("Concept", "A named idea.").unwrap();
+        metadata.push_structural_target(BELONGS_FIELD, target);
+        let entry = Entry::new(id("concept"), metadata, "Body.\n");
+
+        let footer = StructuralSettings::default().render_entry(&entry);
+
+        assert!(footer.contains("  - [Spec \\[A\\] #1](Spec%20%5BA%5D%20%231.md)"));
     }
 
     #[test]
