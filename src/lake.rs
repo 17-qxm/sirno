@@ -16,7 +16,7 @@ use thiserror::Error;
 use tracing::trace;
 
 use crate::check::{CheckMode, CheckReport, CheckSeverity, check_entries};
-use crate::entry::{Entry, EntryParseError, EntryRenderError, default_seed_entries};
+use crate::entry::{Entry, EntryParseError, EntryRenderError, FrozenMarker, default_seed_entries};
 use crate::id::EntryId;
 use crate::links::{
     GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links,
@@ -241,6 +241,26 @@ pub fn create_entry_file(
     Ok(path)
 }
 // sirno:witness:sirno-lake:end
+
+/// Mark one public Markdown entry as frozen and read-only.
+///
+/// The entry metadata gains the canonical `frozen:` marker.
+/// The file's write bits are removed after the marker is written.
+pub fn freeze_entry_file(
+    root: impl AsRef<Path>, id: &EntryId,
+) -> Result<PathBuf, EntryDirectoryError> {
+    set_entry_file_frozen(root.as_ref(), id, true)
+}
+
+/// Mark one public Markdown entry as melted and writable.
+///
+/// The canonical `frozen:` marker is removed from entry metadata.
+/// The file is left writable so normal editing can resume.
+pub fn melt_entry_file(
+    root: impl AsRef<Path>, id: &EntryId,
+) -> Result<PathBuf, EntryDirectoryError> {
+    set_entry_file_frozen(root.as_ref(), id, false)
+}
 
 /// Write a complete public Markdown entry directory.
 ///
@@ -675,6 +695,35 @@ fn write_new_entry_file(root: &Path, entry: &Entry) -> Result<PathBuf, EntryDire
         .map_err(|source| EntryDirectoryError::CreateFile { path: path.clone(), source })?;
     file.write_all(source.as_bytes())
         .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+    Ok(path)
+}
+
+fn set_entry_file_frozen(
+    root: &Path, id: &EntryId, frozen: bool,
+) -> Result<PathBuf, EntryDirectoryError> {
+    if !root.exists() {
+        return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
+    }
+    if !root.is_dir() {
+        return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
+    }
+
+    let path = root.join(format!("{}.md", id.as_str()));
+    let source = fs::read_to_string(&path)?;
+    let mut entry = Entry::from_markdown(id.clone(), &source)?;
+    entry.metadata.frozen = frozen.then_some(FrozenMarker::Present);
+    let rendered = entry.to_markdown()?;
+    if rendered != source {
+        set_path_writable(&path)?;
+        fs::write(&path, rendered)
+            .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+    }
+
+    if frozen {
+        set_path_readonly(&path)?;
+    } else {
+        set_path_writable(&path)?;
+    }
     Ok(path)
 }
 
@@ -1231,6 +1280,54 @@ Body.
     }
 
     #[test]
+    fn freeze_entry_file_writes_marker_and_removes_write_permission() {
+        let temp = tempfile::tempdir().unwrap();
+        write_entry(
+            temp.path(),
+            "alpha.md",
+            "\
+---
+name: Alpha
+description: Alpha entry.
+---
+
+Body.
+",
+        );
+
+        let path = freeze_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+        let source = fs::read_to_string(&path).unwrap();
+
+        assert!(source.contains("frozen:\n"));
+        assert_path_readonly(&path);
+    }
+
+    #[test]
+    fn melt_entry_file_removes_marker_and_restores_write_permission() {
+        let temp = tempfile::tempdir().unwrap();
+        write_entry(
+            temp.path(),
+            "alpha.md",
+            "\
+---
+name: Alpha
+description: Alpha entry.
+frozen:
+---
+
+Body.
+",
+        );
+        let path = freeze_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+
+        melt_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+        let source = fs::read_to_string(&path).unwrap();
+
+        assert!(!source.contains("frozen:\n"));
+        assert_path_writable(&path);
+    }
+
+    #[test]
     fn replace_entry_directory_preserves_ignored_paths() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
@@ -1578,5 +1675,21 @@ Body.
             gen_link_entry_directory(temp.path(), &GeneratedLinkSettings::default()).unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::InvalidEntryDirectory(_)));
+    }
+
+    fn assert_path_readonly(path: &Path) {
+        let permissions = fs::metadata(path).unwrap().permissions();
+        #[cfg(unix)]
+        assert_eq!(permissions.mode() & 0o222, 0);
+        #[cfg(not(unix))]
+        assert!(permissions.readonly());
+    }
+
+    fn assert_path_writable(path: &Path) {
+        let permissions = fs::metadata(path).unwrap().permissions();
+        #[cfg(unix)]
+        assert_ne!(permissions.mode() & 0o222, 0);
+        #[cfg(not(unix))]
+        assert!(!permissions.readonly());
     }
 }

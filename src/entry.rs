@@ -22,6 +22,7 @@ const REFINES_FIELD: &str = "refines";
 // sirno:witness:witness:begin
 const WITNESS_FIELD: &str = "witness";
 // sirno:witness:witness:end
+const FROZEN_FIELD: &str = "frozen";
 
 // sirno:witness:entry:begin
 /// One Sirno entry.
@@ -99,6 +100,8 @@ pub struct EntryMetadata {
     // sirno:witness:refines:end
     /// Witness marker declaring that this entry has repository evidence.
     pub witness: Option<WitnessMarker>,
+    /// Freeze marker declaring that this public entry file is read-only.
+    pub frozen: Option<FrozenMarker>,
 }
 
 impl EntryMetadata {
@@ -118,6 +121,7 @@ impl EntryMetadata {
             belongs: Vec::new(),
             refines: Vec::new(),
             witness: None,
+            frozen: None,
         })
     }
     // sirno:witness:metadata:end
@@ -125,7 +129,8 @@ impl EntryMetadata {
     /// Parse metadata from YAML source without surrounding `---` sentinels.
     // sirno:witness:metadata:begin
     pub fn from_yaml_source(source: &str) -> Result<Self, EntryParseError> {
-        let canonical_witness = has_canonical_witness_marker(source);
+        let canonical_witness = has_canonical_marker(source, WITNESS_FIELD);
+        let canonical_frozen = has_canonical_marker(source, FROZEN_FIELD);
         let value: Value = serde_yaml::from_str(source).map_err(EntryParseError::Yaml)?;
         let mut mapping = match value {
             | Value::Mapping(mapping) => mapping,
@@ -143,8 +148,9 @@ impl EntryMetadata {
         let belongs = take_optional_id_list(&mut mapping, BELONGS_FIELD)?;
         let refines = take_optional_id_list(&mut mapping, REFINES_FIELD)?;
         let witness = take_witness_marker(&mut mapping, canonical_witness)?;
+        let frozen = take_frozen_marker(&mut mapping, canonical_frozen)?;
 
-        Ok(Self { name, description, category, belongs, refines, witness })
+        Ok(Self { name, description, category, belongs, refines, witness, frozen })
     }
     // sirno:witness:metadata:end
 
@@ -162,6 +168,9 @@ impl EntryMetadata {
         render_id_list(&mut out, REFINES_FIELD, &self.refines);
         if self.witness.is_some() {
             out.push_str("witness:\n");
+        }
+        if self.frozen.is_some() {
+            out.push_str("frozen:\n");
         }
         Ok(out)
     }
@@ -187,6 +196,16 @@ impl EntryMetadata {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WitnessMarker {
     /// The entry has repository evidence queried by entry id.
+    Present,
+}
+
+/// Marker for the canonical `frozen:` metadata field.
+///
+/// A frozen entry is protected by the public Markdown file.
+/// Sirno Frost refuses to commit entries carrying this marker.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FrozenMarker {
+    /// The entry is frozen and should be read-only on disk.
     Present,
 }
 
@@ -258,6 +277,7 @@ fn reject_unknown_fields(mapping: &Mapping) -> Result<(), EntryParseError> {
         BELONGS_FIELD,
         REFINES_FIELD,
         WITNESS_FIELD,
+        FROZEN_FIELD,
     ]);
     for key in mapping.keys() {
         let Value::String(key) = key else {
@@ -315,8 +335,23 @@ fn take_witness_marker(
     Ok(Some(WitnessMarker::Present))
 }
 
-fn has_canonical_witness_marker(source: &str) -> bool {
-    source.lines().any(|line| line.trim_end() == "witness:")
+fn take_frozen_marker(
+    mapping: &mut Mapping, canonical_frozen: bool,
+) -> Result<Option<FrozenMarker>, EntryParseError> {
+    let Some(value) = mapping.remove(Value::String(FROZEN_FIELD.to_owned())) else {
+        return Ok(None);
+    };
+    if value != Value::Null || !canonical_frozen {
+        return Err(EntryParseError::InvalidFrozenMarker);
+    }
+    Ok(Some(FrozenMarker::Present))
+}
+
+fn has_canonical_marker(source: &str, field: &'static str) -> bool {
+    source.lines().any(|line| {
+        let line = line.trim_end();
+        line.strip_suffix(':').is_some_and(|prefix| prefix == field)
+    })
 }
 
 fn validate_plain_string(field: &'static str, value: &str) -> Result<(), EntryParseError> {
@@ -397,6 +432,9 @@ pub enum EntryParseError {
     /// The witness field is present with a value or noncanonical spelling.
     #[error("metadata field `witness` must be written as canonical marker `witness:`")]
     InvalidWitnessMarker,
+    /// The frozen field is present with a value or noncanonical spelling.
+    #[error("metadata field `frozen` must be written as canonical marker `frozen:`")]
+    InvalidFrozenMarker,
 }
 
 /// Error raised when typed entry data cannot be rendered.
@@ -492,6 +530,66 @@ witness: null
         assert!(rendered.contains("witness:\n"));
         assert!(!rendered.contains("witness: null"));
         assert!(!rendered.contains("witness: true"));
+    }
+
+    #[test]
+    fn parses_canonical_frozen_marker() {
+        let source = "\
+---
+name: Frozen
+description: A protected entry.
+frozen:
+---
+
+Body.
+";
+
+        let entry = Entry::from_markdown(entry_id(), source).unwrap();
+
+        assert_eq!(entry.metadata.frozen, Some(FrozenMarker::Present));
+    }
+
+    #[test]
+    fn rejects_noncanonical_frozen_value() {
+        let source = "\
+---
+name: Bad
+description: Bad frozen marker.
+frozen: true
+---
+";
+
+        let error = Entry::from_markdown(entry_id(), source).unwrap_err();
+
+        assert!(matches!(error, EntryParseError::InvalidFrozenMarker));
+    }
+
+    #[test]
+    fn rejects_explicit_null_frozen_value() {
+        let source = "\
+---
+name: Bad
+description: Bad frozen marker.
+frozen: null
+---
+";
+
+        let error = Entry::from_markdown(entry_id(), source).unwrap_err();
+
+        assert!(matches!(error, EntryParseError::InvalidFrozenMarker));
+    }
+
+    #[test]
+    fn renders_canonical_frozen_marker() {
+        let mut metadata = EntryMetadata::new("Frozen", "Protected entry.").unwrap();
+        metadata.frozen = Some(FrozenMarker::Present);
+        let entry = Entry::new(entry_id(), metadata, "Body.\n");
+
+        let rendered = entry.to_markdown().unwrap();
+
+        assert!(rendered.contains("frozen:\n"));
+        assert!(!rendered.contains("frozen: null"));
+        assert!(!rendered.contains("frozen: true"));
     }
 
     #[test]

@@ -26,7 +26,7 @@ pub use crate::config::{
     RepoMember, RepoSettings, SirnoConfig, WitnessDelimiterSettings, WitnessSettings,
 };
 pub use crate::entry::{
-    Entry, EntryMetadata, EntryParseError, WitnessMarker, default_seed_entries,
+    Entry, EntryMetadata, EntryParseError, FrozenMarker, WitnessMarker, default_seed_entries,
 };
 pub use crate::frost::{FrostError, SirnoFrost};
 pub use crate::id::{EntryId, EntryIdError};
@@ -36,9 +36,10 @@ pub use crate::lake::{
     add_readonly_checkout_warnings, check_entry_directory, check_entry_directory_with_settings,
     check_gen_link_entry_directory, check_gen_link_entry_directory_with_ignored_paths,
     create_entry_file, delete_gen_link_entry_directory,
-    delete_gen_link_entry_directory_with_ignored_paths, gen_link_entry_directory,
-    gen_link_entry_directory_with_ignored_paths, init_entry_directory,
-    set_entry_directory_readonly, set_entry_directory_writable, write_entry_directory,
+    delete_gen_link_entry_directory_with_ignored_paths, freeze_entry_file,
+    gen_link_entry_directory, gen_link_entry_directory_with_ignored_paths, init_entry_directory,
+    melt_entry_file, set_entry_directory_readonly, set_entry_directory_writable,
+    write_entry_directory,
 };
 pub use crate::links::{
     BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkError, GeneratedLinkFieldSettings,

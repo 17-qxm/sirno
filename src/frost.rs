@@ -124,6 +124,7 @@ impl SirnoFrost {
     // sirno:witness:sirno-frost:begin
     pub fn put_entry(&mut self, entry: &Entry) -> Result<SnapshotRef, FrostError> {
         trace!("sirno put_entry begin: id={}", entry.id);
+        reject_frozen_entries(std::slice::from_ref(entry))?;
         let fs_id = entry.id.to_filesystem_id()?;
         let facet = StoredEntryFacet::from_entry(entry);
         let snapshot = facet.apply_to(self.backend.write(), &fs_id).commit()?;
@@ -238,6 +239,7 @@ impl SirnoFrost {
 
     // sirno:witness:sirno-frost:begin
     fn commit_entries(&mut self, entries: &[Entry]) -> Result<SnapshotRef, FrostError> {
+        reject_frozen_entries(entries)?;
         let current = self.current_snapshot()?;
         if self.read_all_entries_at_snapshot(current)? == entries {
             return Ok(current);
@@ -263,6 +265,13 @@ impl SirnoFrost {
         Ok(txn.commit()?)
     }
     // sirno:witness:sirno-frost:end
+}
+
+fn reject_frozen_entries(entries: &[Entry]) -> Result<(), FrostError> {
+    if let Some(entry) = entries.iter().find(|entry| entry.metadata.frozen.is_some()) {
+        return Err(FrostError::FrozenEntryCommit(entry.id.clone()));
+    }
+    Ok(())
 }
 
 fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, FrostError> {
@@ -432,6 +441,9 @@ pub enum FrostError {
     /// Seed initialization would overwrite an existing entry.
     #[error("entry `{0}` already exists")]
     EntryAlreadyExists(EntryId),
+    /// A frozen entry cannot be committed to Sirno Frost.
+    #[error("entry `{0}` is frozen; run `sirno melt {0}` before Frost commit")]
+    FrozenEntryCommit(EntryId),
     /// A frozen entry is missing a required Sirno field.
     #[error("frozen entry `{id}` is missing required field `{field}`")]
     CorruptEntry {
@@ -450,6 +462,7 @@ mod tests {
     use super::*;
     use std::fs;
 
+    use crate::entry::FrozenMarker;
     use crate::lake::EntryDirectoryWritePolicy;
     use crate::links::{GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links};
 
@@ -526,6 +539,34 @@ mod tests {
 
         assert!(entry.body.contains(crate::BEGIN_LINKS_GUARD));
         assert_eq!(read.body, "Alpha body.\n");
+    }
+
+    #[test]
+    fn commit_entry_directory_rejects_frozen_entry() {
+        let public = tempfile::tempdir().unwrap();
+        let frost_root = tempfile::tempdir().unwrap();
+        let mut entry = test_entry("alpha", "Alpha");
+        entry.metadata.frozen = Some(FrozenMarker::Present);
+        write_public_entry(public.path(), &entry);
+        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+
+        let error = frost
+            .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
+            .unwrap_err();
+
+        assert!(matches!(error, FrostError::FrozenEntryCommit(id) if id == entry.id));
+    }
+
+    #[test]
+    fn put_entry_rejects_frozen_entry() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut frost = SirnoFrost::open(temp.path()).unwrap();
+        let mut entry = test_entry("alpha", "Alpha");
+        entry.metadata.frozen = Some(FrozenMarker::Present);
+
+        let error = frost.put_entry(&entry).unwrap_err();
+
+        assert!(matches!(error, FrostError::FrozenEntryCommit(id) if id == entry.id));
     }
 
     #[test]

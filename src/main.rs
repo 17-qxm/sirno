@@ -15,10 +15,10 @@ use sirno::{
     VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessMarker, WitnessRecord,
     add_readonly_checkout_warnings, check_entry_directory_with_settings,
     check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
-    delete_gen_link_entry_directory_with_ignored_paths,
-    gen_link_entry_directory_with_ignored_paths, init_entry_directory, query_entries,
-    resolve_lock_path, scan_witnesses, set_entry_directory_readonly, set_entry_directory_writable,
-    vague_query_entries,
+    delete_gen_link_entry_directory_with_ignored_paths, freeze_entry_file,
+    gen_link_entry_directory_with_ignored_paths, init_entry_directory, melt_entry_file,
+    query_entries, resolve_lock_path, scan_witnesses, set_entry_directory_readonly,
+    set_entry_directory_writable, vague_query_entries,
 };
 use thiserror::Error;
 
@@ -79,6 +79,27 @@ enum Command {
         /// Initial Markdown body.
         #[arg(long)]
         body: Option<String>,
+        /// Public Markdown entry directory.
+        #[arg(long)]
+        entries: Option<PathBuf>,
+    },
+    // sirno:witness:storage-and-interfaces:end
+    /// Freeze one public Markdown entry and make its file read-only.
+    // sirno:witness:storage-and-interfaces:begin
+    Freeze {
+        /// Entry id to freeze.
+        id: String,
+        /// Public Markdown entry directory.
+        #[arg(long)]
+        entries: Option<PathBuf>,
+    },
+    // sirno:witness:storage-and-interfaces:end
+    /// Melt one public Markdown entry and make its file writable.
+    // sirno:witness:storage-and-interfaces:begin
+    #[command(visible_alias = "unfreeze")]
+    Melt {
+        /// Entry id to melt.
+        id: String,
         /// Public Markdown entry directory.
         #[arg(long)]
         entries: Option<PathBuf>,
@@ -348,6 +369,20 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let entry = Entry::new(id, metadata, body.unwrap_or_default());
             let path = create_entry_file(&entries, &entry)?;
             println!("created {}", path.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        | Command::Freeze { id, entries } => {
+            let (entries, _) = resolve_entry_directory(entries, &config_path)?;
+            let id = EntryId::new(&id)?;
+            let path = freeze_entry_file(&entries, &id)?;
+            println!("froze entry {id} at {}", path.display());
+            Ok(ExitCode::SUCCESS)
+        }
+        | Command::Melt { id, entries } => {
+            let (entries, _) = resolve_entry_directory(entries, &config_path)?;
+            let id = EntryId::new(&id)?;
+            let path = melt_entry_file(&entries, &id)?;
+            println!("melted entry {id} at {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
         | Command::Query {
@@ -1106,6 +1141,22 @@ mod tests {
     }
 
     #[test]
+    fn freeze_accepts_entry_id() {
+        let cli = Cli::parse_from(["sirno", "freeze", "alpha"]);
+
+        assert!(matches!(cli.command, Command::Freeze { id, .. } if id == "alpha"));
+    }
+
+    #[test]
+    fn melt_accepts_entry_id_and_unfreeze_alias() {
+        let melt = Cli::parse_from(["sirno", "melt", "alpha"]);
+        let unfreeze = Cli::parse_from(["sirno", "unfreeze", "alpha"]);
+
+        assert!(matches!(melt.command, Command::Melt { id, .. } if id == "alpha"));
+        assert!(matches!(unfreeze.command, Command::Melt { id, .. } if id == "alpha"));
+    }
+
+    #[test]
     fn mv_moves_lake_and_rewrites_config() {
         let temp = tempfile::tempdir().unwrap();
         let config_path = temp.path().join(CONFIG_FILE_NAME);
@@ -1179,6 +1230,45 @@ mod tests {
         assert_eq!(config.frost, Some(FrostSettings { path: PathBuf::from("frost") }));
         assert!(!old_frost.exists());
         assert!(new_frost.join("row").exists());
+    }
+
+    #[test]
+    fn freeze_and_melt_commands_toggle_marker_and_permissions() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join(CONFIG_FILE_NAME);
+        let docs = temp.path().join("docs");
+        SirnoConfig::new("docs").write_new(&config_path).unwrap();
+        fs::create_dir(&docs).unwrap();
+        fs::write(
+            docs.join("alpha.md"),
+            "\
+---
+name: Alpha
+description: Alpha entry.
+---
+
+Body.
+",
+        )
+        .unwrap();
+
+        run(Cli::parse_from([
+            "sirno",
+            "--config",
+            config_path.to_str().unwrap(),
+            "freeze",
+            "alpha",
+        ]))
+        .unwrap();
+        let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
+        assert!(source.contains("frozen:\n"));
+        assert!(fs::metadata(docs.join("alpha.md")).unwrap().permissions().readonly());
+
+        run(Cli::parse_from(["sirno", "--config", config_path.to_str().unwrap(), "melt", "alpha"]))
+            .unwrap();
+        let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
+        assert!(!source.contains("frozen:\n"));
+        assert!(!fs::metadata(docs.join("alpha.md")).unwrap().permissions().readonly());
     }
 
     #[test]

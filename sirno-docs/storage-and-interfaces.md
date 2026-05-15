@@ -54,6 +54,12 @@ The checkout is immutable unless `--unsafe-mutable` is supplied.
 `sirno new` creates one Markdown *entry* from typed command-line metadata.
 It refuses to overwrite an existing *entry* file.
 
+`sirno freeze ENTRY_ID` adds `frozen:` to one public *entry*
+and removes write permission from that file.
+`sirno melt ENTRY_ID` removes `frozen:` from one public *entry*
+and restores write permission.
+`sirno unfreeze ENTRY_ID` is an alias for `sirno melt ENTRY_ID`.
+
 `sirno query` reads the configured Markdown *lake*.
 Its default mode is vague text query.
 Exact structural predicates live behind explicit exact flags.

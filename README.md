@@ -127,6 +127,7 @@ Each entry has a YAML metadata block and a prose body.
 
 The required metadata fields are `name` and `description`.
 The optional structural fields are `category`, `belongs`, and `refines`.
+The optional marker fields are `witness:` and `frozen:`.
 
 `category` classifies an entry by other entries.
 Category targets are themselves entries categorized by `meta`,
@@ -139,6 +140,12 @@ It gives a shared subject a front door.
 It records how broad design becomes implementation detail,
 local policy,
 or testable behavior.
+
+`frozen:` protects one public entry file.
+Use `sirno freeze ENTRY_ID` to add the marker and make the file read-only.
+Use `sirno melt ENTRY_ID` to remove the marker and resume normal editing.
+`sirno unfreeze ENTRY_ID` is an alias for `sirno melt ENTRY_ID`.
+Sirno Frost refuses to commit frozen entries.
 
 ## Witnesses And Footers
 
@@ -184,7 +191,7 @@ The third shows how this README witnesses its own Sirno-facing intention.
 
 Sirno currently provides a Rust library and CLI for Markdown entry storage,
 project configuration, structural checks, generated footers,
-querying, witness lookup, and optional Sirno Frost snapshots over `eter`.
+querying, witness lookup, entry freezing, and optional Sirno Frost snapshots over `eter`.
 
 Sirno Frost is initialized separately with `sirno frost init`.
 `Sirno.lock` records whether the public *lake* is current

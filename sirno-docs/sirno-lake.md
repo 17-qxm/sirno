@@ -40,6 +40,8 @@ but it also participates in a larger graph through metadata.
 The graph is intentionally small:
 classification, belonging, refinement, and *witnesses*.
 That small set is enough to navigate without turning the *lake* into a separate database language.
+The `frozen:` marker adds a file-level protection state,
+so one public *entry* can be held read-only and excluded from Frost commits.
 
 The *lake* is also a collaboration boundary.
 A person can edit an *entry* directly.
@@ -72,6 +74,7 @@ and where implementation evidence should be found when that evidence exists.
 
 Belongs (from):
 - [entry](entry.md)
+- [entry-freeze](entry-freeze.md)
 - [generated-footer](generated-footer.md)
 - [metadata](metadata.md)
 - [project-config](project-config.md)
