@@ -2,6 +2,25 @@
 
 *Semantic Intermediate Representation of Nominal Objects*
 
+<!-- sirno:witness:readme:begin -->
+Sirno is a Rust toolchain that gives project design a semantic intermediate representation.
+Design lowers into a queryable misty *lake* of named Markdown *entries*:
+entry identifiers act as symbols, metadata records edges,
+and witnesses point back to source artifacts to avoid documentation drift.
+As such, each design *object* is given an identifier, hence *nominal*.
+<!-- sirno:witness:readme:end -->
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/sirno-20260401.png" width="40%">
+    <source media="(prefers-color-scheme: light)" srcset="assets/sirno-nb-20260401.png" width="40%">
+    <img src="assets/sirno-nb-20260401.png" width="40%">
+  </picture>
+</p>
+
+<!-- sirno:witness:readme:begin -->
+## Minute Motivation
+
 Design work has a familiar failure mode.
 It begins as a clear explanation,
 then scatters across code, tests, comments, review threads,
@@ -13,23 +32,13 @@ It keeps design in a *lake* of compact Markdown *entries*:
 prose small enough to read locally,
 metadata exact enough to query,
 and ids stable enough to cite from code, review, or automation.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/sirno-20260401.png" width="40%">
-    <source media="(prefers-color-scheme: light)" srcset="assets/sirno-nb-20260401.png" width="40%">
-    <img src="assets/sirno-nb-20260401.png" width="40%">
-  </picture>
-</p>
+<!-- sirno:witness:readme:end -->
 
 <!-- sirno:witness:readme:begin -->
 ## Our Thoughts, Our Ambitions, The Principles We Would Follow.
 
-> "Share them with me. Your thoughts, your ambitions.
-> The principles you would follow."
-
 A tiny Melina-shaped blessing for the work:
-Sirno asks a project to make its guiding ideas shareable.
+Sirno follows a few guiding principles that wishes to help the project reach its goal.
 <!-- sirno:witness:readme:end -->
 
 <!-- sirno:witness:readme:begin -->
