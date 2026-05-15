@@ -6,7 +6,7 @@ ignore = [".obsidian"]
 
 [repo]
 # Repository files, directories, or globs scanned for witness blocks.
-members = ["src"]
+members = ["src", "README.md"]
 
 [check]
 # Require generated footers to match current metadata during checks.

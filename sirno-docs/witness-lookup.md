@@ -17,6 +17,8 @@ Glob members expand to matching files.
 Sirno projects each member file into a `mosaika` transform that logs witness blocks.
 The opening and closing delimiters both capture the entry id.
 Sirno rejects a witness block when the delimiter ids differ.
+The delimiter regexes accept `//` line comments
+and hidden Markdown HTML comments.
 Sirno parses the log stream into witness records keyed by entry id.
 The stored delimiter spans exclude leading indentation.
 Full output displays every line spanned by the matched block,

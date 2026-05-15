@@ -22,8 +22,10 @@ use crate::config::RepoMember;
 use crate::id::{EntryId, EntryIdError};
 
 const WITNESS_TRANSFORM: &str = "sirno-witness";
-const WITNESS_BEGIN_REGEX: &str = r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):begin";
-const WITNESS_END_REGEX: &str = r"(?m)^[ \t]*//[ \t]*sirno:witness:([A-Za-z0-9_-]+):end";
+const WITNESS_BEGIN_REGEX: &str =
+    r"(?m)^[ \t]*(?://[ \t]*|<!--[ \t]*)sirno:witness:([A-Za-z0-9_-]+):begin(?:[ \t]*-->)?";
+const WITNESS_END_REGEX: &str =
+    r"(?m)^[ \t]*(?://[ \t]*|<!--[ \t]*)sirno:witness:([A-Za-z0-9_-]+):end(?:[ \t]*-->)?";
 
 /// Settings for a witness scan.
 ///
@@ -127,6 +129,9 @@ pub struct WitnessSpan {
 
 // sirno:witness:witness-lookup:begin
 /// Scan configured repository members for Sirno witness blocks.
+///
+/// The scan accepts `//` line-comment sentinels
+/// and hidden Markdown HTML-comment sentinels.
 pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, WitnessError> {
     trace!(
         root = %settings.root.display(),
@@ -490,6 +495,10 @@ mod tests {
     }
     // sirno:witness:witness-fixture-isolation:end
 
+    fn markdown_witness_block(id: &str) -> String {
+        format!("<!-- sirno:witness:{id}:begin -->\nbody\n<!-- sirno:witness:{id}:end -->\n")
+    }
+
     fn indented_witness_block(id: &str) -> String {
         format!("    {}\n        body\n    {}\n", witness_begin(id), witness_end(id))
     }
@@ -533,6 +542,28 @@ mod tests {
         let index = scan_witnesses(&settings).unwrap();
 
         assert!(index.contains_entry(&EntryId::new("repo-member").unwrap()));
+    }
+
+    #[test]
+    fn scans_markdown_comment_witness_blocks() {
+        let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("README.md"), markdown_witness_block("readme")).unwrap();
+        let settings =
+            WitnessCheckSettings::new(temp.path(), [RepoMember::new("README.md").unwrap()]);
+
+        let index = scan_witnesses(&settings).unwrap();
+        let records = index.records_for(&EntryId::new("readme").unwrap());
+
+        assert!(index.contains_entry(&EntryId::new("readme").unwrap()));
+        assert_eq!(records[0].body, markdown_witness_block("readme").trim_end());
+        assert_eq!(
+            records[0].opening,
+            WitnessSpan { start_line: 1, start_column: 1, end_line: 1, end_column: 36 }
+        );
+        assert_eq!(
+            records[0].closing,
+            WitnessSpan { start_line: 3, start_column: 1, end_line: 3, end_column: 34 }
+        );
     }
 
     #[test]

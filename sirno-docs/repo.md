@@ -23,6 +23,8 @@ and directory members are scanned recursively.
 A *witness* block opens with `sirno:witness:<entry-id>:begin`
 and closes with `sirno:witness:<entry-id>:end`.
 Both sentinels name the same *entry* id.
+Line-commented artifacts can carry the sentinels with `//`.
+Markdown artifacts can carry them as hidden HTML comments.
 
 The *repository* is where design becomes costly in the useful sense.
 Names, invariants, parser choices, storage boundaries, user interfaces,

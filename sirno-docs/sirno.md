@@ -69,6 +69,7 @@ Belongs (from):
 - [perspective-and-terms](perspective-and-terms.md)
 - [planning](planning.md)
 - [project-self-application](project-self-application.md)
+- [readme](readme.md)
 - [sirno-lake](sirno-lake.md)
 - [storage-and-interfaces](storage-and-interfaces.md)
 - [structural-field](structural-field.md)

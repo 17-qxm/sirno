@@ -26,6 +26,8 @@ Directory members are scanned recursively.
 The repository *witness* block opens with `sirno:witness:<entry-id>:begin`
 and closes with `sirno:witness:<entry-id>:end`.
 The opening and closing *entry* ids must match.
+Rust and other line-commented files can write the sentinels with `//`.
+Markdown files can write them as hidden HTML comments.
 
 The *entry* body may explain how to find or interpret evidence as fallback guidance.
 The convention is the *entry* id plus the repository *witness* block.
@@ -47,8 +49,9 @@ If the evidence exists but is hard to interpret,
 the *entry* body can explain what a reviewer should look for.
 The *entry* id remains the query key.
 
-The repository *witness* for this *entry* should show how Sirno represents *witness* records
-and spans after `mosaika` finds the delimited repository regions.
+The repository *witness* for this *entry* should show how Sirno represents *witness* records,
+spans,
+and accepted delimiter styles after `mosaika` finds the delimited repository regions.
 
 ---
 
