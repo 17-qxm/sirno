@@ -33,6 +33,7 @@ without adding version fields to *entry* metadata.
 The CLI is the first operational interface.
 It can initialize *lakes*, create *entries*, query *entries*, check structure,
 move configured storage paths, and maintain *generated footer* links.
+The global `-C, --config PATH` option selects the Sirno project config file.
 The global `--lake-path PATH` option overrides the configured public *lake*
 for commands that read or write the active *lake*.
 Those commands should remain plain enough to use from a terminal

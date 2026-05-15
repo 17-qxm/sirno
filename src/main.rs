@@ -31,7 +31,7 @@ const RG_PREPROCESSOR_ARGV0_PREFIX: &str = "sirno-rg-preprocess-";
 #[command(about = "Manage Sirno design entries")]
 struct Cli {
     /// Sirno project config file.
-    #[arg(long, global = true)]
+    #[arg(short = 'C', long, global = true)]
     config: Option<PathBuf>,
     /// Public Markdown lake path override.
     #[arg(long = "lake-path", global = true)]
@@ -1525,6 +1525,14 @@ mod tests {
         let config = SirnoConfig::from_file(&config_path).unwrap();
         assert_eq!(config.lake.path, PathBuf::from("sirno-docs"));
         assert!(docs.join("concept.md").exists());
+    }
+
+    #[test]
+    fn short_config_matches_global_config() {
+        let cli = Cli::parse_from(["sirno", "-C", "Sirno.alt.toml", "status"]);
+
+        assert_eq!(cli.config, Some(PathBuf::from("Sirno.alt.toml")));
+        assert!(matches!(cli.command, Command::Status));
     }
 
     #[test]
