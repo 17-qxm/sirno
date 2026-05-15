@@ -123,9 +123,9 @@ enum Command {
     /// Run ripgrep in the configured public Markdown lake.
     // sirno:witness:interfaces:begin
     Rg {
-        /// Search as if Sirno-owned generated-footer regions contain only whitespace.
-        #[arg(long = "no-generated-footer")]
-        no_generated_footer: bool,
+        /// Include Sirno-owned generated-footer regions in the search.
+        #[arg(long = "with-generated-footer")]
+        with_generated_footer: bool,
         /// Arguments forwarded to ripgrep before the lake path.
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<OsString>,
@@ -517,8 +517,8 @@ impl Cli {
                 print_query_results(&report, &matches, &fields, format)?;
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Rg { no_generated_footer, args } => {
-                run_rg_command(lake_path.as_deref(), &config_path, no_generated_footer, args)
+            | Command::Rg { with_generated_footer, args } => {
+                run_rg_command(lake_path.as_deref(), &config_path, with_generated_footer, args)
             }
             | Command::Check { frost_root, mode } => {
                 if lake_path.is_some() && frost_root.is_some() {
@@ -855,14 +855,15 @@ fn print_witness_records(records: &[WitnessRecord], full: bool) {
 }
 
 fn run_rg_command(
-    lake_path: Option<&Path>, config_path: &Path, no_generated_footer: bool, args: Vec<OsString>,
+    lake_path: Option<&Path>, config_path: &Path, with_generated_footer: bool, args: Vec<OsString>,
 ) -> Result<ExitCode, CliError> {
-    if no_generated_footer && rg_args_include_preprocessor(&args) {
+    if !with_generated_footer && rg_args_include_preprocessor(&args) {
         return Err(CliError::RgPreprocessorConflict);
     }
 
     let lake = resolve_lake_path_for_rg(lake_path, config_path)?;
-    let preprocessor = if no_generated_footer { Some(RgPreprocessorLink::create()?) } else { None };
+    let preprocessor =
+        if with_generated_footer { None } else { Some(RgPreprocessorLink::create()?) };
 
     let mut command = ProcessCommand::new("rg");
     if let Some(preprocessor) = &preprocessor {
@@ -1422,7 +1423,9 @@ enum CliError {
     #[error("structural field `{0}` is not configured; add it under [structural] in Sirno.toml")]
     UnconfiguredExactField(String),
     /// Generated-footer masking cannot compose with another ripgrep preprocessor.
-    #[error("`sirno rg --no-generated-footer` cannot be combined with `rg --pre`")]
+    #[error(
+        "generated-footer filtering cannot be combined with `rg --pre`; use `--with-generated-footer`"
+    )]
     RgPreprocessorConflict,
     /// Ripgrep generated-footer preprocessor received an unexpected argument shape.
     #[error("rg generated-footer preprocessor expects one path argument")]
@@ -1819,18 +1822,18 @@ mod tests {
 
         assert!(matches!(
             cli.command,
-            Command::Rg { no_generated_footer: false, args }
+            Command::Rg { with_generated_footer: false, args }
                 if args == vec![OsString::from("--json"), OsString::from("metadata")]
         ));
     }
 
     #[test]
-    fn rg_accepts_generated_footer_preprocessor_flag() {
-        let cli = Cli::parse_from(["sirno", "rg", "--no-generated-footer", "metadata"]);
+    fn rg_accepts_generated_footer_inclusion_flag() {
+        let cli = Cli::parse_from(["sirno", "rg", "--with-generated-footer", "metadata"]);
 
         assert!(matches!(
             cli.command,
-            Command::Rg { no_generated_footer: true, args }
+            Command::Rg { with_generated_footer: true, args }
                 if args == vec![OsString::from("metadata")]
         ));
     }

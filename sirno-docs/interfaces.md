@@ -61,10 +61,12 @@ The `-m, --mode` option selects the check boundary.
 It forwards its arguments to the `rg` binary,
 then appends the resolved *lake* path.
 It preserves `rg` exit codes.
-With `--no-generated-footer`,
+By default,
 it asks `rg` to search Markdown *entries* through a preprocessor
 that masks Sirno-owned *generated footer* regions.
 The mask preserves paths, line breaks, and byte offsets outside those regions.
+With `--with-generated-footer`,
+it searches the full Markdown files including generated links.
 
 `sirno witness ENTRY_ID` scans configured repo members through `mosaika`
 and reports repository *witness* blocks for the selected *entry* id.

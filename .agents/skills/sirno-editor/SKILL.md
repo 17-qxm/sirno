@@ -177,14 +177,15 @@ Prefer these checks when the CLI provides them:
 ```text
 sirno query --fields id
 sirno rg TEXT
-sirno rg --no-generated-footer TEXT
+sirno rg --with-generated-footer TEXT
 sirno check --mode edit
 sirno gen-link
 sirno check
 sirno status
 ```
 
-Use `sirno rg --no-generated-footer` when generated links would obscure authored entry text.
+Use plain `sirno rg` for authored entry text.
+Use `sirno rg --with-generated-footer` when generated links are the search target.
 
 Use `cargo run -- ...` or `target/debug/sirno ...` according to the repository state.
 
