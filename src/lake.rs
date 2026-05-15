@@ -22,13 +22,23 @@ use crate::links::{
     GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links,
     delete_generated_links, generated_links_are_stale, validate_generated_links,
 };
-use crate::witness::{WitnessCheckSettings, WitnessError, scan_witnesses};
+use crate::witness::{WitnessCheckSettings, WitnessError};
 
 const READONLY_CHECKOUT_WARNING: &str = "\
 > This file is a read-only Sirno Frost checkout.
 > Do not edit it by hand.
 
 ";
+
+/// Public Markdown entry directory.
+///
+/// Invariant: `root` is the directory containing one flat `*.md` file per entry id.
+#[derive(Clone, Debug, PartialEq, Eq)]
+// sirno:witness:sirno-lake:begin
+pub struct EntryDirectory {
+    root: PathBuf,
+}
+// sirno:witness:sirno-lake:end
 
 /// Check report for a public Markdown entry directory.
 #[derive(Debug)]
@@ -175,230 +185,292 @@ impl EntryFileDiagnostic {
     }
 }
 
-/// Check one public Markdown entry directory.
-pub fn check_entry_directory(
-    root: impl Into<PathBuf>, mode: CheckMode,
-) -> Result<EntryDirectoryReport, EntryDirectoryError> {
-    check_entry_directory_with_settings(root, mode, &EntryDirectoryCheckSettings::default())
-}
-
-/// Check one public Markdown entry directory with explicit settings.
-// sirno:witness:sirno-lake:begin
-pub fn check_entry_directory_with_settings(
-    root: impl Into<PathBuf>, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
-) -> Result<EntryDirectoryReport, EntryDirectoryError> {
-    let root = root.into();
-    trace!("check_entry_directory begin: root={}", root.display());
-    let loaded = load_entry_directory(&root, mode, settings)?;
-    let structural_report = check_entries(&loaded.entries, mode);
-    trace!(
-        "check_entry_directory end: entries={} file_diagnostics={} structural_diagnostics={}",
-        loaded.entries.len(),
-        loaded.file_diagnostics.len(),
-        structural_report.diagnostics().len()
-    );
-    Ok(EntryDirectoryReport {
-        root,
-        entries: loaded.entries,
-        paths_by_id: loaded.paths_by_id,
-        file_diagnostics: loaded.file_diagnostics,
-        structural_report,
-    })
-}
-// sirno:witness:sirno-lake:end
-
-/// Initialize a public Markdown entry directory with ordinary seed entries.
-///
-/// Existing entry files are never overwritten.
-// sirno:witness:sirno-lake:begin
-pub fn init_entry_directory(root: impl Into<PathBuf>) -> Result<Vec<PathBuf>, EntryDirectoryError> {
-    let root = root.into();
-    trace!("init_entry_directory begin: root={}", root.display());
-    fs::create_dir_all(&root)?;
-    let mut paths = Vec::new();
-    for entry in default_seed_entries()? {
-        let path = write_new_entry_file(&root, &entry)?;
-        paths.push(path);
-    }
-    trace!("init_entry_directory end: entries={}", paths.len());
-    Ok(paths)
-}
-// sirno:witness:sirno-lake:end
-
-/// Create one public Markdown entry file.
-///
-/// The entry directory is created if needed.
-/// Existing entry files are never overwritten.
-// sirno:witness:sirno-lake:begin
-pub fn create_entry_file(
-    root: impl Into<PathBuf>, entry: &Entry,
-) -> Result<PathBuf, EntryDirectoryError> {
-    let root = root.into();
-    trace!("create_entry_file begin: root={} id={}", root.display(), entry.id);
-    fs::create_dir_all(&root)?;
-    let path = write_new_entry_file(&root, entry)?;
-    trace!("create_entry_file end: path={}", path.display());
-    Ok(path)
-}
-// sirno:witness:sirno-lake:end
-
-/// Mark one public Markdown entry as frozen and read-only.
-///
-/// The entry metadata gains the canonical `frozen:` marker.
-/// The file's write bits are removed after the marker is written.
-pub fn freeze_entry_file(
-    root: impl AsRef<Path>, id: &EntryId,
-) -> Result<PathBuf, EntryDirectoryError> {
-    set_entry_file_frozen(root.as_ref(), id, true)
-}
-
-/// Mark one public Markdown entry as melted and writable.
-///
-/// The canonical `frozen:` marker is removed from entry metadata.
-/// The file is left writable so normal editing can resume.
-pub fn melt_entry_file(
-    root: impl AsRef<Path>, id: &EntryId,
-) -> Result<PathBuf, EntryDirectoryError> {
-    set_entry_file_frozen(root.as_ref(), id, false)
-}
-
-/// Write a complete public Markdown entry directory.
-///
-/// The write policy controls how existing target contents are handled.
-// sirno:witness:sirno-lake:begin
-pub fn write_entry_directory(
-    root: impl Into<PathBuf>, entries: &[Entry], policy: EntryDirectoryWritePolicy,
-) -> Result<Vec<PathBuf>, EntryDirectoryError> {
-    let root = root.into();
-    trace!("write_entry_directory begin: root={} entries={}", root.display(), entries.len());
-    prepare_entry_directory_target(&root, policy)?;
-    let mut paths = Vec::new();
-    for entry in entries {
-        paths.push(write_new_entry_file(&root, entry)?);
-    }
-    trace!("write_entry_directory end: entries={}", paths.len());
-    Ok(paths)
-}
-// sirno:witness:sirno-lake:end
-
-/// Mark the public Markdown entry directory as read-only.
-///
-/// Ignored paths are left untouched.
-pub fn set_entry_directory_readonly(
-    root: impl AsRef<Path>, settings: &EntryDirectoryCheckSettings,
-) -> Result<(), EntryDirectoryError> {
-    set_entry_directory_writability(root.as_ref(), settings, false)
-}
-
-/// Mark the public Markdown entry directory as writable.
-///
-/// Ignored paths are left untouched.
-pub fn set_entry_directory_writable(
-    root: impl AsRef<Path>, settings: &EntryDirectoryCheckSettings,
-) -> Result<(), EntryDirectoryError> {
-    set_entry_directory_writability(root.as_ref(), settings, true)
-}
-
-/// Add read-only checkout warnings to rendered entry files.
-///
-/// The warning is written as a Markdown blockquote at the beginning of the body.
-pub fn add_readonly_checkout_warnings(paths: &[PathBuf]) -> Result<(), EntryDirectoryError> {
-    for path in paths {
-        let source = fs::read_to_string(path)?;
-        let source = add_readonly_checkout_warning(path, &source)?;
-        fs::write(path, source)
-            .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
-    }
-    Ok(())
-}
-
-/// Generate Markdown link footers for one public entry directory.
-///
-/// The directory must pass review-mode checks before any file is written.
-pub fn gen_link_entry_directory(
-    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    gen_link_entry_directory_with_ignored_paths(root, settings, Vec::<PathBuf>::new())
-}
-
-/// Check which generated Markdown link footers would change in one public entry directory.
-///
-/// No file is written.
-pub fn check_gen_link_entry_directory(
-    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    check_gen_link_entry_directory_with_ignored_paths(root, settings, Vec::<PathBuf>::new())
-}
-
-/// Generate Markdown link footers for one public entry directory with ignored paths.
-///
-/// Ignored paths are relative to the entry directory root.
-pub fn gen_link_entry_directory_with_ignored_paths(
-    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
-    ignore: impl IntoIterator<Item = PathBuf>,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    process_gen_link_entry_directory(root, settings, ignore, GenLinkOperation::Write)
-}
-
-/// Check which generated Markdown link footers would change with ignored paths.
-///
-/// Ignored paths are relative to the entry directory root.
-/// No file is written.
-pub fn check_gen_link_entry_directory_with_ignored_paths(
-    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
-    ignore: impl IntoIterator<Item = PathBuf>,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    process_gen_link_entry_directory(root, settings, ignore, GenLinkOperation::Check)
-}
-
-fn process_gen_link_entry_directory(
-    root: impl Into<PathBuf>, settings: &GeneratedLinkSettings,
-    ignore: impl IntoIterator<Item = PathBuf>, operation: GenLinkOperation,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    let root = root.into();
-    trace!(
-        "gen_link_entry_directory begin: root={} operation={}",
-        root.display(),
-        operation.label()
-    );
-    let check_settings = EntryDirectoryCheckSettings {
-        link: false,
-        links: *settings,
-        ignore: ignore.into_iter().collect(),
-        witness: None,
-    };
-    let checked = check_entry_directory_with_settings(&root, CheckMode::Review, &check_settings)?;
-    if checked.has_errors() {
-        return Err(EntryDirectoryError::InvalidEntryDirectory(root));
+impl EntryDirectory {
+    /// Construct an entry directory rooted at `root`.
+    pub fn new(root: impl Into<PathBuf>) -> Self {
+        Self { root: root.into() }
     }
 
-    let mut changed_paths = Vec::new();
-    let index = GeneratedLinkIndex::from_entries(checked.entries());
-    for entry in checked.entries() {
-        let path = checked
-            .entry_path(&entry.id)
-            .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
-        let source = fs::read_to_string(path)?;
-        let footer = index.render_entry(entry, settings);
-        let body = apply_generated_links(&entry.body, &footer)?;
-        let rendered = Entry::replace_markdown_body(&source, &body)?;
-        if rendered != source {
-            if operation.writes() {
+    /// Directory containing public Markdown entry files.
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    /// Check this public Markdown entry directory.
+    pub fn check(&self, mode: CheckMode) -> Result<EntryDirectoryReport, EntryDirectoryError> {
+        self.check_with_settings(mode, &EntryDirectoryCheckSettings::default())
+    }
+
+    /// Check this public Markdown entry directory with explicit settings.
+    // sirno:witness:sirno-lake:begin
+    pub fn check_with_settings(
+        &self, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<EntryDirectoryReport, EntryDirectoryError> {
+        trace!("check_entry_directory begin: root={}", self.root.display());
+        let loaded = load_entry_directory(&self.root, mode, settings)?;
+        let structural_report = check_entries(&loaded.entries, mode);
+        trace!(
+            "check_entry_directory end: entries={} file_diagnostics={} structural_diagnostics={}",
+            loaded.entries.len(),
+            loaded.file_diagnostics.len(),
+            structural_report.diagnostics().len()
+        );
+        Ok(EntryDirectoryReport {
+            root: self.root.clone(),
+            entries: loaded.entries,
+            paths_by_id: loaded.paths_by_id,
+            file_diagnostics: loaded.file_diagnostics,
+            structural_report,
+        })
+    }
+    // sirno:witness:sirno-lake:end
+
+    /// Initialize this directory with ordinary seed entries.
+    ///
+    /// Existing entry files are never overwritten.
+    // sirno:witness:sirno-lake:begin
+    pub fn init(&self) -> Result<Vec<PathBuf>, EntryDirectoryError> {
+        trace!("init_entry_directory begin: root={}", self.root.display());
+        fs::create_dir_all(&self.root)?;
+        let mut paths = Vec::new();
+        for entry in default_seed_entries()? {
+            let path = write_new_entry_file(&self.root, &entry)?;
+            paths.push(path);
+        }
+        trace!("init_entry_directory end: entries={}", paths.len());
+        Ok(paths)
+    }
+    // sirno:witness:sirno-lake:end
+
+    /// Create one public Markdown entry file in this directory.
+    ///
+    /// The entry directory is created if needed.
+    /// Existing entry files are never overwritten.
+    // sirno:witness:sirno-lake:begin
+    pub fn create_entry(&self, entry: &Entry) -> Result<PathBuf, EntryDirectoryError> {
+        trace!("create_entry_file begin: root={} id={}", self.root.display(), entry.id);
+        fs::create_dir_all(&self.root)?;
+        let path = write_new_entry_file(&self.root, entry)?;
+        trace!("create_entry_file end: path={}", path.display());
+        Ok(path)
+    }
+    // sirno:witness:sirno-lake:end
+
+    /// Mark one public Markdown entry as frozen and read-only.
+    ///
+    /// The entry metadata gains the canonical `frozen:` marker.
+    /// The file's write bits are removed after the marker is written.
+    pub fn freeze_entry(&self, id: &EntryId) -> Result<PathBuf, EntryDirectoryError> {
+        set_entry_file_frozen(&self.root, id, true)
+    }
+
+    /// Mark one public Markdown entry as melted and writable.
+    ///
+    /// The canonical `frozen:` marker is removed from entry metadata.
+    /// The file is left writable so normal editing can resume.
+    pub fn melt_entry(&self, id: &EntryId) -> Result<PathBuf, EntryDirectoryError> {
+        set_entry_file_frozen(&self.root, id, false)
+    }
+
+    /// Write a complete public Markdown entry directory.
+    ///
+    /// The write policy controls how existing target contents are handled.
+    // sirno:witness:sirno-lake:begin
+    pub fn write(
+        &self, entries: &[Entry], policy: EntryDirectoryWritePolicy,
+    ) -> Result<Vec<PathBuf>, EntryDirectoryError> {
+        trace!(
+            "write_entry_directory begin: root={} entries={}",
+            self.root.display(),
+            entries.len()
+        );
+        prepare_entry_directory_target(&self.root, policy)?;
+        let mut paths = Vec::new();
+        for entry in entries {
+            paths.push(write_new_entry_file(&self.root, entry)?);
+        }
+        trace!("write_entry_directory end: entries={}", paths.len());
+        Ok(paths)
+    }
+    // sirno:witness:sirno-lake:end
+
+    /// Mark this directory as read-only.
+    ///
+    /// Ignored paths are left untouched.
+    pub fn set_readonly(
+        &self, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<(), EntryDirectoryError> {
+        set_entry_directory_writability(&self.root, settings, false)
+    }
+
+    /// Mark this directory as writable.
+    ///
+    /// Ignored paths are left untouched.
+    pub fn set_writable(
+        &self, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<(), EntryDirectoryError> {
+        set_entry_directory_writability(&self.root, settings, true)
+    }
+
+    /// Add read-only checkout warnings to rendered entry files.
+    ///
+    /// The warning is written as a Markdown blockquote at the beginning of the body.
+    pub fn add_readonly_checkout_warnings(
+        &self, paths: &[PathBuf],
+    ) -> Result<(), EntryDirectoryError> {
+        trace!("add_readonly_checkout_warnings begin: root={}", self.root.display());
+        for path in paths {
+            let source = fs::read_to_string(path)?;
+            let source = add_readonly_checkout_warning(path, &source)?;
+            fs::write(path, source)
+                .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+        }
+        Ok(())
+    }
+
+    /// Generate Markdown link footers for this public entry directory.
+    ///
+    /// The directory must pass review-mode checks before any file is written.
+    pub fn generate_links(
+        &self, settings: &GeneratedLinkSettings,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        self.generate_links_with_ignored_paths(settings, Vec::<PathBuf>::new())
+    }
+
+    /// Check which generated Markdown link footers would change in this directory.
+    ///
+    /// No file is written.
+    pub fn check_generated_links(
+        &self, settings: &GeneratedLinkSettings,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        self.check_generated_links_with_ignored_paths(settings, Vec::<PathBuf>::new())
+    }
+
+    /// Generate Markdown link footers for this directory with ignored paths.
+    ///
+    /// Ignored paths are relative to the entry directory root.
+    pub fn generate_links_with_ignored_paths(
+        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        self.process_generated_links(settings, ignore, GenLinkOperation::Write)
+    }
+
+    /// Check which generated Markdown link footers would change with ignored paths.
+    ///
+    /// Ignored paths are relative to the entry directory root.
+    /// No file is written.
+    pub fn check_generated_links_with_ignored_paths(
+        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        self.process_generated_links(settings, ignore, GenLinkOperation::Check)
+    }
+
+    fn process_generated_links(
+        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+        operation: GenLinkOperation,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        trace!(
+            "gen_link_entry_directory begin: root={} operation={}",
+            self.root.display(),
+            operation.label()
+        );
+        let check_settings = EntryDirectoryCheckSettings {
+            link: false,
+            links: *settings,
+            ignore: ignore.into_iter().collect(),
+            witness: None,
+        };
+        let checked = self.check_with_settings(CheckMode::Review, &check_settings)?;
+        if checked.has_errors() {
+            return Err(EntryDirectoryError::InvalidEntryDirectory(self.root.clone()));
+        }
+
+        let mut changed_paths = Vec::new();
+        let index = GeneratedLinkIndex::from_entries(checked.entries());
+        for entry in checked.entries() {
+            let path = checked
+                .entry_path(&entry.id)
+                .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+            let source = fs::read_to_string(path)?;
+            let footer = index.render_entry(entry, settings);
+            let body = apply_generated_links(&entry.body, &footer)?;
+            let rendered = Entry::replace_markdown_body(&source, &body)?;
+            if rendered != source {
+                if operation.writes() {
+                    fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
+                        path: path.to_path_buf(),
+                        source,
+                    })?;
+                }
+                changed_paths.push(path.to_path_buf());
+            }
+        }
+
+        trace!(
+            "gen_link_entry_directory end: entries={} changed={}",
+            checked.entries().len(),
+            changed_paths.len()
+        );
+        Ok(GenLinkDirectoryReport {
+            root: self.root.clone(),
+            entry_count: checked.entries().len(),
+            changed_paths,
+        })
+    }
+
+    /// Delete generated Markdown link footers from this public entry directory.
+    ///
+    /// The directory must parse cleanly before any file is written.
+    pub fn delete_generated_links(&self) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        self.delete_generated_links_with_ignored_paths(Vec::<PathBuf>::new())
+    }
+
+    /// Delete generated Markdown link footers with ignored paths.
+    ///
+    /// Ignored paths are relative to the entry directory root.
+    pub fn delete_generated_links_with_ignored_paths(
+        &self, ignore: impl IntoIterator<Item = PathBuf>,
+    ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
+        trace!("delete_gen_link_entry_directory begin: root={}", self.root.display());
+        let check_settings = EntryDirectoryCheckSettings {
+            link: false,
+            links: GeneratedLinkSettings::default(),
+            ignore: ignore.into_iter().collect(),
+            witness: None,
+        };
+        let checked = self.check_with_settings(CheckMode::Edit, &check_settings)?;
+        if checked.has_errors() {
+            return Err(EntryDirectoryError::InvalidEntryDirectory(self.root.clone()));
+        }
+
+        let mut changed_paths = Vec::new();
+        for entry in checked.entries() {
+            let path = checked
+                .entry_path(&entry.id)
+                .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+            let source = fs::read_to_string(path)?;
+            let body = delete_generated_links(&entry.body)?;
+            let rendered = Entry::replace_markdown_body(&source, &body)?;
+            if rendered != source {
                 fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
                     path: path.to_path_buf(),
                     source,
                 })?;
+                changed_paths.push(path.to_path_buf());
             }
-            changed_paths.push(path.to_path_buf());
         }
-    }
 
-    trace!(
-        "gen_link_entry_directory end: entries={} changed={}",
-        checked.entries().len(),
-        changed_paths.len()
-    );
-    Ok(GenLinkDirectoryReport { root, entry_count: checked.entries().len(), changed_paths })
+        trace!(
+            "delete_gen_link_entry_directory end: entries={} changed={}",
+            checked.entries().len(),
+            changed_paths.len()
+        );
+        Ok(GenLinkDirectoryReport {
+            root: self.root.clone(),
+            entry_count: checked.entries().len(),
+            changed_paths,
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -418,59 +490,6 @@ impl GenLinkOperation {
     fn writes(self) -> bool {
         matches!(self, Self::Write)
     }
-}
-
-/// Delete generated Markdown link footers from one public entry directory.
-///
-/// The directory must parse cleanly before any file is written.
-pub fn delete_gen_link_entry_directory(
-    root: impl Into<PathBuf>,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    delete_gen_link_entry_directory_with_ignored_paths(root, Vec::<PathBuf>::new())
-}
-
-/// Delete generated Markdown link footers from one public entry directory with ignored paths.
-///
-/// Ignored paths are relative to the entry directory root.
-pub fn delete_gen_link_entry_directory_with_ignored_paths(
-    root: impl Into<PathBuf>, ignore: impl IntoIterator<Item = PathBuf>,
-) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
-    let root = root.into();
-    trace!("delete_gen_link_entry_directory begin: root={}", root.display());
-    let check_settings = EntryDirectoryCheckSettings {
-        link: false,
-        links: GeneratedLinkSettings::default(),
-        ignore: ignore.into_iter().collect(),
-        witness: None,
-    };
-    let checked = check_entry_directory_with_settings(&root, CheckMode::Edit, &check_settings)?;
-    if checked.has_errors() {
-        return Err(EntryDirectoryError::InvalidEntryDirectory(root));
-    }
-
-    let mut changed_paths = Vec::new();
-    for entry in checked.entries() {
-        let path = checked
-            .entry_path(&entry.id)
-            .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
-        let source = fs::read_to_string(path)?;
-        let body = delete_generated_links(&entry.body)?;
-        let rendered = Entry::replace_markdown_body(&source, &body)?;
-        if rendered != source {
-            fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
-                path: path.to_path_buf(),
-                source,
-            })?;
-            changed_paths.push(path.to_path_buf());
-        }
-    }
-
-    trace!(
-        "delete_gen_link_entry_directory end: entries={} changed={}",
-        checked.entries().len(),
-        changed_paths.len()
-    );
-    Ok(GenLinkDirectoryReport { root, entry_count: checked.entries().len(), changed_paths })
 }
 
 #[derive(Debug)]
@@ -634,7 +653,7 @@ fn add_witness_diagnostics(
         return Ok(());
     }
 
-    let index = scan_witnesses(witness)?;
+    let index = witness.scan()?;
     let ids = entries.iter().map(|entry| entry.id.clone()).collect::<BTreeSet<_>>();
     let severity = mode_severity(mode);
 
@@ -956,6 +975,10 @@ mod tests {
         fs::write(root.join(name), body).unwrap();
     }
 
+    fn entry_directory(root: impl Into<PathBuf>) -> EntryDirectory {
+        EntryDirectory::new(root)
+    }
+
     fn witness_settings(root: &Path) -> EntryDirectoryCheckSettings {
         EntryDirectoryCheckSettings {
             witness: Some(WitnessCheckSettings::new(
@@ -1007,7 +1030,7 @@ Body.
 ",
         );
 
-        let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
 
         assert!(report.is_clean());
         assert_eq!(report.entries().len(), 2);
@@ -1019,7 +1042,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         write_entry(temp.path(), "bad.md", "no frontmatter\n");
 
-        let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
 
         assert!(report.has_errors());
         assert_eq!(report.file_diagnostics().len(), 1);
@@ -1032,7 +1055,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         fs::write(temp.path().join("note.txt"), "text").unwrap();
 
-        let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
 
         assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Error);
         assert!(report.has_errors());
@@ -1043,7 +1066,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         fs::write(temp.path().join("note.txt"), "text").unwrap();
 
-        let report = check_entry_directory(temp.path(), CheckMode::Edit).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Edit).unwrap();
 
         assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Warning);
         assert!(!report.has_errors());
@@ -1067,15 +1090,15 @@ Body.
 ",
         );
 
-        let report = check_entry_directory_with_settings(
-            temp.path(),
-            CheckMode::Review,
-            &EntryDirectoryCheckSettings {
-                ignore: vec![PathBuf::from(".obsidian"), PathBuf::from("note.txt")],
-                ..EntryDirectoryCheckSettings::default()
-            },
-        )
-        .unwrap();
+        let report = entry_directory(temp.path())
+            .check_with_settings(
+                CheckMode::Review,
+                &EntryDirectoryCheckSettings {
+                    ignore: vec![PathBuf::from(".obsidian"), PathBuf::from("note.txt")],
+                    ..EntryDirectoryCheckSettings::default()
+                },
+            )
+            .unwrap();
 
         assert!(report.is_clean());
         assert_eq!(report.entries().len(), 1);
@@ -1097,7 +1120,7 @@ category:
 ",
         );
 
-        let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
 
         assert!(report.has_errors());
         assert_eq!(report.structural_report().diagnostics().len(), 1);
@@ -1124,12 +1147,9 @@ Body.
         );
         fs::write(src.join("lib.rs"), witness_block("witnessed")).unwrap();
 
-        let report = check_entry_directory_with_settings(
-            &docs,
-            CheckMode::Review,
-            &witness_settings(temp.path()),
-        )
-        .unwrap();
+        let report = entry_directory(&docs)
+            .check_with_settings(CheckMode::Review, &witness_settings(temp.path()))
+            .unwrap();
 
         assert!(report.is_clean());
     }
@@ -1155,12 +1175,9 @@ Body.
         );
         fs::write(src.join("lib.rs"), witness_block("ghost-entry")).unwrap();
 
-        let report = check_entry_directory_with_settings(
-            &docs,
-            CheckMode::Review,
-            &witness_settings(temp.path()),
-        )
-        .unwrap();
+        let report = entry_directory(&docs)
+            .check_with_settings(CheckMode::Review, &witness_settings(temp.path()))
+            .unwrap();
 
         assert!(report.has_errors());
         assert!(report.file_diagnostics()[0].message.contains("missing entry `ghost-entry`"));
@@ -1171,7 +1188,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let missing = temp.path().join("missing");
 
-        let error = check_entry_directory(&missing, CheckMode::Review).unwrap_err();
+        let error = entry_directory(&missing).check(CheckMode::Review).unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::MissingDirectory(_)));
     }
@@ -1181,8 +1198,8 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
 
-        let paths = init_entry_directory(&root).unwrap();
-        let report = check_entry_directory(&root, CheckMode::Review).unwrap();
+        let paths = entry_directory(&root).init().unwrap();
+        let report = entry_directory(&root).check(CheckMode::Review).unwrap();
 
         assert_eq!(paths.len(), 3);
         assert!(root.join("concept.md").exists());
@@ -1194,8 +1211,8 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
 
-        init_entry_directory(&root).unwrap();
-        let error = init_entry_directory(&root).unwrap_err();
+        entry_directory(&root).init().unwrap();
+        let error = entry_directory(&root).init().unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::CreateFile { .. }));
     }
@@ -1208,7 +1225,7 @@ Body.
         metadata.category.push(EntryId::new("meta").unwrap());
         let entry = Entry::new(EntryId::new("local-idea").unwrap(), metadata, "");
 
-        let path = create_entry_file(&root, &entry).unwrap();
+        let path = entry_directory(&root).create_entry(&entry).unwrap();
         let source = fs::read_to_string(&path).unwrap();
 
         assert_eq!(path, root.join("local-idea.md"));
@@ -1223,8 +1240,8 @@ Body.
         let metadata = EntryMetadata::new("Local Idea", "A local design idea.").unwrap();
         let entry = Entry::new(EntryId::new("local-idea").unwrap(), metadata, "");
 
-        create_entry_file(&root, &entry).unwrap();
-        let error = create_entry_file(&root, &entry).unwrap_err();
+        entry_directory(&root).create_entry(&entry).unwrap();
+        let error = entry_directory(&root).create_entry(&entry).unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::CreateFile { .. }));
     }
@@ -1245,7 +1262,8 @@ Body.
 ",
         );
 
-        let path = freeze_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+        let path =
+            entry_directory(temp.path()).freeze_entry(&EntryId::new("alpha").unwrap()).unwrap();
         let source = fs::read_to_string(&path).unwrap();
 
         assert!(source.contains("frozen:\n"));
@@ -1268,9 +1286,10 @@ frozen:
 Body.
 ",
         );
-        let path = freeze_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+        let path =
+            entry_directory(temp.path()).freeze_entry(&EntryId::new("alpha").unwrap()).unwrap();
 
-        melt_entry_file(temp.path(), &EntryId::new("alpha").unwrap()).unwrap();
+        entry_directory(temp.path()).melt_entry(&EntryId::new("alpha").unwrap()).unwrap();
         let source = fs::read_to_string(&path).unwrap();
 
         assert!(!source.contains("frozen:\n"));
@@ -1287,14 +1306,14 @@ Body.
         let metadata = EntryMetadata::new("New", "New entry.").unwrap();
         let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
 
-        write_entry_directory(
-            &root,
-            std::slice::from_ref(&entry),
-            EntryDirectoryWritePolicy::ReplaceDirectory {
-                ignore: vec![PathBuf::from(".obsidian")],
-            },
-        )
-        .unwrap();
+        entry_directory(&root)
+            .write(
+                std::slice::from_ref(&entry),
+                EntryDirectoryWritePolicy::ReplaceDirectory {
+                    ignore: vec![PathBuf::from(".obsidian")],
+                },
+            )
+            .unwrap();
 
         assert!(!root.join("old.md").exists());
         assert!(root.join("new.md").exists());
@@ -1310,12 +1329,9 @@ Body.
         let metadata = EntryMetadata::new("New", "New entry.").unwrap();
         let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
 
-        let error = write_entry_directory(
-            &root,
-            &[entry],
-            EntryDirectoryWritePolicy::ReplaceDirectory { ignore: Vec::new() },
-        )
-        .unwrap_err();
+        let error = entry_directory(&root)
+            .write(&[entry], EntryDirectoryWritePolicy::ReplaceDirectory { ignore: Vec::new() })
+            .unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::CheckoutConflict(_)));
         assert!(root.join("2026-05-12.md").exists());
@@ -1325,14 +1341,14 @@ Body.
     fn readonly_entry_directory_can_be_made_writable_again() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let settings = EntryDirectoryCheckSettings::default();
 
-        set_entry_directory_readonly(&root, &settings).unwrap();
+        entry_directory(&root).set_readonly(&settings).unwrap();
         assert!(fs::metadata(root.join("concept.md")).unwrap().permissions().readonly());
         assert!(fs::metadata(&root).unwrap().permissions().readonly());
 
-        set_entry_directory_writable(&root, &settings).unwrap();
+        entry_directory(&root).set_writable(&settings).unwrap();
         assert!(!fs::metadata(root.join("concept.md")).unwrap().permissions().readonly());
         assert!(!fs::metadata(&root).unwrap().permissions().readonly());
     }
@@ -1343,16 +1359,13 @@ Body.
         let root = temp.path().join("docs");
         let metadata = EntryMetadata::new("New", "New entry.").unwrap();
         let entry = Entry::new(EntryId::new("new").unwrap(), metadata, "Body.\n");
-        let paths = write_entry_directory(
-            &root,
-            std::slice::from_ref(&entry),
-            EntryDirectoryWritePolicy::EmptyDirectory,
-        )
-        .unwrap();
+        let paths = entry_directory(&root)
+            .write(std::slice::from_ref(&entry), EntryDirectoryWritePolicy::EmptyDirectory)
+            .unwrap();
 
-        add_readonly_checkout_warnings(&paths).unwrap();
+        entry_directory(&root).add_readonly_checkout_warnings(&paths).unwrap();
         let source = fs::read_to_string(root.join("new.md")).unwrap();
-        let checked = check_entry_directory(&root, CheckMode::Review).unwrap();
+        let checked = entry_directory(&root).check(CheckMode::Review).unwrap();
 
         assert!(source.contains(
             "\n---\n\n> This file is a read-only Sirno Frost checkout.\n\
@@ -1367,7 +1380,7 @@ Body.
     fn gen_link_writes_generated_footers() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let settings = GeneratedLinkSettings {
             category: true.into(),
             belongs: true.into(),
@@ -1375,7 +1388,7 @@ Body.
             refines: true.into(),
         };
 
-        let report = gen_link_entry_directory(&root, &settings).unwrap();
+        let report = entry_directory(&root).generate_links(&settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
 
         assert_eq!(report.entry_count(), 3);
@@ -1437,7 +1450,7 @@ Body.
             refines: false.into(),
         };
 
-        gen_link_entry_directory(temp.path(), &settings).unwrap();
+        entry_directory(temp.path()).generate_links(&settings).unwrap();
         let core = fs::read_to_string(temp.path().join("core.md")).unwrap();
         let left = fs::read_to_string(temp.path().join("left.md")).unwrap();
 
@@ -1453,11 +1466,11 @@ Body.
     fn gen_link_is_idempotent() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let settings = GeneratedLinkSettings::default();
 
-        gen_link_entry_directory(&root, &settings).unwrap();
-        let report = gen_link_entry_directory(&root, &settings).unwrap();
+        entry_directory(&root).generate_links(&settings).unwrap();
+        let report = entry_directory(&root).generate_links(&settings).unwrap();
 
         assert!(report.changed_paths().is_empty());
     }
@@ -1466,18 +1479,18 @@ Body.
     fn check_gen_link_reports_changes_without_writing() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let settings = GeneratedLinkSettings::default();
 
-        let report = check_gen_link_entry_directory(&root, &settings).unwrap();
+        let report = entry_directory(&root).check_generated_links(&settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
 
         assert_eq!(report.entry_count(), 3);
         assert_eq!(report.changed_paths().len(), 3);
         assert!(!concept.contains(crate::links::BEGIN_LINKS_GUARD));
 
-        gen_link_entry_directory(&root, &settings).unwrap();
-        let report = check_gen_link_entry_directory(&root, &settings).unwrap();
+        entry_directory(&root).generate_links(&settings).unwrap();
+        let report = entry_directory(&root).check_generated_links(&settings).unwrap();
 
         assert!(report.changed_paths().is_empty());
     }
@@ -1486,10 +1499,10 @@ Body.
     fn delete_gen_link_removes_generated_footers() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
-        gen_link_entry_directory(&root, &GeneratedLinkSettings::default()).unwrap();
+        entry_directory(&root).init().unwrap();
+        entry_directory(&root).generate_links(&GeneratedLinkSettings::default()).unwrap();
 
-        let report = delete_gen_link_entry_directory(&root).unwrap();
+        let report = entry_directory(&root).delete_generated_links().unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
 
         assert_eq!(report.entry_count(), 3);
@@ -1501,9 +1514,9 @@ Body.
     fn delete_gen_link_is_idempotent() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
 
-        let report = delete_gen_link_entry_directory(&root).unwrap();
+        let report = entry_directory(&root).delete_generated_links().unwrap();
 
         assert_eq!(report.entry_count(), 3);
         assert!(report.changed_paths().is_empty());
@@ -1513,25 +1526,25 @@ Body.
     fn check_reports_stale_generated_links_as_review_error() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
             belongs: true.into(),
             clique: false,
             refines: true.into(),
         };
-        gen_link_entry_directory(&root, &old_settings).unwrap();
+        entry_directory(&root).generate_links(&old_settings).unwrap();
 
-        let report = check_entry_directory_with_settings(
-            &root,
-            CheckMode::Review,
-            &EntryDirectoryCheckSettings {
-                link: true,
-                links: GeneratedLinkSettings::default(),
-                ..EntryDirectoryCheckSettings::default()
-            },
-        )
-        .unwrap();
+        let report = entry_directory(&root)
+            .check_with_settings(
+                CheckMode::Review,
+                &EntryDirectoryCheckSettings {
+                    link: true,
+                    links: GeneratedLinkSettings::default(),
+                    ..EntryDirectoryCheckSettings::default()
+                },
+            )
+            .unwrap();
 
         assert!(report.has_errors());
         assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Error);
@@ -1542,25 +1555,25 @@ Body.
     fn check_reports_stale_generated_links_as_edit_warning() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
             belongs: true.into(),
             clique: false,
             refines: true.into(),
         };
-        gen_link_entry_directory(&root, &old_settings).unwrap();
+        entry_directory(&root).generate_links(&old_settings).unwrap();
 
-        let report = check_entry_directory_with_settings(
-            &root,
-            CheckMode::Edit,
-            &EntryDirectoryCheckSettings {
-                link: true,
-                links: GeneratedLinkSettings::default(),
-                ..EntryDirectoryCheckSettings::default()
-            },
-        )
-        .unwrap();
+        let report = entry_directory(&root)
+            .check_with_settings(
+                CheckMode::Edit,
+                &EntryDirectoryCheckSettings {
+                    link: true,
+                    links: GeneratedLinkSettings::default(),
+                    ..EntryDirectoryCheckSettings::default()
+                },
+            )
+            .unwrap();
 
         assert!(!report.has_errors());
         assert_eq!(report.file_diagnostics()[0].severity, CheckSeverity::Warning);
@@ -1570,25 +1583,25 @@ Body.
     fn check_can_skip_stale_generated_links() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
-        init_entry_directory(&root).unwrap();
+        entry_directory(&root).init().unwrap();
         let old_settings = GeneratedLinkSettings {
             category: true.into(),
             belongs: true.into(),
             clique: false,
             refines: true.into(),
         };
-        gen_link_entry_directory(&root, &old_settings).unwrap();
+        entry_directory(&root).generate_links(&old_settings).unwrap();
 
-        let report = check_entry_directory_with_settings(
-            &root,
-            CheckMode::Review,
-            &EntryDirectoryCheckSettings {
-                link: false,
-                links: GeneratedLinkSettings::default(),
-                ..EntryDirectoryCheckSettings::default()
-            },
-        )
-        .unwrap();
+        let report = entry_directory(&root)
+            .check_with_settings(
+                CheckMode::Review,
+                &EntryDirectoryCheckSettings {
+                    link: false,
+                    links: GeneratedLinkSettings::default(),
+                    ..EntryDirectoryCheckSettings::default()
+                },
+            )
+            .unwrap();
 
         assert!(report.is_clean());
     }
@@ -1610,7 +1623,7 @@ Body.
 ",
         );
 
-        let report = check_entry_directory(temp.path(), CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
 
         assert!(report.has_errors());
         assert!(report.file_diagnostics()[0].message.contains("malformed generated links"));
@@ -1621,8 +1634,9 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         write_entry(temp.path(), "bad.md", "no frontmatter\n");
 
-        let error =
-            gen_link_entry_directory(temp.path(), &GeneratedLinkSettings::default()).unwrap_err();
+        let error = entry_directory(temp.path())
+            .generate_links(&GeneratedLinkSettings::default())
+            .unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::InvalidEntryDirectory(_)));
     }

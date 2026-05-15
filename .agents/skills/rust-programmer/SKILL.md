@@ -73,6 +73,11 @@ Rust structs have better namespace-like features than Rust modules.
 Free functions are acceptable for trait implementations, entry points such as `main`,
 or cases where no meaningful receiver exists.
 
+When several functions share the same leading domain argument,
+introduce or reuse a small domain type and group the operations as methods.
+Prefer the type that owns the main invariant or resource path.
+This keeps APIs discoverable and prevents modules from becoming loose function bags.
+
 Mention `self` in the signature when the method is built around the struct type.
 Take ownership with `self` when the method is the elimination form of the struct type.
 Take `&self` or `&mut self` when the method only needs to borrow the struct.

@@ -29,27 +29,16 @@ pub use crate::entry::{Entry, EntryMetadata, EntryParseError, FrozenMarker, defa
 pub use crate::frost::{FrostError, SirnoFrost};
 pub use crate::id::{EntryId, EntryIdError};
 pub use crate::lake::{
-    EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryReport,
+    EntryDirectory, EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryReport,
     EntryDirectoryWritePolicy, EntryFileDiagnostic, GenLinkDirectoryReport,
-    add_readonly_checkout_warnings, check_entry_directory, check_entry_directory_with_settings,
-    check_gen_link_entry_directory, check_gen_link_entry_directory_with_ignored_paths,
-    create_entry_file, delete_gen_link_entry_directory,
-    delete_gen_link_entry_directory_with_ignored_paths, freeze_entry_file,
-    gen_link_entry_directory, gen_link_entry_directory_with_ignored_paths, init_entry_directory,
-    melt_entry_file, set_entry_directory_readonly, set_entry_directory_writable,
-    write_entry_directory,
 };
 pub use crate::links::{
     BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkError, GeneratedLinkFieldSettings,
     GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links, delete_generated_links,
     generated_links_are_stale, render_generated_links, validate_generated_links,
 };
-pub use crate::lock::{
-    FrostLock, FrostLockStatus, LOCK_FILE_NAME, LockError, SirnoLock, resolve_lock_path,
-};
-pub use crate::query::{
-    EntryQuery, EntryTextTerm, VagueEntryQuery, query_entries, vague_query_entries,
-};
+pub use crate::lock::{FrostLock, FrostLockStatus, LOCK_FILE_NAME, LockError, SirnoLock};
+pub use crate::query::{EntryQuery, EntryTextTerm, VagueEntryQuery};
 pub use crate::witness::{
-    WitnessCheckSettings, WitnessError, WitnessIndex, WitnessRecord, WitnessSpan, scan_witnesses,
+    WitnessCheckSettings, WitnessError, WitnessIndex, WitnessRecord, WitnessSpan,
 };

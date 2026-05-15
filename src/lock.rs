@@ -49,6 +49,11 @@ impl SirnoLock {
     }
     // sirno:witness:sirno-lock:end
 
+    /// Resolve the lock path next to the config file.
+    pub fn path_for_config(config_path: impl AsRef<Path>) -> PathBuf {
+        config_path.as_ref().parent().unwrap_or_else(|| Path::new(".")).join(LOCK_FILE_NAME)
+    }
+
     /// Load a lock from a specific file path.
     // sirno:witness:sirno-lock:begin
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, LockError> {
@@ -181,11 +186,6 @@ pub enum FrostLockStatus {
     CheckedOut,
 }
 // sirno:witness:versioning:end
-
-/// Resolve the lock path next to the config file.
-pub fn resolve_lock_path(config_path: impl AsRef<Path>) -> PathBuf {
-    config_path.as_ref().parent().unwrap_or_else(|| Path::new(".")).join(LOCK_FILE_NAME)
-}
 
 fn is_false(value: &bool) -> bool {
     !*value

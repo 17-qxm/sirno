@@ -8,17 +8,12 @@ use std::process::ExitCode;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
 use sirno::{
-    CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectoryCheckSettings,
-    EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
-    EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
-    GenLinkDirectoryReport, GeneratedLinkSettings, LockError, SirnoConfig, SirnoFrost, SirnoLock,
-    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessRecord,
-    add_readonly_checkout_warnings, check_entry_directory_with_settings,
-    check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
-    delete_gen_link_entry_directory_with_ignored_paths, freeze_entry_file,
-    gen_link_entry_directory_with_ignored_paths, init_entry_directory, melt_entry_file,
-    query_entries, resolve_lock_path, scan_witnesses, set_entry_directory_readonly,
-    set_entry_directory_writable, vague_query_entries,
+    CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectory,
+    EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryReport,
+    EntryDirectoryWritePolicy, EntryId, EntryIdError, EntryMetadata, EntryParseError, EntryQuery,
+    Eterator, FrostError, FrostLockStatus, GenLinkDirectoryReport, GeneratedLinkSettings,
+    LockError, SirnoConfig, SirnoFrost, SirnoLock, VagueEntryQuery, WitnessCheckSettings,
+    WitnessError, WitnessRecord,
 };
 use thiserror::Error;
 
@@ -297,7 +292,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             }
             let lake_path = config.resolve_lake(&config_path);
             config.write_new(&config_path)?;
-            let paths = init_entry_directory(&lake_path)?;
+            let paths = EntryDirectory::new(&lake_path).init()?;
             println!(
                 "initialized {} with {} entries in {}",
                 config_path.display(),
@@ -326,21 +321,21 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             metadata.refines = parse_entry_ids(refines)?;
 
             let entry = Entry::new(id, metadata, body.unwrap_or_default());
-            let path = create_entry_file(&lake, &entry)?;
+            let path = EntryDirectory::new(&lake).create_entry(&entry)?;
             println!("created {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
         | Command::Freeze { id } => {
             let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             let id = EntryId::new(&id)?;
-            let path = freeze_entry_file(&lake, &id)?;
+            let path = EntryDirectory::new(&lake).freeze_entry(&id)?;
             println!("froze entry {id} at {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
         | Command::Melt { id } => {
             let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             let id = EntryId::new(&id)?;
-            let path = melt_entry_file(&lake, &id)?;
+            let path = EntryDirectory::new(&lake).melt_entry(&id)?;
             println!("melted entry {id} at {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
@@ -356,7 +351,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             settings.link = false;
             settings.links = GeneratedLinkSettings::default();
             settings.witness = None;
-            let report = check_entry_directory_with_settings(&lake, CheckMode::Edit, &settings)?;
+            let report =
+                EntryDirectory::new(&lake).check_with_settings(CheckMode::Edit, &settings)?;
             if report.has_errors() {
                 print_entry_directory_report(&report);
                 return Ok(ExitCode::FAILURE);
@@ -368,8 +364,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 .with_category(parse_entry_ids(exact_category)?)
                 .with_belongs(parse_entry_ids(exact_belongs)?)
                 .with_refines(parse_entry_ids(exact_refines)?);
-            let vague_matches = vague_query_entries(report.entries(), &vague_query);
-            let matches = query_entries(vague_matches, &exact_query);
+            let vague_matches = vague_query.select_entries(report.entries());
+            let matches = exact_query.select_entries(vague_matches);
             print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
             Ok(ExitCode::SUCCESS)
         }
@@ -380,7 +376,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let mode = mode.unwrap_or(CliCheckMode::Review);
             if lake_path.is_some() {
                 let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-                let report = check_entry_directory_with_settings(lake, mode.into(), &settings)?;
+                let report =
+                    EntryDirectory::new(lake).check_with_settings(mode.into(), &settings)?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
                     Ok(ExitCode::FAILURE)
@@ -391,11 +388,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             let Some(frost_root) = frost_root else {
                 let config = SirnoConfig::from_file(&config_path)?;
-                let report = check_entry_directory_with_settings(
-                    config.resolve_lake(&config_path),
-                    mode.into(),
-                    &entry_directory_check_settings(&config_path, &config),
-                )?;
+                let report = EntryDirectory::new(config.resolve_lake(&config_path))
+                    .check_with_settings(
+                        mode.into(),
+                        &entry_directory_check_settings(&config_path, &config),
+                    )?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
                     Ok(ExitCode::FAILURE)
@@ -424,16 +421,15 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 settings.link = false;
                 settings.witness = None;
 
-                let check =
-                    check_entry_directory_with_settings(&lake, CheckMode::Review, &settings)?;
+                let directory = EntryDirectory::new(&lake);
+                let check = directory.check_with_settings(CheckMode::Review, &settings)?;
                 if check.has_errors() {
                     print_entry_directory_report(&check);
                     return Ok(ExitCode::FAILURE);
                 }
 
                 if dry {
-                    let report = check_gen_link_entry_directory_with_ignored_paths(
-                        &lake,
+                    let report = directory.check_generated_links_with_ignored_paths(
                         &settings.links,
                         settings.ignore.clone(),
                     )?;
@@ -441,11 +437,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                     return Ok(ExitCode::SUCCESS);
                 }
 
-                let report = gen_link_entry_directory_with_ignored_paths(
-                    &lake,
-                    &settings.links,
-                    settings.ignore.clone(),
-                )?;
+                let report = directory
+                    .generate_links_with_ignored_paths(&settings.links, settings.ignore.clone())?;
                 print_gen_link_report(&report);
                 Ok(ExitCode::SUCCESS)
             }
@@ -457,8 +450,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                     resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.witness = None;
 
-                let report =
-                    delete_gen_link_entry_directory_with_ignored_paths(&lake, settings.ignore)?;
+                let report = EntryDirectory::new(&lake)
+                    .delete_generated_links_with_ignored_paths(settings.ignore)?;
                 print_gen_link_report(&report);
                 Ok(ExitCode::SUCCESS)
             }
@@ -467,10 +460,11 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let config = SirnoConfig::from_file(&config_path)?;
             let mono = config.resolve_mono(&config_path);
             let frost = config.resolve_frost(&config_path);
-            let lock_path = resolve_lock_path(&config_path);
+            let lock_path = SirnoLock::path_for_config(&config_path);
             let lock = if frost.is_some() { read_lock_if_exists(&lock_path)? } else { None };
             let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            let report = check_entry_directory_with_settings(&lake, CheckMode::Review, &settings)?;
+            let report =
+                EntryDirectory::new(&lake).check_with_settings(CheckMode::Review, &settings)?;
             print_status(
                 &config_path,
                 mono.as_deref(),
@@ -519,7 +513,7 @@ fn run_frost_command(
             if needs_config_write {
                 config.write(config_path)?;
             }
-            SirnoLock::current(version).write(resolve_lock_path(config_path))?;
+            SirnoLock::current(version).write(SirnoLock::path_for_config(config_path))?;
             println!(
                 "initialized frost {} at version {} from {}",
                 frost_root.display(),
@@ -545,7 +539,7 @@ fn run_frost_command(
             reject_immutable_checkout(&context.lock_path)?;
             let mut frost = SirnoFrost::open(&context.frost_root)?;
             let version = frost.commit_entry_directory(&context.lake_path, &context.settings)?;
-            set_entry_directory_writable(&context.lake_path, &context.settings)?;
+            context.lake().set_writable(&context.settings)?;
             SirnoLock::current(version).write(&context.lock_path)?;
             println!("froze version {} from {}", version.version(), context.lake_path.display());
             Ok(ExitCode::SUCCESS)
@@ -563,10 +557,10 @@ fn run_frost_command(
                 },
             )?;
             if unsafe_mutable {
-                set_entry_directory_writable(&context.lake_path, &context.settings)?;
+                context.lake().set_writable(&context.settings)?;
             } else {
-                add_readonly_checkout_warnings(&paths)?;
-                set_entry_directory_readonly(&context.lake_path, &context.settings)?;
+                context.lake().add_readonly_checkout_warnings(&paths)?;
+                context.lake().set_readonly(&context.settings)?;
             }
             SirnoLock::checked_out(snapshot, unsafe_mutable).write(&context.lock_path)?;
             println!(
@@ -633,10 +627,14 @@ impl FrostContext {
         };
         Ok(Self {
             frost_root,
-            lock_path: resolve_lock_path(config_path),
+            lock_path: SirnoLock::path_for_config(config_path),
             settings: entry_directory_check_settings(config_path, &config),
             lake_path: resolve_lake_path(lake_path, config_path, &config),
         })
+    }
+
+    fn lake(&self) -> EntryDirectory {
+        EntryDirectory::new(&self.lake_path)
     }
 }
 
@@ -671,7 +669,7 @@ fn run_witness_command(config_path: &Path, raw_id: &str, full: bool) -> Result<E
     let Some(settings) = witness_check_settings(config_path, &config) else {
         return Err(CliError::RepoMembersNotConfigured);
     };
-    let index = scan_witnesses(&settings)?;
+    let index = settings.scan()?;
     let records = index.records_for(&id);
     if records.is_empty() {
         println!("no witness found for {id}");

@@ -96,6 +96,19 @@ impl EntryQuery {
     }
     // sirno:witness:query:end
 
+    /// Return entries selected by this exact query in input order.
+    // sirno:witness:query:begin
+    pub fn select_entries<'a>(
+        &self, entries: impl IntoIterator<Item = &'a Entry>,
+    ) -> Vec<&'a Entry> {
+        let entries = entries.into_iter().collect::<Vec<_>>();
+        trace!("query_entries begin: entries={}", entries.len());
+        let matches = entries.into_iter().filter(|entry| self.matches(entry)).collect::<Vec<_>>();
+        trace!("query_entries end: matches={}", matches.len());
+        matches
+    }
+    // sirno:witness:query:end
+
     fn matches_text(&self, entry: &Entry) -> bool {
         if self.text_terms.is_empty() {
             return true;
@@ -143,32 +156,20 @@ impl VagueEntryQuery {
         self.text_terms.iter().all(|term| term.matches(&haystack))
     }
     // sirno:witness:query:end
-}
 
-/// Return entries selected by an exact query in input order.
-// sirno:witness:query:begin
-pub fn query_entries<'a>(
-    entries: impl IntoIterator<Item = &'a Entry>, query: &EntryQuery,
-) -> Vec<&'a Entry> {
-    let entries = entries.into_iter().collect::<Vec<_>>();
-    trace!("query_entries begin: entries={}", entries.len());
-    let matches = entries.into_iter().filter(|entry| query.matches(entry)).collect::<Vec<_>>();
-    trace!("query_entries end: matches={}", matches.len());
-    matches
+    /// Return entries selected by this vague query in input order.
+    // sirno:witness:query:begin
+    pub fn select_entries<'a>(&self, entries: &'a [Entry]) -> Vec<&'a Entry> {
+        trace!("vague_query_entries begin: entries={}", entries.len());
+        let entries_by_id =
+            entries.iter().map(|entry| (&entry.id, entry)).collect::<BTreeMap<_, _>>();
+        let matches =
+            entries.iter().filter(|entry| self.matches(entry, &entries_by_id)).collect::<Vec<_>>();
+        trace!("vague_query_entries end: matches={}", matches.len());
+        matches
+    }
+    // sirno:witness:query:end
 }
-// sirno:witness:query:end
-
-/// Return entries selected by a vague query in input order.
-// sirno:witness:query:begin
-pub fn vague_query_entries<'a>(entries: &'a [Entry], query: &VagueEntryQuery) -> Vec<&'a Entry> {
-    trace!("vague_query_entries begin: entries={}", entries.len());
-    let entries_by_id = entries.iter().map(|entry| (&entry.id, entry)).collect::<BTreeMap<_, _>>();
-    let matches =
-        entries.iter().filter(|entry| query.matches(entry, &entries_by_id)).collect::<Vec<_>>();
-    trace!("vague_query_entries end: matches={}", matches.len());
-    matches
-}
-// sirno:witness:query:end
 
 fn matches_targets(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
     query_targets.is_empty() || query_targets.iter().any(|target| entry_targets.contains(target))
@@ -259,7 +260,7 @@ mod tests {
         let second = entry("second", "Second", "A second idea.", "");
         let entries = [&first, &second];
 
-        let matches = query_entries(entries, &EntryQuery::new().with_text_terms(["idea"]));
+        let matches = EntryQuery::new().with_text_terms(["idea"]).select_entries(entries);
 
         assert_eq!(matches, vec![&first, &second]);
     }
@@ -271,8 +272,7 @@ mod tests {
         concept.metadata.category.push(id("meta"));
         let entries = vec![concept, meta];
 
-        let matches =
-            vague_query_entries(&entries, &VagueEntryQuery::new().with_text_terms(["meta"]));
+        let matches = VagueEntryQuery::new().with_text_terms(["meta"]).select_entries(&entries);
 
         assert_eq!(
             matches.iter().map(|entry| &entry.id).collect::<Vec<_>>(),
@@ -288,7 +288,7 @@ mod tests {
         let entries = vec![concept, meta];
 
         let matches =
-            vague_query_entries(&entries, &VagueEntryQuery::new().with_text_terms(["vocabulary"]));
+            VagueEntryQuery::new().with_text_terms(["vocabulary"]).select_entries(&entries);
 
         assert_eq!(
             matches.iter().map(|entry| &entry.id).collect::<Vec<_>>(),

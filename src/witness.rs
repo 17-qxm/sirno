@@ -52,6 +52,24 @@ impl WitnessCheckSettings {
     pub fn is_empty(&self) -> bool {
         self.members.is_empty()
     }
+
+    /// Scan configured repository members for Sirno witness blocks.
+    ///
+    /// The scan uses configured delimiter regexes.
+    // sirno:witness:witness-lookup:begin
+    pub fn scan(&self) -> Result<WitnessIndex, WitnessError> {
+        trace!(
+            root = %self.root.display(),
+            member_count = self.members.len(),
+            "scan_witnesses begin"
+        );
+        let files = resolve_member_files(self)?;
+        let output = run_mosaika_witness_scan(&self.root, &files, &self.witness)?;
+        let index = parse_witness_output(&output)?;
+        trace!(file_count = files.len(), "scan_witnesses end");
+        Ok(index)
+    }
+    // sirno:witness:witness-lookup:end
 }
 
 /// Repository locations grouped by witnessed entry id.
@@ -129,24 +147,6 @@ pub struct WitnessSpan {
     pub end_column: usize,
 }
 // sirno:witness:witness:end
-
-// sirno:witness:witness-lookup:begin
-/// Scan configured repository members for Sirno witness blocks.
-///
-/// The scan uses configured delimiter regexes.
-pub fn scan_witnesses(settings: &WitnessCheckSettings) -> Result<WitnessIndex, WitnessError> {
-    trace!(
-        root = %settings.root.display(),
-        member_count = settings.members.len(),
-        "scan_witnesses begin"
-    );
-    let files = resolve_member_files(settings)?;
-    let output = run_mosaika_witness_scan(&settings.root, &files, &settings.witness)?;
-    let index = parse_witness_output(&output)?;
-    trace!(file_count = files.len(), "scan_witnesses end");
-    Ok(index)
-}
-// sirno:witness:witness-lookup:end
 
 // sirno:witness:witness-lookup:begin
 fn resolve_member_files(settings: &WitnessCheckSettings) -> Result<Vec<PathBuf>, WitnessError> {
@@ -536,7 +536,7 @@ mod tests {
             WitnessSettings::standard(),
         );
 
-        let index = scan_witnesses(&settings).unwrap();
+        let index = settings.scan().unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
 
         assert!(index.contains_entry(&EntryId::new("witness-lookup").unwrap()));
@@ -567,7 +567,7 @@ mod tests {
             WitnessSettings::standard(),
         );
 
-        let index = scan_witnesses(&settings).unwrap();
+        let index = settings.scan().unwrap();
 
         assert!(index.contains_entry(&EntryId::new("repo-member").unwrap()));
     }
@@ -582,7 +582,7 @@ mod tests {
             WitnessSettings::standard(),
         );
 
-        let index = scan_witnesses(&settings).unwrap();
+        let index = settings.scan().unwrap();
         let records = index.records_for(&EntryId::new("readme").unwrap());
 
         assert!(index.contains_entry(&EntryId::new("readme").unwrap()));
@@ -612,7 +612,7 @@ mod tests {
             },
         );
 
-        let index = scan_witnesses(&settings).unwrap();
+        let index = settings.scan().unwrap();
         let records = index.records_for(&EntryId::new("custom").unwrap());
 
         assert!(index.contains_entry(&EntryId::new("custom").unwrap()));
@@ -631,7 +631,7 @@ mod tests {
             WitnessSettings::standard(),
         );
 
-        let index = scan_witnesses(&settings).unwrap();
+        let index = settings.scan().unwrap();
         let records = index.records_for(&EntryId::new("witness-lookup").unwrap());
 
         assert_eq!(
@@ -657,7 +657,7 @@ mod tests {
             WitnessSettings::standard(),
         );
 
-        let error = scan_witnesses(&settings).unwrap_err();
+        let error = settings.scan().unwrap_err();
 
         assert!(matches!(
             error,

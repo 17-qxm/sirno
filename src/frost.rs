@@ -19,8 +19,7 @@ use crate::check::{CheckMode, CheckReport, check_entries};
 use crate::entry::{Entry, EntryMetadata, default_seed_entries};
 use crate::id::{EntryId, EntryIdError};
 use crate::lake::{
-    EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryWritePolicy,
-    check_entry_directory_with_settings, write_entry_directory,
+    EntryDirectory, EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryWritePolicy,
 };
 use crate::links::delete_generated_links;
 
@@ -187,7 +186,7 @@ impl SirnoFrost {
     ) -> Result<SnapshotRef, FrostError> {
         let root = root.into();
         trace!("sirno commit_entry_directory begin: root={}", root.display());
-        let report = check_entry_directory_with_settings(&root, CheckMode::Review, settings)?;
+        let report = EntryDirectory::new(&root).check_with_settings(CheckMode::Review, settings)?;
         if report.has_errors() {
             return Err(FrostError::InvalidEntryDirectory(root));
         }
@@ -206,7 +205,7 @@ impl SirnoFrost {
         let root = root.into();
         trace!("sirno checkout_entry_directory begin: at={} root={}", at.version(), root.display());
         let entries = self.read_all_entries_at_snapshot(at)?;
-        let paths = write_entry_directory(&root, &entries, policy)?;
+        let paths = EntryDirectory::new(&root).write(&entries, policy)?;
         trace!("sirno checkout_entry_directory end: entries={}", paths.len());
         Ok(paths)
     }
@@ -639,12 +638,9 @@ mod tests {
             )
             .unwrap();
 
-        let checked = check_entry_directory_with_settings(
-            checkout.path(),
-            CheckMode::Review,
-            &EntryDirectoryCheckSettings::default(),
-        )
-        .unwrap();
+        let checked = EntryDirectory::new(checkout.path())
+            .check_with_settings(CheckMode::Review, &EntryDirectoryCheckSettings::default())
+            .unwrap();
         assert_eq!(checked.entries(), &[alpha, beta]);
     }
 
