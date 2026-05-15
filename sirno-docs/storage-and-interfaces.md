@@ -66,6 +66,11 @@ and restores write permission.
 Its default mode is vague text query.
 Exact structural predicates use `--exact FIELD=ENTRY_ID`.
 
+`sirno rg` runs `rg` against the active *lake* path.
+It forwards its arguments to the `rg` binary,
+then appends the resolved *lake* path.
+It preserves `rg` exit codes.
+
 `sirno witness ENTRY_ID` scans configured repo members through `mosaika`
 and reports repository *witness* blocks for the selected *entry* id.
 It first resolves `ENTRY_ID` in the active *lake*.

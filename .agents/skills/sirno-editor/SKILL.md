@@ -176,6 +176,7 @@ Prefer these checks when the CLI provides them:
 
 ```text
 sirno query --fields id
+sirno rg TEXT
 sirno check --mode edit
 sirno gen-link
 sirno check

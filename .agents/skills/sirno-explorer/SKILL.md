@@ -60,7 +60,8 @@ Then inspect the entry prose and related entries before falling back to text sea
 
 5. Inspect witnessed repository regions first.
    Read the files and nearby context around witness spans.
-   Use `rg` for focused follow-up searches.
+   Use `sirno rg` for focused follow-up searches inside the lake.
+   Use plain `rg` when searching repository code outside the lake.
    Keep the entry claim and the code evidence connected in your notes.
 
 6. Synthesize the route.
@@ -92,6 +93,15 @@ Use `--fields id,path,desc` when you need entry file paths from the result set.
 Use the configured structural field names from `Sirno.toml`.
 Do not assume every project uses only `category`, `belongs`, and `refines`.
 
+Use `sirno rg` for literal lake text search:
+
+```sh
+cargo run -- rg generated-footer
+cargo run -- rg --files
+```
+
+`sirno rg` forwards arguments to the real `rg` command and appends the configured lake path.
+
 ## Witness Strategy
 
 Treat witness output as evidence, not as a replacement for reading code.
@@ -122,7 +132,7 @@ Prefer this order:
 2. entry metadata and prose
 3. `sirno witness ENTRY_ID --full`
 4. witnessed files and nearby code
-5. targeted `rg`
+5. targeted `sirno rg` or plain `rg`
 
 Do not add or edit witness blocks while exploring.
 Use `sirno-witness` when the task changes from exploration to creating or refining evidence.

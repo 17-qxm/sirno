@@ -1,10 +1,11 @@
 //! Command-line interface for Sirno.
 
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
+use std::process::{Command as ProcessCommand, ExitCode, ExitStatus};
 use std::str::FromStr;
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
@@ -110,6 +111,14 @@ enum Command {
         /// Output format.
         #[arg(long, value_enum)]
         format: Option<CliQueryOutputFormat>,
+    },
+    // sirno:witness:storage-and-interfaces:end
+    /// Run ripgrep in the configured public Markdown lake.
+    // sirno:witness:storage-and-interfaces:begin
+    Rg {
+        /// Arguments forwarded to ripgrep before the lake path.
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<OsString>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Check current entry structure.
@@ -485,6 +494,7 @@ impl Cli {
                 print_query_results(&report, &matches, &fields, format)?;
                 Ok(ExitCode::SUCCESS)
             }
+            | Command::Rg { args } => run_rg_command(lake_path.as_deref(), &config_path, args),
             | Command::Check { frost_root, mode } => {
                 if lake_path.is_some() && frost_root.is_some() {
                     return Err(CliError::LakePathWithFrostRoot);
@@ -817,6 +827,34 @@ fn run_witness_command(
 
 fn print_witness_records(records: &[WitnessRecord], full: bool) {
     print!("{}", format_witness_records(records, full));
+}
+
+fn run_rg_command(
+    lake_path: Option<&Path>, config_path: &Path, args: Vec<OsString>,
+) -> Result<ExitCode, CliError> {
+    let lake = resolve_lake_path_for_rg(lake_path, config_path)?;
+    let status =
+        ProcessCommand::new("rg").args(args).arg(lake).status().map_err(CliError::RunRg)?;
+    Ok(exit_code_from_status(status))
+}
+
+fn resolve_lake_path_for_rg(
+    lake_path: Option<&Path>, config_path: &Path,
+) -> Result<PathBuf, CliError> {
+    if let Some(lake_path) = lake_path {
+        return Ok(lake_path.to_path_buf());
+    }
+
+    let config = SirnoConfig::from_file(config_path)?;
+    Ok(config.resolve_lake(config_path))
+}
+
+fn exit_code_from_status(status: ExitStatus) -> ExitCode {
+    if let Some(code) = status.code().and_then(|code| u8::try_from(code).ok()) {
+        return ExitCode::from(code);
+    }
+
+    ExitCode::FAILURE
 }
 
 fn format_witness_records(records: &[WitnessRecord], full: bool) -> String {
@@ -1287,6 +1325,9 @@ enum CliError {
     /// Entry metadata construction failed.
     #[error(transparent)]
     EntryParse(#[from] EntryParseError),
+    /// Ripgrep could not be started.
+    #[error("failed to run rg")]
+    RunRg(#[source] std::io::Error),
     /// Query JSON rendering failed.
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -1294,6 +1335,7 @@ enum CliError {
 
 #[cfg(test)]
 mod tests {
+    use std::ffi::OsString;
     use std::fs;
     use std::path::{Path, PathBuf};
 
@@ -1525,6 +1567,24 @@ mod tests {
             Cli::try_parse_from(["sirno", "query", "--exact-category", "concept"]).unwrap_err();
 
         assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    #[test]
+    fn rg_accepts_forwarded_arguments() {
+        let cli = Cli::parse_from(["sirno", "rg", "--json", "metadata"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::Rg { args }
+                if args == vec![OsString::from("--json"), OsString::from("metadata")]
+        ));
+    }
+
+    #[test]
+    fn rg_requires_forwarded_arguments() {
+        let error = Cli::try_parse_from(["sirno", "rg"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::MissingRequiredArgument);
     }
 
     #[test]

@@ -191,7 +191,8 @@ The third shows how this README witnesses its own Sirno-facing intention.
 
 Sirno currently provides a Rust library and CLI for Markdown entry storage,
 project configuration, structural checks, generated footers,
-querying, witness lookup, entry freezing, and optional Sirno Frost snapshots over `eter`.
+querying, lake-local ripgrep search, witness lookup, entry freezing,
+and optional Sirno Frost snapshots over `eter`.
 
 Sirno Frost is initialized separately with `sirno frost init`.
 `Sirno.lock.toml` records whether the public *lake* is current
