@@ -24,6 +24,7 @@ Generated config files include concise comments that describe how each written f
 `[repo].members` optionally lists repository paths or globs scanned for *witness* blocks.
 `[witness]` configures the delimiter regexes used to find *witness* blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
+The CLI `--lake-path PATH` option can override `[lake].path` for one command.
 
 A project can use Sirno without a configured *monograph*, repo members, or Sirno Frost.
 `sirno init` creates the config and public *entry lake*.

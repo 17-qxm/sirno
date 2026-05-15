@@ -30,6 +30,9 @@ struct Cli {
     /// Sirno project config file.
     #[arg(long, global = true)]
     config: Option<PathBuf>,
+    /// Public Markdown lake path override.
+    #[arg(long = "lake-path", global = true)]
+    lake_path: Option<PathBuf>,
     #[command(subcommand)]
     command: Command,
 }
@@ -76,9 +79,6 @@ enum Command {
         /// Initial Markdown body.
         #[arg(long)]
         body: Option<String>,
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Freeze one public Markdown entry and make its file read-only.
@@ -86,9 +86,6 @@ enum Command {
     Freeze {
         /// Entry id to freeze.
         id: String,
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Melt one public Markdown entry and make its file writable.
@@ -97,9 +94,6 @@ enum Command {
     Melt {
         /// Entry id to melt.
         id: String,
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Query public Markdown entries.
@@ -122,20 +116,14 @@ enum Command {
         /// Output format.
         #[arg(long, value_enum)]
         format: Option<CliQueryFormat>,
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Check current entry structure.
     // sirno:witness:storage-and-interfaces:begin
     Check {
         /// Sirno Frost root.
-        #[arg(long = "frost-root", conflicts_with = "entries")]
+        #[arg(long = "frost-root", conflicts_with = "lake_path")]
         frost_root: Option<PathBuf>,
-        /// Public Markdown entry directory.
-        #[arg(long, conflicts_with = "frost_root")]
-        entries: Option<PathBuf>,
         /// Check boundary.
         #[arg(long, value_enum)]
         mode: Option<CliCheckMode>,
@@ -151,9 +139,6 @@ enum Command {
         /// Generated-link command.
         #[command(subcommand)]
         command: Option<GenLinkCommand>,
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
     },
     // sirno:witness:storage-and-interfaces:end
     /// Show the current Sirno project status.
@@ -265,11 +250,7 @@ enum FrostCommand {
 #[derive(Debug, Subcommand)]
 enum GenLinkCommand {
     /// Delete generated Markdown link footers.
-    Delete {
-        /// Public Markdown entry directory.
-        #[arg(long)]
-        entries: Option<PathBuf>,
-    },
+    Delete,
 }
 
 impl From<CliCheckMode> for CheckMode {
@@ -305,9 +286,12 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<ExitCode, CliError> {
     let config_path = cli.config.unwrap_or_else(default_config_path);
+    let lake_path = cli.lake_path;
     match cli.command {
         | Command::Init { mono, lake } => {
-            let mut config = SirnoConfig::new(lake.unwrap_or_else(default_lake_path));
+            let mut config = SirnoConfig::new(
+                lake.or_else(|| lake_path.clone()).unwrap_or_else(default_lake_path),
+            );
             if let Some(mono) = mono {
                 config = config.with_mono(mono);
             }
@@ -332,14 +316,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             println!("moved lake {} to {}", old_lake.display(), new_lake.display());
             Ok(ExitCode::SUCCESS)
         }
-        | Command::New { id, name, description, category, belongs, refines, body, entries } => {
-            let entries = match entries {
-                | Some(entries) => entries,
-                | None => {
-                    let config = SirnoConfig::from_file(&config_path)?;
-                    config.resolve_lake(&config_path)
-                }
-            };
+        | Command::New { id, name, description, category, belongs, refines, body } => {
+            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             let id = EntryId::new(&id)?;
             let mut metadata =
                 EntryMetadata::new(name.unwrap_or_else(|| title_name_from_id(&id)), description)?;
@@ -348,21 +326,21 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             metadata.refines = parse_entry_ids(refines)?;
 
             let entry = Entry::new(id, metadata, body.unwrap_or_default());
-            let path = create_entry_file(&entries, &entry)?;
+            let path = create_entry_file(&lake, &entry)?;
             println!("created {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Freeze { id, entries } => {
-            let (entries, _) = resolve_entry_directory(entries, &config_path)?;
+        | Command::Freeze { id } => {
+            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             let id = EntryId::new(&id)?;
-            let path = freeze_entry_file(&entries, &id)?;
+            let path = freeze_entry_file(&lake, &id)?;
             println!("froze entry {id} at {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Melt { id, entries } => {
-            let (entries, _) = resolve_entry_directory(entries, &config_path)?;
+        | Command::Melt { id } => {
+            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             let id = EntryId::new(&id)?;
-            let path = melt_entry_file(&entries, &id)?;
+            let path = melt_entry_file(&lake, &id)?;
             println!("melted entry {id} at {}", path.display());
             Ok(ExitCode::SUCCESS)
         }
@@ -373,13 +351,12 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             exact_belongs,
             exact_refines,
             format,
-            entries,
         } => {
-            let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
+            let (lake, mut settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
             settings.link = false;
             settings.links = GeneratedLinkSettings::default();
             settings.witness = None;
-            let report = check_entry_directory_with_settings(&entries, CheckMode::Edit, &settings)?;
+            let report = check_entry_directory_with_settings(&lake, CheckMode::Edit, &settings)?;
             if report.has_errors() {
                 print_entry_directory_report(&report);
                 return Ok(ExitCode::FAILURE);
@@ -396,11 +373,14 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
             Ok(ExitCode::SUCCESS)
         }
-        | Command::Check { frost_root, entries, mode } => {
+        | Command::Check { frost_root, mode } => {
+            if lake_path.is_some() && frost_root.is_some() {
+                return Err(CliError::LakePathWithFrostRoot);
+            }
             let mode = mode.unwrap_or(CliCheckMode::Review);
-            if let Some(entries) = entries {
-                let settings = explicit_entries_check_settings(&config_path)?;
-                let report = check_entry_directory_with_settings(entries, mode.into(), &settings)?;
+            if lake_path.is_some() {
+                let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let report = check_entry_directory_with_settings(lake, mode.into(), &settings)?;
                 print_entry_directory_report(&report);
                 return if report.has_errors() {
                     Ok(ExitCode::FAILURE)
@@ -437,14 +417,15 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
-        | Command::GenLink { command, entries, dry } => match command {
+        | Command::GenLink { command, dry } => match command {
             | None => {
-                let (entries, mut settings) = resolve_entry_directory(entries, &config_path)?;
+                let (lake, mut settings) =
+                    resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.link = false;
                 settings.witness = None;
 
                 let check =
-                    check_entry_directory_with_settings(&entries, CheckMode::Review, &settings)?;
+                    check_entry_directory_with_settings(&lake, CheckMode::Review, &settings)?;
                 if check.has_errors() {
                     print_entry_directory_report(&check);
                     return Ok(ExitCode::FAILURE);
@@ -452,7 +433,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
 
                 if dry {
                     let report = check_gen_link_entry_directory_with_ignored_paths(
-                        &entries,
+                        &lake,
                         &settings.links,
                         settings.ignore.clone(),
                     )?;
@@ -461,23 +442,23 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 }
 
                 let report = gen_link_entry_directory_with_ignored_paths(
-                    &entries,
+                    &lake,
                     &settings.links,
                     settings.ignore.clone(),
                 )?;
                 print_gen_link_report(&report);
                 Ok(ExitCode::SUCCESS)
             }
-            | Some(GenLinkCommand::Delete { entries: delete_entries }) => {
+            | Some(GenLinkCommand::Delete) => {
                 if dry {
                     return Err(CliError::DryWithGenLinkSubcommand);
                 }
-                let (entries, mut settings) =
-                    resolve_entry_directory(delete_entries.or(entries), &config_path)?;
+                let (lake, mut settings) =
+                    resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.witness = None;
 
                 let report =
-                    delete_gen_link_entry_directory_with_ignored_paths(&entries, settings.ignore)?;
+                    delete_gen_link_entry_directory_with_ignored_paths(&lake, settings.ignore)?;
                 print_gen_link_report(&report);
                 Ok(ExitCode::SUCCESS)
             }
@@ -488,12 +469,8 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             let frost = config.resolve_frost(&config_path);
             let lock_path = resolve_lock_path(&config_path);
             let lock = if frost.is_some() { read_lock_if_exists(&lock_path)? } else { None };
-            let lake = config.resolve_lake(&config_path);
-            let report = check_entry_directory_with_settings(
-                &lake,
-                CheckMode::Review,
-                &entry_directory_check_settings(&config_path, &config),
-            )?;
+            let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+            let report = check_entry_directory_with_settings(&lake, CheckMode::Review, &settings)?;
             print_status(
                 &config_path,
                 mono.as_deref(),
@@ -505,13 +482,15 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
         }
         | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
-        | Command::Frost { command } => run_frost_command(command, &config_path),
+        | Command::Frost { command } => {
+            run_frost_command(command, &config_path, lake_path.as_deref())
+        }
         | Command::Util { command } => run_util_command(command),
     }
 }
 
 fn run_frost_command(
-    command: FrostCommand, config_path: &std::path::Path,
+    command: FrostCommand, config_path: &std::path::Path, lake_path: Option<&Path>,
 ) -> Result<ExitCode, CliError> {
     match command {
         | FrostCommand::Init { frost } => {
@@ -531,7 +510,7 @@ fn run_frost_command(
 
             let frost_root =
                 config.resolve_frost(config_path).expect("frost path configured by init");
-            let lake_path = config.resolve_lake(config_path);
+            let lake_path = resolve_lake_path(lake_path, config_path, &config);
             let mut frost = SirnoFrost::open(&frost_root)?;
             let version = frost.commit_entry_directory(
                 &lake_path,
@@ -562,7 +541,7 @@ fn run_frost_command(
             Ok(ExitCode::SUCCESS)
         }
         | FrostCommand::Commit => {
-            let context = FrostContext::load(config_path)?;
+            let context = FrostContext::load(config_path, lake_path)?;
             reject_immutable_checkout(&context.lock_path)?;
             let mut frost = SirnoFrost::open(&context.frost_root)?;
             let version = frost.commit_entry_directory(&context.lake_path, &context.settings)?;
@@ -572,7 +551,7 @@ fn run_frost_command(
             Ok(ExitCode::SUCCESS)
         }
         | FrostCommand::Checkout { version, unsafe_mutable } => {
-            let context = FrostContext::load(config_path)?;
+            let context = FrostContext::load(config_path, lake_path)?;
             let version = frost_version(version)?;
             let frost = SirnoFrost::open(&context.frost_root)?;
             let snapshot = frost.snapshot_for_version(version)?;
@@ -647,7 +626,7 @@ struct FrostContext {
 }
 
 impl FrostContext {
-    fn load(config_path: &Path) -> Result<Self, CliError> {
+    fn load(config_path: &Path, lake_path: Option<&Path>) -> Result<Self, CliError> {
         let config = SirnoConfig::from_file(config_path)?;
         let Some(frost_root) = config.resolve_frost(config_path) else {
             return Err(CliError::FrostNotConfigured);
@@ -656,7 +635,7 @@ impl FrostContext {
             frost_root,
             lock_path: resolve_lock_path(config_path),
             settings: entry_directory_check_settings(config_path, &config),
-            lake_path: config.resolve_lake(config_path),
+            lake_path: resolve_lake_path(lake_path, config_path, &config),
         })
     }
 }
@@ -771,7 +750,7 @@ fn default_frost_path() -> PathBuf {
     PathBuf::from("sirno-frost")
 }
 
-fn explicit_entries_check_settings(
+fn explicit_lake_check_settings(
     config_path: &std::path::Path,
 ) -> Result<EntryDirectoryCheckSettings, CliError> {
     if config_path.exists() {
@@ -807,11 +786,17 @@ fn witness_check_settings(
     ))
 }
 
-fn resolve_entry_directory(
-    entries: Option<PathBuf>, config_path: &std::path::Path,
+fn resolve_lake_path(
+    lake_path: Option<&Path>, config_path: &Path, config: &SirnoConfig,
+) -> PathBuf {
+    lake_path.map(Path::to_path_buf).unwrap_or_else(|| config.resolve_lake(config_path))
+}
+
+fn resolve_lake_directory(
+    lake_path: Option<&Path>, config_path: &std::path::Path,
 ) -> Result<(PathBuf, EntryDirectoryCheckSettings), CliError> {
-    if let Some(entries) = entries {
-        return Ok((entries, explicit_entries_check_settings(config_path)?));
+    if let Some(lake_path) = lake_path {
+        return Ok((lake_path.to_path_buf(), explicit_lake_check_settings(config_path)?));
     }
 
     let config = SirnoConfig::from_file(config_path)?;
@@ -1032,6 +1017,9 @@ enum CliError {
     /// Witness lookup requires configured repo members.
     #[error("repo members are not configured; add [repo].members to Sirno.toml")]
     RepoMembersNotConfigured,
+    /// Lake path override does not apply to checking a Frost root directly.
+    #[error("`--lake-path` cannot be used with `check --frost-root`")]
+    LakePathWithFrostRoot,
     /// Dry-run mode applies only to generated-link writing.
     #[error("`--dry` only applies to `sirno gen-link` without a subcommand")]
     DryWithGenLinkSubcommand,
@@ -1082,6 +1070,27 @@ mod tests {
     }
 
     #[test]
+    fn init_uses_global_lake_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join(CONFIG_FILE_NAME);
+        let docs = temp.path().join("sirno-docs");
+
+        run(Cli::parse_from([
+            "sirno",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--lake-path",
+            "sirno-docs",
+            "init",
+        ]))
+        .unwrap();
+
+        let config = SirnoConfig::from_file(&config_path).unwrap();
+        assert_eq!(config.lake.path, PathBuf::from("sirno-docs"));
+        assert!(docs.join("concept.md").exists());
+    }
+
+    #[test]
     fn frost_init_accepts_frost_path() {
         let cli = Cli::parse_from(["sirno", "frost", "init", "--frost", "sirno-frost"]);
 
@@ -1124,6 +1133,37 @@ mod tests {
         let cli = Cli::parse_from(["sirno", "freeze", "alpha"]);
 
         assert!(matches!(cli.command, Command::Freeze { id, .. } if id == "alpha"));
+    }
+
+    #[test]
+    fn lake_path_is_global() {
+        let cli = Cli::parse_from(["sirno", "freeze", "alpha", "--lake-path", "scratch-docs"]);
+
+        assert_eq!(cli.lake_path.as_deref(), Some(Path::new("scratch-docs")));
+        assert!(matches!(cli.command, Command::Freeze { id } if id == "alpha"));
+    }
+
+    #[test]
+    fn lake_path_conflicts_with_frost_root_check() {
+        let error = run(Cli::parse_from([
+            "sirno",
+            "--lake-path",
+            "scratch-docs",
+            "check",
+            "--frost-root",
+            "sirno-frost",
+        ]))
+        .unwrap_err();
+
+        assert!(matches!(error, CliError::LakePathWithFrostRoot));
+    }
+
+    #[test]
+    fn subcommands_reject_entries_flag() {
+        let error = Cli::try_parse_from(["sirno", "freeze", "alpha", "--entries", "scratch-docs"])
+            .unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     #[test]
@@ -1248,6 +1288,41 @@ Body.
         let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
         assert!(!source.contains("frozen:\n"));
         assert!(!fs::metadata(docs.join("alpha.md")).unwrap().permissions().readonly());
+    }
+
+    #[test]
+    fn lake_path_override_targets_public_lake_commands() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join(CONFIG_FILE_NAME);
+        let configured_docs = temp.path().join("docs");
+        let override_docs = temp.path().join("scratch-docs");
+        SirnoConfig::new("docs").write_new(&config_path).unwrap();
+        fs::create_dir(&configured_docs).unwrap();
+        fs::create_dir(&override_docs).unwrap();
+        let entry = "\
+---
+name: Alpha
+description: Alpha entry.
+---
+
+Body.
+";
+        fs::write(configured_docs.join("alpha.md"), entry).unwrap();
+        fs::write(override_docs.join("alpha.md"), entry).unwrap();
+
+        run(Cli::parse_from([
+            "sirno",
+            "--config",
+            config_path.to_str().unwrap(),
+            "freeze",
+            "alpha",
+            "--lake-path",
+            override_docs.to_str().unwrap(),
+        ]))
+        .unwrap();
+
+        assert!(!fs::read_to_string(configured_docs.join("alpha.md")).unwrap().contains("frozen:"));
+        assert!(fs::read_to_string(override_docs.join("alpha.md")).unwrap().contains("frozen:"));
     }
 
     #[test]

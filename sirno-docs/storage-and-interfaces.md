@@ -33,6 +33,8 @@ without adding version fields to *entry* metadata.
 The CLI is the first operational interface.
 It can initialize *lakes*, create *entries*, query *entries*, check structure,
 move configured storage paths, and maintain *generated footer* links.
+The global `--lake-path PATH` option overrides the configured public *lake*
+for commands that read or write the active *lake*.
 Those commands should remain plain enough to use from a terminal
 and stable enough for agents and skills to call.
 
@@ -78,7 +80,7 @@ Multiple full regions are separated by a blank line, `---`, and another blank li
 `sirno gen-link` creates or replaces Sirno-owned *generated footer* regions.
 `sirno gen-link --dry` reports *generated footer* regions that would change without writing files.
 `sirno gen-link delete` removes those regions.
-Generated-link commands operate on the configured *lake* unless an explicit *entry* directory is given.
+Generated-link commands operate on the active *lake* path.
 
 `sirno util completion` emits shell completion scripts.
 Completion generation is a utility interface,
