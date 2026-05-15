@@ -56,7 +56,7 @@ cargo run -- witness ENTRY_ID --full
 ```
 
 If no witness exists, say that directly.
-Then inspect the entry prose and related entries before falling back to text search.
+Then inspect the entry prose and related entries before using literal text search.
 
 5. Inspect witnessed repository regions first.
    Read the files and nearby context around witness spans.
@@ -69,9 +69,13 @@ Then inspect the entry prose and related entries before falling back to text sea
    relevant entries, witness locations, code/doc locations, and remaining uncertainty.
    Prefer file and line references over broad summaries.
 
-## Query Strategy
+## Lake Discovery
 
-Start vague when the user's language is conceptual:
+Use `sirno query` when the user's language is conceptual,
+when structural metadata should guide the route,
+or when you need entry descriptions.
+
+Start vague for discovery:
 
 ```sh
 cargo run -- query parser metadata --fields id,desc
@@ -93,10 +97,13 @@ Use `--fields id,path,desc` when you need entry file paths from the result set.
 Use the configured structural field names from `Sirno.toml`.
 Do not assume every project uses only `category`, `belongs`, and `refines`.
 
-Use `sirno rg` for literal lake text search:
+Use `sirno rg` when you need literal text inside Sirno documents:
+phrases, command names, examples, old wording, headings, or entry ids used in prose.
 
 ```sh
 cargo run -- rg generated-footer
+cargo run -- rg -n "generated footer"
+cargo run -- rg -C 2 "with-generated-footer"
 cargo run -- rg --with-generated-footer generated-footer
 cargo run -- rg --files
 ```
@@ -104,6 +111,10 @@ cargo run -- rg --files
 `sirno rg` forwards arguments to the real `rg` command and appends the configured lake path.
 It ignores generated footer regions by default.
 Use `--with-generated-footer` when generated links are the search target.
+Use plain `rg` only for repository code or files outside the configured lake.
+
+After a literal match,
+read the matched entry body and its metadata before treating the line as design authority.
 
 ## Witness Strategy
 

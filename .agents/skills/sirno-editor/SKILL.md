@@ -170,6 +170,32 @@ but more durable than a plan item.
 Use the configured lake path.
 Do not hard-code `docs/` when `Sirno.toml` names a different lake.
 
+## Document Search
+
+Use `sirno query` to map concepts, structural neighborhoods, and candidate entry ids.
+Read the `desc` field before deciding which entries to edit.
+
+Use `sirno rg` to search literal text in Sirno documents:
+phrases, command names, examples, stale wording, headings, or entry ids used in prose.
+Plain `sirno rg` searches authored metadata and prose.
+It ignores generated footer regions by default.
+Use `sirno rg --with-generated-footer` only when generated links are the search target.
+
+Useful document-search commands:
+
+```text
+sirno query TERMS --fields id,desc
+sirno query --exact FIELD=ENTRY_ID --fields id,path,desc
+sirno rg TEXT
+sirno rg -n TEXT
+sirno rg -C 2 TEXT
+sirno rg --files
+```
+
+After finding literal matches,
+read the matched entries before editing.
+Do not rewrite from isolated match lines alone.
+
 ## Validation
 
 Prefer these checks when the CLI provides them:
@@ -177,15 +203,11 @@ Prefer these checks when the CLI provides them:
 ```text
 sirno query --fields id
 sirno rg TEXT
-sirno rg --with-generated-footer TEXT
 sirno check --mode edit
 sirno gen-link
 sirno check
 sirno status
 ```
-
-Use plain `sirno rg` for authored entry text.
-Use `sirno rg --with-generated-footer` when generated links are the search target.
 
 Use `cargo run -- ...` or `target/debug/sirno ...` according to the repository state.
 
