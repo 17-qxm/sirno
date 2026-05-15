@@ -46,6 +46,10 @@ A test can witness a behavioral property.
 A configuration file can witness a storage or tool boundary.
 A generated asset can witness a visible or packaged result.
 
+When repository evidence supports a related but different claim,
+create a new *entry* and witness that exact claim.
+Reusing a near-enough *entry* id makes review less precise.
+
 If an *entry* describes an idea that has no repository evidence yet,
 leaving it unwitnessed is clearer.
 If the evidence exists but is hard to interpret,

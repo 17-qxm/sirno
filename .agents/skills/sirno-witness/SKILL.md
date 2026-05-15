@@ -3,8 +3,8 @@ name: sirno-witness
 description: >-
   Create, refine, or review Sirno repository witnesses. Use when Codex inserts or splits
   `sirno:witness:<entry-id>:begin` blocks, links code/tests/config to Sirno Lake entries,
-  interprets `sirno witness` output, or checks whether a Sirno entry has precise repository
-  evidence.
+  decides whether a witness needs a new or more specific Sirno Lake entry, interprets
+  `sirno witness` output, or checks whether a Sirno entry has precise repository evidence.
 ---
 
 # Sirno Witness
@@ -30,6 +30,8 @@ Prefer precise witness regions.
 A block should cover the smallest durable region that supports the entry claim.
 Multiple small blocks for one entry are better than one broad block that forces a reviewer to hunt.
 
+Create a new entry when the evidence supports a related but different claim.
+Do not reuse a near-enough entry id just to avoid lake editing.
 Create a more specific entry when the evidence supports a narrower claim.
 Use `refines` to point the specific entry at the broader entry when that improves navigation.
 Choose `belongs` targets for review locality.
@@ -46,6 +48,10 @@ Sirno-side code should consume structured scan output and format it for review.
 
 Read the target entry before editing code.
 Understand the claim, its structural fields, and any body guidance about what evidence should mean.
+
+If no existing entry matches the witness need precisely,
+create or propose a compact Sirno Lake entry before adding markers.
+Keep the witness id tied to that exact entry claim.
 
 Inspect current witnesses before adding new ones:
 
