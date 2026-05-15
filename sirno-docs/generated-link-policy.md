@@ -7,19 +7,21 @@ refines:
   - generated-footer
 ---
 
-Generated link policy decides which metadata-derived sections appear in a generated footer.
+Generated link policy decides which configured structural sections appear in a generated footer.
 
-`category`, `belongs`, and `refines` can each generate outgoing links to targets
-and incoming links from sources.
-A boolean setting enables or disables both link sides.
-A `{ to = ..., from = ... }` setting chooses the two link sides separately.
+`[structural]` lists the metadata fields Sirno treats as structural.
+Each field key has a `link` policy.
+`link.to` generates outgoing links to targets.
+`link.from` generates incoming links from sources.
+`link.clique` generates clique links through shared targets in that field.
+All three booleans are optional,
+and an absent boolean means false.
 
-`links.clique` adds separate clique-derived sections.
-It does not change direct belongs projection.
-When enabled, each `belongs` target induces clique edges:
+Clique projection does not change direct `from` or `to` projection.
+When enabled for a field, each target induces clique edges:
 the target links to its members,
 and members link to the target and to one another.
-When disabled, only configured structural field sections are rendered.
+When disabled, only configured direct structural field sections are rendered.
 
 This policy is configuration, not entry data.
 Changing it alters generated navigation surfaces without changing structural metadata.

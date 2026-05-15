@@ -27,10 +27,10 @@ Vague query is for recall.
 A user can search for nearby language without choosing the exact *structural field* first.
 Each text term must match somewhere in the expanded entry text.
 
-Exact query uses explicit exact flags.
+Exact query uses repeated `--exact field=entry-id` flags.
 Exact *structural fields* are conjunctive across fields and disjunctive inside one field.
-Two category values mean either category.
-A category plus a refines requires both fields to match.
+Two `--exact category=...` values mean either category.
+A `category` exact predicate plus a `refines` exact predicate requires both fields to match.
 
 Query output is presentation.
 The same selected *entries* may be printed as summaries, ids, or paths.

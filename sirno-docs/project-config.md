@@ -60,14 +60,15 @@ It is enabled by default.
 Malformed generated-link sentinels remain errors,
 because malformed sentinels make Sirno ownership ambiguous.
 
-`[links]` controls which *structural fields* are projected into *generated footers*.
-`category`, `belongs`, and `refines` each accept either a boolean
-or `{ to = boolean, from = boolean }`.
-A boolean applies to both link sides.
+`[structural]` controls which metadata fields are treated as structural.
+Each field key maps to a table with `link = { from = bool, to = bool, clique = bool }`.
+The default field keys are `category`, `belongs`, and `refines`.
+Each `link` boolean is optional,
+and an absent boolean means false.
 
 `to` links from the *entry* to metadata targets.
 `from` links from the *entry* to *entries* that name it as a metadata target.
-`links.clique` adds separate clique-derived sections through named `belongs` targets.
+`clique` adds separate clique-derived sections through shared targets in that field.
 
 ---
 

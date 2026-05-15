@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::trace;
 
-use crate::links::GeneratedLinkSettings;
+use crate::entry::{DESCRIPTION_FIELD, FROZEN_FIELD, NAME_FIELD};
+use crate::links::StructuralSettings;
 
 /// Canonical Sirno project config filename.
 pub const CONFIG_FILE_NAME: &str = "Sirno.toml";
@@ -283,7 +284,7 @@ impl WitnessSettings {
 /// `repo.members`, when present, contains relative member paths or globs for witness lookup.
 /// `witness` controls the delimiter syntax for repository witness blocks.
 /// `check` controls optional structural check families.
-/// `links` controls generated-link footer content.
+/// `structural` controls structural metadata fields and generated-link footer content.
 /// Relative paths are resolved against the directory containing `Sirno.toml`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -305,9 +306,9 @@ pub struct SirnoConfig {
     /// Structural check settings.
     #[serde(default)]
     pub check: CheckSettings,
-    /// Generated-link footer settings.
+    /// Structural metadata and generated-link settings.
     #[serde(default)]
-    pub links: GeneratedLinkSettings,
+    pub structural: StructuralSettings,
 }
 // sirno:witness:project-config:end
 
@@ -322,7 +323,7 @@ impl SirnoConfig {
             repo: None,
             witness: WitnessSettings::standard(),
             check: CheckSettings::default(),
-            links: GeneratedLinkSettings::default(),
+            structural: StructuralSettings::default(),
         }
     }
     // sirno:witness:project-config:end
@@ -435,12 +436,25 @@ impl SirnoConfig {
         if let Some(repo) = &self.repo {
             repo.validate()?;
         }
+        self.validate_structural_fields()?;
         self.witness.validate()?;
         if self.frost.is_some() {
             let lake = self.resolve_lake(config_path);
             let frost = self.resolve_frost(config_path).expect("frost path exists after is_some");
             if lake == frost || frost.starts_with(&lake) || lake.starts_with(&frost) {
                 return Err(ConfigError::FrostLakePath { lake, frost });
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_structural_fields(&self) -> Result<(), ConfigError> {
+        for (field, _) in self.structural.fields() {
+            if field.is_empty() || field.contains('\n') || field.contains('\r') {
+                return Err(ConfigError::StructuralFieldName(field.to_owned()));
+            }
+            if matches!(field, NAME_FIELD | DESCRIPTION_FIELD | FROZEN_FIELD) {
+                return Err(ConfigError::ReservedStructuralField(field.to_owned()));
             }
         }
         Ok(())
@@ -542,28 +556,15 @@ impl ConfigRenderer {
         // sirno:witness:project-config-comments:end
 
         self.out.push('\n');
-        self.push_table("links");
+        self.push_table("structural");
         // sirno:witness:project-config-comments:begin
-        self.push_field(
-            "category",
-            &config.links.category,
-            "Include category links; use a boolean or { to = bool, from = bool }.",
-        )?;
-        self.push_field(
-            "belongs",
-            &config.links.belongs,
-            "Include belongs links; use a boolean or { to = bool, from = bool }.",
-        )?;
-        self.push_field(
-            "clique",
-            &config.links.clique,
-            "Add clique sections derived from belongs targets.",
-        )?;
-        self.push_field(
-            "refines",
-            &config.links.refines,
-            "Include refines links; use a boolean or { to = bool, from = bool }.",
-        )?;
+        for (field, settings) in config.structural.fields() {
+            self.push_field(
+                field,
+                settings,
+                "Structural metadata field; link.from, link.to, and link.clique default to false.",
+            )?;
+        }
         // sirno:witness:project-config-comments:end
 
         Ok(())
@@ -631,7 +632,7 @@ pub enum ConfigError {
         source: std::io::Error,
     },
     /// The config file could not be parsed as TOML.
-    #[error("failed to parse config file {path}")]
+    #[error("failed to parse config file {path}: {source}")]
     Parse {
         /// Path that could not be parsed.
         path: PathBuf,
@@ -648,6 +649,12 @@ pub enum ConfigError {
     /// A repo member path or glob is not relative to the config directory.
     #[error("repo.members path must be relative to the config directory: {0}")]
     RepoMemberPath(String),
+    /// A structural field name cannot be used as a metadata key.
+    #[error("structural field name must be a non-empty single-line metadata key: {0}")]
+    StructuralFieldName(String),
+    /// A structural field name is reserved for scalar Sirno metadata.
+    #[error("structural field name is reserved for Sirno metadata: {0}")]
+    ReservedStructuralField(String),
     /// No witness delimiter pairs are configured.
     #[error("witness.delimiters must contain at least one delimiter pair")]
     WitnessDelimiterList,
@@ -758,7 +765,7 @@ path = "docs"
         assert_eq!(config.repo, None);
         assert_eq!(config.witness, test_witness_syntax());
         assert_eq!(config.check, CheckSettings::default());
-        assert_eq!(config.links, GeneratedLinkSettings::default());
+        assert_eq!(config.structural, StructuralSettings::default());
     }
 
     #[test]
@@ -876,7 +883,7 @@ end = '(?m)^STOP ([A-Za-z0-9_-]+)$'
     }
 
     #[test]
-    fn parses_link_settings() {
+    fn parses_structural_settings() {
         let config = parse_config(
             r#"
 [mono]
@@ -885,27 +892,40 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[links]
-category = true
-belongs = false
-clique = true
-refines = true
+[structural]
+category = { link = { to = true } }
+belongs = { link = { from = true, to = true, clique = true } }
+refines = { link = { from = true } }
 "#,
         );
 
         assert_eq!(
-            config.links,
-            GeneratedLinkSettings {
-                category: true.into(),
-                belongs: false.into(),
-                clique: true,
-                refines: true.into(),
-            }
+            config.structural,
+            StructuralSettings::from_fields([
+                (
+                    "category",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(true, false, false),
+                    ),
+                ),
+                (
+                    "belongs",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(true, true, true),
+                    ),
+                ),
+                (
+                    "refines",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(false, true, false),
+                    ),
+                ),
+            ])
         );
     }
 
     #[test]
-    fn parses_link_side_settings() {
+    fn structural_link_fields_default_to_false() {
         let config = parse_config(
             r#"
 [mono]
@@ -914,21 +934,51 @@ path = "DESIGN.md"
 [lake]
 path = "docs"
 
-[links]
-category = { to = true, from = false }
-belongs = true
-refines = { to = false, from = true }
+[structural]
+topic = { link = {} }
 "#,
         );
 
         assert_eq!(
-            config.links,
-            GeneratedLinkSettings {
-                category: crate::links::GeneratedLinkFieldSettings::new(true, false),
-                belongs: crate::links::GeneratedLinkFieldSettings::new(true, true),
-                clique: false,
-                refines: crate::links::GeneratedLinkFieldSettings::new(false, true),
-            }
+            config.structural,
+            StructuralSettings::from_fields([(
+                "topic",
+                crate::links::StructuralFieldSettings::default(),
+            )])
+        );
+    }
+
+    #[test]
+    fn parses_structural_subtables() {
+        let config = parse_config(
+            r#"
+[lake]
+path = "docs"
+
+[structural.category]
+link = { to = true }
+
+[structural.topic]
+link = { clique = true }
+"#,
+        );
+
+        assert_eq!(
+            config.structural,
+            StructuralSettings::from_fields([
+                (
+                    "category",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(true, false, false),
+                    ),
+                ),
+                (
+                    "topic",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(false, false, true),
+                    ),
+                ),
+            ])
         );
     }
 
@@ -1197,7 +1247,8 @@ delimiters = []
         assert!(source.contains("# Opening witness delimiter regex."));
         assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
-        assert!(source.contains("# Include belongs links"));
+        assert!(source.contains("[structural]"));
+        assert!(source.contains("# Structural metadata field"));
         assert!(!source.contains("[mono]"));
         assert!(!source.contains("[repo]"));
     }
@@ -1214,12 +1265,21 @@ delimiters = []
             repo: Some(RepoSettings { members: vec![RepoMember::new("src").unwrap()] }),
             witness: test_witness_syntax(),
             check: CheckSettings { link: false },
-            links: GeneratedLinkSettings {
-                category: true.into(),
-                belongs: crate::links::GeneratedLinkFieldSettings::new(true, false),
-                clique: true,
-                refines: false.into(),
-            },
+            structural: StructuralSettings::from_fields([
+                (
+                    "category",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::enabled(),
+                    ),
+                ),
+                (
+                    "belongs",
+                    crate::links::StructuralFieldSettings::new(
+                        crate::links::StructuralLinkSettings::new(true, false, true),
+                    ),
+                ),
+                ("refines", crate::links::StructuralFieldSettings::default()),
+            ]),
         };
 
         let source = config.to_toml().unwrap();
@@ -1235,10 +1295,13 @@ delimiters = []
         assert!(source.contains("# Opening witness delimiter regex."));
         assert!(source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
-        assert!(source.contains("# Include category links"));
-        assert!(source.contains("# Include belongs links"));
-        assert!(source.contains("# Add clique sections"));
-        assert!(source.contains("# Include refines links"));
+        assert!(source.contains("[structural]"));
+        assert!(source.contains("# Structural metadata field"));
+        assert!(source.contains("category = { link = {"));
+        assert!(source.contains("belongs = { link = {"));
+        assert!(source.contains("to = true"));
+        assert!(source.contains("from = true"));
+        assert!(source.contains("clique = true"));
     }
 
     #[test]

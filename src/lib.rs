@@ -25,7 +25,10 @@ pub use crate::config::{
     CONFIG_FILE_NAME, CheckSettings, ConfigError, FrostSettings, LakeSettings, MonoSettings,
     RepoMember, RepoSettings, SirnoConfig, WitnessDelimiterSettings, WitnessSettings,
 };
-pub use crate::entry::{Entry, EntryMetadata, EntryParseError, FrozenMarker};
+pub use crate::entry::{
+    BELONGS_FIELD, CATEGORY_FIELD, DESCRIPTION_FIELD, Entry, EntryMetadata, EntryParseError,
+    FROZEN_FIELD, FrozenMarker, NAME_FIELD, REFINES_FIELD,
+};
 pub use crate::frost::{FrostError, SirnoFrost};
 pub use crate::id::{EntryId, EntryIdError};
 pub use crate::lake::{
@@ -33,8 +36,8 @@ pub use crate::lake::{
     EntryDirectoryWritePolicy, EntryFileDiagnostic, GenLinkDirectoryReport,
 };
 pub use crate::links::{
-    BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkBody, GeneratedLinkError,
-    GeneratedLinkFieldSettings, GeneratedLinkIndex, GeneratedLinkSettings,
+    BEGIN_LINKS_GUARD, END_LINKS_GUARD, GeneratedLinkBody, GeneratedLinkError, GeneratedLinkIndex,
+    StructuralFieldSettings, StructuralLinkSettings, StructuralSettings,
 };
 pub use crate::lock::{FrostLock, FrostLockStatus, LOCK_FILE_NAME, LockError, SirnoLock};
 pub use crate::query::{EntryQuery, EntryTextTerm, VagueEntryQuery};

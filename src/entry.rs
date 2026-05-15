@@ -4,7 +4,7 @@
 //! The prose body carries design content.
 //! The metadata block carries structure that tools read exactly.
 
-use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_yaml::{Mapping, Value};
@@ -12,14 +12,14 @@ use thiserror::Error;
 
 use crate::id::{EntryId, EntryIdError};
 
-const NAME_FIELD: &str = "name";
-const DESCRIPTION_FIELD: &str = "description";
+pub const NAME_FIELD: &str = "name";
+pub const DESCRIPTION_FIELD: &str = "description";
 // sirno:witness:structural-field:begin
-const CATEGORY_FIELD: &str = "category";
-const BELONGS_FIELD: &str = "belongs";
-const REFINES_FIELD: &str = "refines";
+pub const CATEGORY_FIELD: &str = "category";
+pub const BELONGS_FIELD: &str = "belongs";
+pub const REFINES_FIELD: &str = "refines";
 // sirno:witness:structural-field:end
-const FROZEN_FIELD: &str = "frozen";
+pub const FROZEN_FIELD: &str = "frozen";
 
 // sirno:witness:entry:begin
 /// One Sirno entry.
@@ -80,19 +80,19 @@ impl Entry {
         // sirno:witness:meta:begin
         let mut meta =
             EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
-        meta.category.push(seed_id("meta"));
+        meta.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
         // sirno:witness:meta:end
 
         // sirno:witness:concept:begin
         let mut concept =
             EntryMetadata::new("Concept", "A named idea that compresses project knowledge.")?;
-        concept.category.push(seed_id("meta"));
+        concept.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
         // sirno:witness:concept:end
 
         // sirno:witness:narrative:begin
         let mut narrative =
             EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
-        narrative.category.push(seed_id("meta"));
+        narrative.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
         // sirno:witness:narrative:end
 
         Ok(vec![
@@ -114,25 +114,17 @@ impl Entry {
 /// Metadata for one Sirno entry.
 ///
 /// Invariant: `name` and `description` are single-line plain strings.
-/// Structural vectors contain entry ids and therefore cannot contain invalid targets.
+/// Structural fields map metadata field names to entry-id targets.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntryMetadata {
     /// Human-readable entry name.
     pub name: String,
     /// Short prose description of the entry.
     pub description: String,
-    // sirno:witness:category:begin
-    /// Categories that classify this entry.
-    pub category: Vec<EntryId>,
-    // sirno:witness:category:end
-    // sirno:witness:belongs:begin
-    /// Review neighborhoods this entry belongs to.
-    pub belongs: Vec<EntryId>,
-    // sirno:witness:belongs:end
-    // sirno:witness:refines:begin
-    /// Broader entries refined by this entry.
-    pub refines: Vec<EntryId>,
-    // sirno:witness:refines:end
+    // sirno:witness:structural-field:begin
+    /// Structural metadata fields keyed by their Markdown metadata field name.
+    pub structural: BTreeMap<String, Vec<EntryId>>,
+    // sirno:witness:structural-field:end
     /// Freeze marker declaring that this public entry file is read-only.
     pub frozen: Option<FrozenMarker>,
 }
@@ -147,14 +139,7 @@ impl EntryMetadata {
         let description = description.into();
         validate_plain_string(NAME_FIELD, &name)?;
         validate_plain_string(DESCRIPTION_FIELD, &description)?;
-        Ok(Self {
-            name,
-            description,
-            category: Vec::new(),
-            belongs: Vec::new(),
-            refines: Vec::new(),
-            frozen: None,
-        })
+        Ok(Self { name, description, structural: BTreeMap::new(), frozen: None })
     }
     // sirno:witness:metadata:end
 
@@ -168,19 +153,15 @@ impl EntryMetadata {
             | _ => return Err(EntryParseError::MetadataMustBeMapping),
         };
 
-        reject_unknown_fields(&mapping)?;
-
         let name = take_required_string(&mut mapping, NAME_FIELD)?;
         let description = take_required_string(&mut mapping, DESCRIPTION_FIELD)?;
         validate_plain_string(NAME_FIELD, &name)?;
         validate_plain_string(DESCRIPTION_FIELD, &description)?;
 
-        let category = take_optional_id_list(&mut mapping, CATEGORY_FIELD)?;
-        let belongs = take_optional_id_list(&mut mapping, BELONGS_FIELD)?;
-        let refines = take_optional_id_list(&mut mapping, REFINES_FIELD)?;
         let frozen = take_frozen_marker(&mut mapping, canonical_frozen)?;
+        let structural = take_structural_fields(mapping)?;
 
-        Ok(Self { name, description, category, belongs, refines, frozen })
+        Ok(Self { name, description, structural, frozen })
     }
     // sirno:witness:metadata:end
 
@@ -193,9 +174,7 @@ impl EntryMetadata {
         let mut out = String::new();
         out.push_str(&format!("name: {}\n", render_yaml_scalar(&self.name)?));
         out.push_str(&format!("description: {}\n", render_yaml_scalar(&self.description)?));
-        render_id_list(&mut out, CATEGORY_FIELD, &self.category);
-        render_id_list(&mut out, BELONGS_FIELD, &self.belongs);
-        render_id_list(&mut out, REFINES_FIELD, &self.refines);
+        render_structural_fields(&mut out, &self.structural);
         if self.frozen.is_some() {
             out.push_str("frozen:\n");
         }
@@ -205,14 +184,45 @@ impl EntryMetadata {
 
     /// Returns every entry id mentioned by structural metadata.
     // sirno:witness:metadata:begin
-    pub fn structural_targets(&self) -> impl Iterator<Item = (&'static str, &EntryId)> {
-        self.category
+    pub fn structural_targets(&self) -> impl Iterator<Item = (&str, &EntryId)> {
+        self.structural
             .iter()
-            .map(|id| (CATEGORY_FIELD, id))
-            .chain(self.belongs.iter().map(|id| (BELONGS_FIELD, id)))
-            .chain(self.refines.iter().map(|id| (REFINES_FIELD, id)))
+            .flat_map(|(field, targets)| targets.iter().map(move |id| (field.as_str(), id)))
     }
     // sirno:witness:metadata:end
+
+    /// Return structural field names and their targets in deterministic order.
+    pub fn structural_fields(&self) -> impl Iterator<Item = (&str, &[EntryId])> {
+        self.structural.iter().map(|(field, targets)| (field.as_str(), targets.as_slice()))
+    }
+
+    /// Return targets for one structural field.
+    pub fn structural_targets_for(&self, field: &str) -> &[EntryId] {
+        self.structural.get(field).map(Vec::as_slice).unwrap_or_default()
+    }
+
+    /// Return a mutable target list for one structural field.
+    pub fn structural_targets_for_mut(&mut self, field: impl Into<String>) -> &mut Vec<EntryId> {
+        self.structural.entry(field.into()).or_default()
+    }
+
+    /// Set the targets for one structural field.
+    pub fn set_structural_targets(
+        &mut self, field: impl Into<String>, targets: impl IntoIterator<Item = EntryId>,
+    ) {
+        let field = field.into();
+        let targets = targets.into_iter().collect::<Vec<_>>();
+        if targets.is_empty() {
+            self.structural.remove(&field);
+        } else {
+            self.structural.insert(field, targets);
+        }
+    }
+
+    /// Add one target to one structural field.
+    pub fn push_structural_target(&mut self, field: impl Into<String>, target: EntryId) {
+        self.structural_targets_for_mut(field).push(target);
+    }
 }
 
 /// Marker for the canonical `frozen:` metadata field.
@@ -247,26 +257,6 @@ fn frontmatter_body_start(source: &str) -> Result<usize, EntryParseError> {
     Ok(body_start)
 }
 
-fn reject_unknown_fields(mapping: &Mapping) -> Result<(), EntryParseError> {
-    let allowed = BTreeSet::from([
-        NAME_FIELD,
-        DESCRIPTION_FIELD,
-        CATEGORY_FIELD,
-        BELONGS_FIELD,
-        REFINES_FIELD,
-        FROZEN_FIELD,
-    ]);
-    for key in mapping.keys() {
-        let Value::String(key) = key else {
-            return Err(EntryParseError::MetadataKeyMustBeString);
-        };
-        if !allowed.contains(key.as_str()) {
-            return Err(EntryParseError::UnknownField(key.clone()));
-        }
-    }
-    Ok(())
-}
-
 fn take_required_string(
     mapping: &mut Mapping, field: &'static str,
 ) -> Result<String, EntryParseError> {
@@ -279,12 +269,20 @@ fn take_required_string(
     }
 }
 
-fn take_optional_id_list(
-    mapping: &mut Mapping, field: &'static str,
-) -> Result<Vec<EntryId>, EntryParseError> {
-    let Some(value) = mapping.remove(Value::String(field.to_owned())) else {
-        return Ok(Vec::new());
-    };
+fn take_structural_fields(
+    mapping: Mapping,
+) -> Result<BTreeMap<String, Vec<EntryId>>, EntryParseError> {
+    let mut structural = BTreeMap::new();
+    for (key, value) in mapping {
+        let Value::String(field) = key else {
+            return Err(EntryParseError::MetadataKeyMustBeString);
+        };
+        structural.insert(field.clone(), parse_id_list(field, value)?);
+    }
+    Ok(structural)
+}
+
+fn parse_id_list(field: String, value: Value) -> Result<Vec<EntryId>, EntryParseError> {
     let Value::Sequence(values) = value else {
         return Err(EntryParseError::FieldMustBeList(field));
     };
@@ -293,9 +291,9 @@ fn take_optional_id_list(
         .into_iter()
         .map(|value| match value {
             | Value::String(raw) => EntryId::new(&raw).map_err(|source| {
-                EntryParseError::InvalidStructuralId { field, value: raw, source }
+                EntryParseError::InvalidStructuralId { field: field.clone(), value: raw, source }
             }),
-            | _ => Err(EntryParseError::ListItemMustBeString(field)),
+            | _ => Err(EntryParseError::ListItemMustBeString(field.clone())),
         })
         .collect()
 }
@@ -339,6 +337,20 @@ fn render_id_list(out: &mut String, field: &str, values: &[EntryId]) {
     }
 }
 
+fn render_structural_fields(out: &mut String, structural: &BTreeMap<String, Vec<EntryId>>) {
+    for field in [CATEGORY_FIELD, BELONGS_FIELD, REFINES_FIELD] {
+        if let Some(values) = structural.get(field) {
+            render_id_list(out, field, values);
+        }
+    }
+    for (field, values) in structural {
+        if matches!(field.as_str(), CATEGORY_FIELD | BELONGS_FIELD | REFINES_FIELD) {
+            continue;
+        }
+        render_id_list(out, field, values);
+    }
+}
+
 fn render_yaml_scalar(value: &str) -> Result<String, EntryRenderError> {
     let mut rendered = serde_yaml::to_string(value).map_err(EntryRenderError::Yaml)?;
     if let Some(stripped) = rendered.strip_suffix("\n...\n") {
@@ -376,24 +388,21 @@ pub enum EntryParseError {
     FieldMustBePlainString(&'static str),
     /// A structural field is not a YAML list.
     #[error("metadata field `{0}` must be a list")]
-    FieldMustBeList(&'static str),
+    FieldMustBeList(String),
     /// A structural list item is not a string.
     #[error("items in metadata field `{0}` must be strings")]
-    ListItemMustBeString(&'static str),
+    ListItemMustBeString(String),
     /// A structural field item is not a valid entry id.
     #[error("metadata field `{field}` contains invalid entry id `{value}`")]
     InvalidStructuralId {
         /// Structural field containing the invalid id.
-        field: &'static str,
+        field: String,
         /// Invalid raw id.
         value: String,
         /// Entry id validation error.
         #[source]
         source: EntryIdError,
     },
-    /// The metadata block contains a field outside Sirno's exact schema.
-    #[error("unknown metadata field `{0}`")]
-    UnknownField(String),
     /// The frozen field is present with a value or noncanonical spelling.
     #[error("metadata field `frozen` must be written as canonical marker `frozen:`")]
     InvalidFrozenMarker,
@@ -433,7 +442,10 @@ Body.
 
         let entry = Entry::from_markdown(entry_id(), source).unwrap();
         assert_eq!(entry.metadata.name, "Witness");
-        assert_eq!(entry.metadata.category, vec![EntryId::new("concept").unwrap()]);
+        assert_eq!(
+            entry.metadata.structural_targets_for(CATEGORY_FIELD),
+            &[EntryId::new("concept").unwrap()]
+        );
         assert_eq!(entry.body, "Body.\n");
     }
 
@@ -448,22 +460,26 @@ category: concept
 ";
 
         let error = Entry::from_markdown(entry_id(), source).unwrap_err();
-        assert!(matches!(error, EntryParseError::FieldMustBeList("category")));
+        assert!(matches!(error, EntryParseError::FieldMustBeList(field) if field == "category"));
     }
 
     #[test]
-    fn rejects_repository_evidence_metadata_key() {
+    fn parses_extra_list_metadata_as_structural_field() {
         let source = "\
 ---
-name: Bad
-description: Bad metadata.
+name: Evidence
+description: Metadata with a project-defined structural field.
 witness:
+  - repository-evidence
 ---
 ";
 
-        let error = Entry::from_markdown(entry_id(), source).unwrap_err();
+        let entry = Entry::from_markdown(entry_id(), source).unwrap();
 
-        assert!(matches!(error, EntryParseError::UnknownField(field) if field == "witness"));
+        assert_eq!(
+            entry.metadata.structural_targets_for("witness"),
+            &[EntryId::new("repository-evidence").unwrap()]
+        );
     }
 
     #[test]

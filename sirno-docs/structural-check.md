@@ -12,7 +12,8 @@ Sirno checks structure.
 Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
-They also check that every `category` target is itself categorized by `meta`.
+They check references through fields configured under `[structural]`.
+They also check that every configured `category` target is itself categorized by `meta`.
 When `[repo].members` is configured,
 review checks report repository witness blocks that name missing entries.
 
@@ -21,9 +22,10 @@ Sentinel shape is always checked.
 Freshness is controlled by `[check].link`,
 which is enabled by default.
 
-During editing, dangling `category`, `belongs`, and `refines` ids may warn.
+During editing, dangling structural ids may warn.
 Category targets that are not categorized by `meta` also warn during editing.
 At an explicit review boundary, those diagnostics are errors.
+List-valued metadata fields that are absent from `[structural]` always warn.
 
 Checks keep local movement fast while making review boundaries strict.
 They do not decide whether prose is true or whether code satisfies a claim.
@@ -38,7 +40,8 @@ File checks keep the public lake shape predictable.
 An entry directory contains Markdown entry files with valid ids.
 Each file starts with accepted frontmatter.
 Generated footer sentinels must be well formed.
-Unknown fields and malformed structural values are errors because tools cannot safely infer intent from them.
+Malformed structural values are errors because tools cannot safely infer target ids from them.
+Unconfigured structural fields are warnings because the entry names structure the project config does not enable.
 
 Metadata target checks keep the graph navigable.
 If an entry categorizes itself by an id,

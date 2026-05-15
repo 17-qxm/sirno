@@ -1,9 +1,11 @@
 //! Command-line interface for Sirno.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::str::FromStr;
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
@@ -11,7 +13,7 @@ use sirno::{
     CONFIG_FILE_NAME, CheckMode, ConfigError, Entry, EntryDirectory, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
     EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
-    GenLinkDirectoryReport, GeneratedLinkSettings, LockError, SirnoConfig, SirnoFrost, SirnoLock,
+    GenLinkDirectoryReport, LockError, SirnoConfig, SirnoFrost, SirnoLock, StructuralSettings,
     VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessRecord,
 };
 use thiserror::Error;
@@ -98,15 +100,9 @@ enum Command {
         /// Exact text term matched against id, name, description, and body.
         #[arg(long = "exact-term")]
         exact_terms: Vec<String>,
-        /// Exact category target.
-        #[arg(long)]
-        exact_category: Vec<String>,
-        /// Exact review-neighborhood target for `belongs`.
-        #[arg(long)]
-        exact_belongs: Vec<String>,
-        /// Exact broader entry target for `refines`.
-        #[arg(long)]
-        exact_refines: Vec<String>,
+        /// Exact structural predicate as FIELD=ENTRY_ID.
+        #[arg(long, value_name = "FIELD=ENTRY_ID")]
+        exact: Vec<CliExactPredicate>,
         /// Output format.
         #[arg(long, value_enum)]
         format: Option<CliQueryFormat>,
@@ -185,6 +181,42 @@ enum CliQueryFormat {
     Id,
     /// Print only Markdown paths.
     Path,
+}
+
+/// Exact structural query predicate parsed from `FIELD=ENTRY_ID`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct CliExactPredicate {
+    field: String,
+    target: EntryId,
+}
+
+impl FromStr for CliExactPredicate {
+    type Err = CliExactPredicateParseError;
+
+    fn from_str(raw: &str) -> Result<Self, Self::Err> {
+        let Some((field, target)) = raw.split_once('=') else {
+            return Err(CliExactPredicateParseError::MissingEquals);
+        };
+        if field.is_empty() {
+            return Err(CliExactPredicateParseError::EmptyField);
+        }
+        let target = EntryId::new(target)?;
+        Ok(Self { field: field.to_owned(), target })
+    }
+}
+
+/// Error raised while parsing one `--exact FIELD=ENTRY_ID` argument.
+#[derive(Debug, Error)]
+enum CliExactPredicateParseError {
+    /// The argument does not contain the field-target separator.
+    #[error("expected FIELD=ENTRY_ID")]
+    MissingEquals,
+    /// The structural field name is empty.
+    #[error("exact structural field name must not be empty")]
+    EmptyField,
+    /// The target entry id is invalid.
+    #[error(transparent)]
+    EntryId(#[from] EntryIdError),
 }
 
 /// CLI shell target for completion generation.
@@ -318,9 +350,9 @@ impl Cli {
                     name.unwrap_or_else(|| title_name_from_id(&id)),
                     description,
                 )?;
-                metadata.category = parse_entry_ids(category)?;
-                metadata.belongs = parse_entry_ids(belongs)?;
-                metadata.refines = parse_entry_ids(refines)?;
+                metadata.set_structural_targets("category", parse_entry_ids(category)?);
+                metadata.set_structural_targets("belongs", parse_entry_ids(belongs)?);
+                metadata.set_structural_targets("refines", parse_entry_ids(refines)?);
 
                 let entry = Entry::new(id, metadata, body.unwrap_or_default());
                 let path = EntryDirectory::new(&lake).create_entry(&entry)?;
@@ -341,18 +373,10 @@ impl Cli {
                 println!("melted entry {id} at {}", path.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Query {
-                terms,
-                exact_terms,
-                exact_category,
-                exact_belongs,
-                exact_refines,
-                format,
-            } => {
+            | Command::Query { terms, exact_terms, exact, format } => {
                 let (lake, mut settings) =
                     resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.link = false;
-                settings.links = GeneratedLinkSettings::default();
                 settings.witness = None;
                 let report =
                     EntryDirectory::new(&lake).check_with_settings(CheckMode::Edit, &settings)?;
@@ -362,11 +386,11 @@ impl Cli {
                 }
 
                 let vague_query = VagueEntryQuery::new().with_text_terms(terms);
-                let exact_query = EntryQuery::new()
-                    .with_text_terms(exact_terms)
-                    .with_category(parse_entry_ids(exact_category)?)
-                    .with_belongs(parse_entry_ids(exact_belongs)?)
-                    .with_refines(parse_entry_ids(exact_refines)?);
+                let exact_query = exact_query_from_predicates(
+                    EntryQuery::new().with_text_terms(exact_terms),
+                    exact,
+                    &settings.structural,
+                )?;
                 let vague_matches = vague_query.select_entries(report.entries());
                 let matches = exact_query.select_entries(vague_matches);
                 print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
@@ -434,7 +458,7 @@ impl Cli {
 
                     if dry {
                         let report = directory.check_generated_links_with_ignored_paths(
-                            &settings.links,
+                            &settings.structural,
                             settings.ignore.clone(),
                         )?;
                         print_gen_link_report(&report);
@@ -442,7 +466,7 @@ impl Cli {
                     }
 
                     let report = directory.generate_links_with_ignored_paths(
-                        &settings.links,
+                        &settings.structural,
                         settings.ignore.clone(),
                     )?;
                     print_gen_link_report(&report);
@@ -789,7 +813,7 @@ fn entry_directory_check_settings(
 ) -> EntryDirectoryCheckSettings {
     EntryDirectoryCheckSettings {
         link: config.check.link,
-        links: config.links,
+        structural: config.structural.clone(),
         ignore: config.lake.ignore.clone(),
         witness: witness_check_settings(config_path, config),
     }
@@ -824,6 +848,22 @@ fn resolve_lake_directory(
 
     let config = SirnoConfig::from_file(config_path)?;
     Ok((config.resolve_lake(config_path), entry_directory_check_settings(config_path, &config)))
+}
+
+fn exact_query_from_predicates(
+    mut query: EntryQuery, predicates: Vec<CliExactPredicate>, structural: &StructuralSettings,
+) -> Result<EntryQuery, CliError> {
+    let mut targets_by_field = BTreeMap::<String, Vec<EntryId>>::new();
+    for predicate in predicates {
+        if !structural.contains_field(&predicate.field) {
+            return Err(CliError::UnconfiguredExactField(predicate.field));
+        }
+        targets_by_field.entry(predicate.field).or_default().push(predicate.target);
+    }
+    for (field, targets) in targets_by_field {
+        query = query.with_structural_targets(field, targets);
+    }
+    Ok(query)
 }
 
 fn parse_entry_ids(raw: Vec<String>) -> Result<Vec<EntryId>, CliError> {
@@ -866,11 +906,10 @@ fn print_status(
     println!("entries: {}", report.entries().len());
     println!("checks:");
     println!("  link: {}", config.check.link);
-    println!("links:");
-    println!("  category: {}", config.links.category);
-    println!("  belongs: {}", config.links.belongs);
-    println!("  clique: {}", config.links.clique);
-    println!("  refines: {}", config.links.refines);
+    println!("structural:");
+    for (field, settings) in config.structural.fields() {
+        println!("  {field}.link: {}", settings.link);
+    }
     if report.has_errors() {
         println!("check: failed");
         print_entry_directory_report(report);
@@ -1042,6 +1081,9 @@ enum CliError {
     /// Dry-run mode applies only to generated-link writing.
     #[error("`--dry` only applies to `sirno gen-link` without a subcommand")]
     DryWithGenLinkSubcommand,
+    /// Exact query named a structural field not configured for this project.
+    #[error("structural field `{0}` is not configured; add it under [structural] in Sirno.toml")]
+    UnconfiguredExactField(String),
     /// Config-backed command failed.
     #[error(transparent)]
     Config(#[from] ConfigError),
@@ -1073,13 +1115,13 @@ mod tests {
     use clap::Parser;
 
     use sirno::{
-        CONFIG_FILE_NAME, EntryId, FrostSettings, RepoMember, RepoSettings, SirnoConfig,
-        WitnessRecord, WitnessSpan,
+        CATEGORY_FIELD, CONFIG_FILE_NAME, Entry, EntryId, EntryMetadata, EntryQuery, FrostSettings,
+        RepoMember, RepoSettings, SirnoConfig, StructuralSettings, WitnessRecord, WitnessSpan,
     };
 
     use crate::{
-        Cli, CliError, Command, FrostCommand, format_gen_link_report, format_witness_record,
-        format_witness_records,
+        Cli, CliError, CliExactPredicate, Command, FrostCommand, exact_query_from_predicates,
+        format_gen_link_report, format_witness_record, format_witness_records,
     };
 
     #[test]
@@ -1178,6 +1220,58 @@ mod tests {
         .unwrap_err();
 
         assert!(matches!(error, CliError::LakePathWithFrostRoot));
+    }
+
+    #[test]
+    fn query_accepts_exact_structural_predicate() {
+        let cli = Cli::parse_from(["sirno", "query", "--exact", "category=concept"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::Query { exact, .. }
+                if exact == vec![CliExactPredicate {
+                    field: "category".to_owned(),
+                    target: EntryId::new("concept").unwrap(),
+                }]
+        ));
+    }
+
+    #[test]
+    fn query_rejects_old_exact_structural_flags() {
+        let error =
+            Cli::try_parse_from(["sirno", "query", "--exact-category", "concept"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
+    }
+
+    #[test]
+    fn exact_query_rejects_unconfigured_structural_field() {
+        let error = exact_query_from_predicates(
+            EntryQuery::new(),
+            vec!["topic=concept".parse::<CliExactPredicate>().unwrap()],
+            &StructuralSettings::default(),
+        )
+        .unwrap_err();
+
+        assert!(matches!(error, CliError::UnconfiguredExactField(field) if field == "topic"));
+    }
+
+    #[test]
+    fn exact_query_keeps_repeated_field_targets_disjunctive() {
+        let mut metadata = EntryMetadata::new("Concept", "A named idea.").unwrap();
+        metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        let entry = Entry::new(EntryId::new("concept").unwrap(), metadata, "");
+        let query = exact_query_from_predicates(
+            EntryQuery::new(),
+            vec![
+                "category=concept".parse::<CliExactPredicate>().unwrap(),
+                "category=meta".parse::<CliExactPredicate>().unwrap(),
+            ],
+            &StructuralSettings::default(),
+        )
+        .unwrap();
+
+        assert!(query.matches(&entry));
     }
 
     #[test]

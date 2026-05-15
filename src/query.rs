@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use tracing::trace;
 
-use crate::entry::Entry;
+use crate::entry::{BELONGS_FIELD, CATEGORY_FIELD, Entry, REFINES_FIELD};
 use crate::id::EntryId;
 
 /// Case-insensitive text term for an entry query.
@@ -49,9 +49,7 @@ impl EntryTextTerm {
 // sirno:witness:query:begin
 pub struct EntryQuery {
     text_terms: Vec<EntryTextTerm>,
-    category: Vec<EntryId>,
-    belongs: Vec<EntryId>,
-    refines: Vec<EntryId>,
+    structural: BTreeMap<String, Vec<EntryId>>,
 }
 // sirno:witness:query:end
 
@@ -69,20 +67,28 @@ impl EntryQuery {
     }
 
     /// Set category targets.
-    pub fn with_category(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.category = targets.into_iter().collect();
-        self
+    pub fn with_category(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
+        self.with_structural_targets(CATEGORY_FIELD, targets)
     }
 
     /// Set belongs targets.
-    pub fn with_belongs(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.belongs = targets.into_iter().collect();
-        self
+    pub fn with_belongs(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
+        self.with_structural_targets(BELONGS_FIELD, targets)
     }
 
     /// Set refines targets.
-    pub fn with_refines(mut self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.refines = targets.into_iter().collect();
+    pub fn with_refines(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
+        self.with_structural_targets(REFINES_FIELD, targets)
+    }
+
+    /// Set targets for one structural field.
+    pub fn with_structural_targets(
+        mut self, field: impl Into<String>, targets: impl IntoIterator<Item = EntryId>,
+    ) -> Self {
+        let targets = targets.into_iter().collect::<Vec<_>>();
+        if !targets.is_empty() {
+            self.structural.insert(field.into(), targets);
+        }
         self
     }
 
@@ -90,9 +96,9 @@ impl EntryQuery {
     // sirno:witness:query:begin
     pub fn matches(&self, entry: &Entry) -> bool {
         self.matches_text(entry)
-            && Self::matches_targets(&entry.metadata.category, &self.category)
-            && Self::matches_targets(&entry.metadata.belongs, &self.belongs)
-            && Self::matches_targets(&entry.metadata.refines, &self.refines)
+            && self.structural.iter().all(|(field, targets)| {
+                Self::matches_targets(entry.metadata.structural_targets_for(field), targets)
+            })
     }
     // sirno:witness:query:end
 
@@ -236,7 +242,7 @@ mod tests {
     #[test]
     fn structural_values_are_disjunctive_inside_one_field() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.category.push(id("meta"));
+        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
 
         let query = EntryQuery::new().with_category([id("narrative"), id("meta")]);
 
@@ -246,8 +252,8 @@ mod tests {
     #[test]
     fn structural_fields_are_conjunctive_across_fields() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.category.push(id("meta"));
-        concept.metadata.belongs.push(id("knowledge"));
+        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        concept.metadata.push_structural_target(BELONGS_FIELD, id("knowledge"));
 
         let matching =
             EntryQuery::new().with_category([id("meta")]).with_belongs([id("knowledge")]);
@@ -272,7 +278,7 @@ mod tests {
     fn vague_query_matches_structural_target_id() {
         let meta = entry("meta", "Meta", "A category.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.category.push(id("meta"));
+        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
         let entries = vec![concept, meta];
 
         let matches = VagueEntryQuery::new().with_text_terms(["meta"]).select_entries(&entries);
@@ -287,7 +293,7 @@ mod tests {
     fn vague_query_matches_structural_target_metadata() {
         let meta = entry("meta", "Meta", "Project vocabulary.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.category.push(id("meta"));
+        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
         let entries = vec![concept, meta];
 
         let matches =

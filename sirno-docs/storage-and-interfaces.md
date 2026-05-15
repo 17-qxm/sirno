@@ -40,7 +40,7 @@ and stable enough for agents and skills to call.
 
 `sirno status` summarizes the configured repository.
 It reports the config path, *monograph* state, *lake* path, optional *frost* path,
-*frost* lock state, *entry* count, check policy, link policy, and current check result.
+*frost* lock state, *entry* count, check policy, structural policy, and current check result.
 
 `sirno mv PATH` changes the configured public *lake* path
 and renames the current *lake* directory on the filesystem.
@@ -64,7 +64,7 @@ and restores write permission.
 
 `sirno query` reads the configured Markdown *lake*.
 Its default mode is vague text query.
-Exact structural predicates live behind explicit exact flags.
+Exact structural predicates use `--exact FIELD=ENTRY_ID`.
 
 `sirno witness ENTRY_ID` scans configured repo members through `mosaika`
 and reports repository *witness* blocks for the selected *entry* id.

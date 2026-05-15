@@ -125,7 +125,8 @@ Its filename stem is its id.
 Each entry has a YAML metadata block and a prose body.
 
 The required metadata fields are `name` and `description`.
-The optional structural fields are `category`, `belongs`, and `refines`.
+The default structural fields are `category`, `belongs`, and `refines`.
+The active structural field set is configured in `Sirno.toml`.
 The optional `frozen:` field marks one public entry file as read-only.
 
 `category` classifies an entry by other entries.

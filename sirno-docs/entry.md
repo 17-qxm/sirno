@@ -15,7 +15,8 @@ case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
 
 Each *entry* has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.
-The *structural fields* are `category`, `belongs`, and `refines`.
+The default *structural fields* are `category`, `belongs`, and `refines`.
+The active structural field set is configured in `Sirno.toml`.
 The `frozen:` field makes the entry file read-only through `sirno freeze ENTRY_ID`.
 
 An *entry* should be focused enough to read in place.

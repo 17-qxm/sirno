@@ -33,7 +33,7 @@ Sirno can project selected fields into links so those tools can participate in t
 The generated body is grouped by configured *structural field*.
 Each enabled group appears in the region.
 A group with links begins with a colon-terminated label,
-such as `Category (from):`, `Belongs (to):`, or `Clique:`.
+such as `Category (from):`, `Belongs (to):`, or `Belongs (clique):`.
 The group's links are ordinary Markdown list items.
 A group with no links is rendered inline, such as `Belongs (from): (none)`.
 If no generated-link group is enabled, the region contains `(none)`.
@@ -46,7 +46,7 @@ A *frost* commit removes the *generated footer* before writing the *entry* snaps
 Sirno Frost keeps canonical metadata and prose,
 not navigation projections.
 
-The configured link policy controls which *structural fields* appear.
+The `[structural]` link policy controls which *structural fields* appear.
 
 `sirno check` reports stale *generated footer* regions when link checking is enabled.
 `sirno gen-link` creates or replaces *generated footer* regions.

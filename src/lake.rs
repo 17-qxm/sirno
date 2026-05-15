@@ -18,9 +18,7 @@ use tracing::trace;
 use crate::check::{CheckMode, CheckReport, CheckSeverity};
 use crate::entry::{Entry, EntryParseError, EntryRenderError, FrozenMarker};
 use crate::id::EntryId;
-use crate::links::{
-    GeneratedLinkBody, GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings,
-};
+use crate::links::{GeneratedLinkBody, GeneratedLinkError, GeneratedLinkIndex, StructuralSettings};
 use crate::witness::{WitnessCheckSettings, WitnessError};
 
 const READONLY_CHECKOUT_WARNING: &str = "\
@@ -57,8 +55,8 @@ pub struct EntryDirectoryReport {
 pub struct EntryDirectoryCheckSettings {
     /// Check generated-link footer freshness.
     pub link: bool,
-    /// Settings used to render expected generated links.
-    pub links: GeneratedLinkSettings,
+    /// Configured structural fields and generated-link settings.
+    pub structural: StructuralSettings,
     /// Lake-root-relative paths ignored by Sirno.
     pub ignore: Vec<PathBuf>,
     /// Repository witness scan settings.
@@ -70,7 +68,7 @@ impl Default for EntryDirectoryCheckSettings {
     fn default() -> Self {
         Self {
             link: true,
-            links: GeneratedLinkSettings::default(),
+            structural: StructuralSettings::default(),
             ignore: Vec::new(),
             witness: None,
         }
@@ -224,7 +222,7 @@ impl EntryDirectory {
     ) -> Result<EntryDirectoryReport, EntryDirectoryError> {
         trace!("check_entry_directory begin: root={}", self.root.display());
         let loaded = LoadedEntryDirectory::load(&self.root, mode, settings)?;
-        let structural_report = mode.check_entries(&loaded.entries);
+        let structural_report = mode.check_entries(&loaded.entries, &settings.structural);
         trace!(
             "check_entry_directory end: entries={} file_diagnostics={} structural_diagnostics={}",
             loaded.entries.len(),
@@ -348,7 +346,7 @@ impl EntryDirectory {
     ///
     /// The directory must pass review-mode checks before any file is written.
     pub fn generate_links(
-        &self, settings: &GeneratedLinkSettings,
+        &self, settings: &StructuralSettings,
     ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
         self.generate_links_with_ignored_paths(settings, Vec::<PathBuf>::new())
     }
@@ -357,7 +355,7 @@ impl EntryDirectory {
     ///
     /// No file is written.
     pub fn check_generated_links(
-        &self, settings: &GeneratedLinkSettings,
+        &self, settings: &StructuralSettings,
     ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
         self.check_generated_links_with_ignored_paths(settings, Vec::<PathBuf>::new())
     }
@@ -366,7 +364,7 @@ impl EntryDirectory {
     ///
     /// Ignored paths are relative to the entry directory root.
     pub fn generate_links_with_ignored_paths(
-        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+        &self, settings: &StructuralSettings, ignore: impl IntoIterator<Item = PathBuf>,
     ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
         self.process_generated_links(settings, ignore, GenLinkOperation::Write)
     }
@@ -376,13 +374,13 @@ impl EntryDirectory {
     /// Ignored paths are relative to the entry directory root.
     /// No file is written.
     pub fn check_generated_links_with_ignored_paths(
-        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+        &self, settings: &StructuralSettings, ignore: impl IntoIterator<Item = PathBuf>,
     ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
         self.process_generated_links(settings, ignore, GenLinkOperation::Check)
     }
 
     fn process_generated_links(
-        &self, settings: &GeneratedLinkSettings, ignore: impl IntoIterator<Item = PathBuf>,
+        &self, settings: &StructuralSettings, ignore: impl IntoIterator<Item = PathBuf>,
         operation: GenLinkOperation,
     ) -> Result<GenLinkDirectoryReport, EntryDirectoryError> {
         trace!(
@@ -392,7 +390,7 @@ impl EntryDirectory {
         );
         let check_settings = EntryDirectoryCheckSettings {
             link: false,
-            links: *settings,
+            structural: settings.clone(),
             ignore: ignore.into_iter().collect(),
             witness: None,
         };
@@ -450,7 +448,7 @@ impl EntryDirectory {
         trace!("delete_gen_link_entry_directory begin: root={}", self.root.display());
         let check_settings = EntryDirectoryCheckSettings {
             link: false,
-            links: GeneratedLinkSettings::default(),
+            structural: StructuralSettings::default(),
             ignore: ignore.into_iter().collect(),
             witness: None,
         };
@@ -805,7 +803,7 @@ impl LoadedEntryDirectory {
             let body = GeneratedLinkBody::new(&entry.body);
             match body.validate() {
                 | Ok(()) if settings.link => {
-                    let expected = index.render_entry(entry, &settings.links);
+                    let expected = index.render_entry(entry, &settings.structural);
                     if body.is_stale(&expected)? {
                         self.file_diagnostics.push(EntryFileDiagnostic::new(
                             mode.severity(),
@@ -987,7 +985,10 @@ pub enum EntryDirectoryError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EntryMetadata, RepoMember, WitnessCheckSettings, WitnessSettings};
+    use crate::{
+        BELONGS_FIELD, CATEGORY_FIELD, EntryMetadata, REFINES_FIELD, RepoMember,
+        StructuralFieldSettings, StructuralLinkSettings, WitnessCheckSettings, WitnessSettings,
+    };
 
     fn write_entry(root: &Path, name: &str, body: &str) {
         fs::write(root.join(name), body).unwrap();
@@ -1006,6 +1007,22 @@ mod tests {
             )),
             ..EntryDirectoryCheckSettings::default()
         }
+    }
+
+    fn structural_settings(
+        fields: impl IntoIterator<Item = (&'static str, StructuralLinkSettings)>,
+    ) -> StructuralSettings {
+        StructuralSettings::from_fields(
+            fields.into_iter().map(|(field, link)| (field, StructuralFieldSettings::new(link))),
+        )
+    }
+
+    fn all_default_fields_linked() -> StructuralSettings {
+        structural_settings([
+            (CATEGORY_FIELD, StructuralLinkSettings::enabled()),
+            (BELONGS_FIELD, StructuralLinkSettings::enabled()),
+            (REFINES_FIELD, StructuralLinkSettings::enabled()),
+        ])
     }
 
     // sirno:witness:witness-fixture-isolation:begin
@@ -1264,7 +1281,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         let mut metadata = EntryMetadata::new("Local Idea", "A local design idea.").unwrap();
-        metadata.category.push(EntryId::new("meta").unwrap());
+        metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
         let entry = Entry::new(EntryId::new("local-idea").unwrap(), metadata, "");
 
         let path = entry_directory(&root).create_entry(&entry).unwrap();
@@ -1423,12 +1440,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: true.into(),
-            clique: false,
-            refines: true.into(),
-        };
+        let settings = all_default_fields_linked();
 
         let report = entry_directory(&root).generate_links(&settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
@@ -1485,12 +1497,8 @@ belongs:
 Body.
 ",
         );
-        let settings = GeneratedLinkSettings {
-            category: false.into(),
-            belongs: true.into(),
-            clique: true,
-            refines: false.into(),
-        };
+        let settings =
+            structural_settings([(BELONGS_FIELD, StructuralLinkSettings::new(true, true, true))]);
 
         entry_directory(temp.path()).generate_links(&settings).unwrap();
         let core = fs::read_to_string(temp.path().join("core.md")).unwrap();
@@ -1509,7 +1517,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let settings = GeneratedLinkSettings::default();
+        let settings = StructuralSettings::default();
 
         entry_directory(&root).generate_links(&settings).unwrap();
         let report = entry_directory(&root).generate_links(&settings).unwrap();
@@ -1522,7 +1530,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let settings = GeneratedLinkSettings::default();
+        let settings = StructuralSettings::default();
 
         let report = entry_directory(&root).check_generated_links(&settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
@@ -1542,7 +1550,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        entry_directory(&root).generate_links(&GeneratedLinkSettings::default()).unwrap();
+        entry_directory(&root).generate_links(&StructuralSettings::default()).unwrap();
 
         let report = entry_directory(&root).delete_generated_links().unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
@@ -1569,12 +1577,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: true.into(),
-            clique: false,
-            refines: true.into(),
-        };
+        let old_settings = all_default_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)
@@ -1582,7 +1585,7 @@ Body.
                 CheckMode::Review,
                 &EntryDirectoryCheckSettings {
                     link: true,
-                    links: GeneratedLinkSettings::default(),
+                    structural: StructuralSettings::default(),
                     ..EntryDirectoryCheckSettings::default()
                 },
             )
@@ -1598,12 +1601,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: true.into(),
-            clique: false,
-            refines: true.into(),
-        };
+        let old_settings = all_default_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)
@@ -1611,7 +1609,7 @@ Body.
                 CheckMode::Edit,
                 &EntryDirectoryCheckSettings {
                     link: true,
-                    links: GeneratedLinkSettings::default(),
+                    structural: StructuralSettings::default(),
                     ..EntryDirectoryCheckSettings::default()
                 },
             )
@@ -1626,12 +1624,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: true.into(),
-            clique: false,
-            refines: true.into(),
-        };
+        let old_settings = all_default_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)
@@ -1639,7 +1632,7 @@ Body.
                 CheckMode::Review,
                 &EntryDirectoryCheckSettings {
                     link: false,
-                    links: GeneratedLinkSettings::default(),
+                    structural: StructuralSettings::default(),
                     ..EntryDirectoryCheckSettings::default()
                 },
             )
@@ -1677,7 +1670,7 @@ Body.
         write_entry(temp.path(), "bad.md", "no frontmatter\n");
 
         let error = entry_directory(temp.path())
-            .generate_links(&GeneratedLinkSettings::default())
+            .generate_links(&StructuralSettings::default())
             .unwrap_err();
 
         assert!(matches!(error, EntryDirectoryError::InvalidEntryDirectory(_)));

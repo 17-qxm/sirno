@@ -22,12 +22,10 @@ end = '(?m)^[ \t]*<!--[ \t]*sirno:witness:([A-Za-z0-9_-]+):end[ \t]*-->'
 # Require generated footers to match current metadata during checks.
 link = true
 
-[links]
-# Include category links; use a boolean or { to = bool, from = bool }.
-category = false
-# Include belongs links; use a boolean or { to = bool, from = bool }.
-belongs = true
-# Add clique sections derived from belongs targets.
-clique = false
-# Include refines links; use a boolean or { to = bool, from = bool }.
-refines = false
+[structural]
+# Structural metadata field; link.from, link.to, and link.clique default to false.
+category = { link = {} }
+# Structural metadata field; link.from, link.to, and link.clique default to false.
+belongs = { link = { to = true, from = true } }
+# Structural metadata field; link.from, link.to, and link.clique default to false.
+refines = { link = {} }

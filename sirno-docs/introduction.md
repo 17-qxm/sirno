@@ -41,7 +41,8 @@ Sirno keeps its metadata vocabulary small.
 `category` says what kind of *entry* something is.
 `belongs` places an *entry* in one or more review neighborhoods.
 `refines` connects a local *entry* back to the broader *entry* it makes concrete.
-The three fields form the structural graph.
+These default fields form this repository's structural graph.
+Other Sirno projects may configure a different structural field set.
 Repository *witness* status is discovered through `sirno witness ENTRY_ID --full`.
 The *structural fields* are explicit metadata,
 so tools can query them without pretending to understand the whole design semantically.

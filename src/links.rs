@@ -6,36 +6,47 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
-use serde::ser::SerializeStruct;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::entry::Entry;
+use crate::entry::{BELONGS_FIELD, CATEGORY_FIELD, Entry, REFINES_FIELD};
+use crate::id::EntryId;
 
-/// Settings for one generated-link structural field.
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+/// Generated-link settings for one structural field.
 ///
 /// `to` includes links from the current entry to metadata targets.
 /// `from` includes links from the current entry to entries that point at it.
+/// `clique` includes entries connected through a shared target in the same field.
 // sirno:witness:generated-link-policy:begin
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GeneratedLinkFieldSettings {
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct StructuralLinkSettings {
     /// Include outgoing metadata targets.
+    #[serde(skip_serializing_if = "is_false")]
     pub to: bool,
     /// Include incoming metadata sources.
+    #[serde(skip_serializing_if = "is_false")]
     pub from: bool,
+    /// Include clique links derived from shared targets in this field.
+    #[serde(skip_serializing_if = "is_false")]
+    pub clique: bool,
 }
 // sirno:witness:generated-link-policy:end
 
 // sirno:witness:generated-link-policy:begin
-impl GeneratedLinkFieldSettings {
+impl StructuralLinkSettings {
     /// Construct structural-field link settings from explicit sides.
-    pub fn new(to: bool, from: bool) -> Self {
-        Self { to, from }
+    pub fn new(to: bool, from: bool, clique: bool) -> Self {
+        Self { to, from, clique }
     }
 
-    /// Construct structural-field link settings from one boolean applied to both sides.
+    /// Construct structural-field link settings from one boolean applied to direct links.
     pub fn from_bool(enabled: bool) -> Self {
-        Self::new(enabled, enabled)
+        Self::new(enabled, enabled, false)
     }
 
     /// Construct enabled structural-field link settings.
@@ -50,101 +61,100 @@ impl GeneratedLinkFieldSettings {
 }
 // sirno:witness:generated-link-policy:end
 
-impl Default for GeneratedLinkFieldSettings {
-    fn default() -> Self {
-        Self::disabled()
-    }
-}
-
-impl From<bool> for GeneratedLinkFieldSettings {
+impl From<bool> for StructuralLinkSettings {
     fn from(value: bool) -> Self {
         Self::from_bool(value)
     }
 }
 
-impl fmt::Display for GeneratedLinkFieldSettings {
+impl fmt::Display for StructuralLinkSettings {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.to == self.from {
-            write!(formatter, "{}", self.to)
+        let mut parts = Vec::new();
+        if self.from {
+            parts.push("from=true");
+        }
+        if self.to {
+            parts.push("to=true");
+        }
+        if self.clique {
+            parts.push("clique=true");
+        }
+        if parts.is_empty() {
+            write!(formatter, "none")
         } else {
-            write!(formatter, "to={} from={}", self.to, self.from)
+            write!(formatter, "{}", parts.join(" "))
         }
     }
 }
 
-// sirno:witness:generated-link-policy:begin
-impl Serialize for GeneratedLinkFieldSettings {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        if self.to == self.from {
-            return serializer.serialize_bool(self.to);
-        }
-
-        let mut state = serializer.serialize_struct("GeneratedLinkFieldSettings", 2)?;
-        state.serialize_field("to", &self.to)?;
-        state.serialize_field("from", &self.from)?;
-        state.end()
-    }
-}
-
-impl<'de> Deserialize<'de> for GeneratedLinkFieldSettings {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = GeneratedLinkFieldValue::deserialize(deserializer)?;
-        Ok(match value {
-            | GeneratedLinkFieldValue::Bool(enabled) => Self::from_bool(enabled),
-            | GeneratedLinkFieldValue::Sides(sides) => Self::new(sides.to, sides.from),
-        })
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum GeneratedLinkFieldValue {
-    Bool(bool),
-    Sides(GeneratedLinkSides),
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct GeneratedLinkSides {
-    to: bool,
-    from: bool,
-}
-// sirno:witness:generated-link-policy:end
-
-/// Settings that choose which metadata fields become generated links.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+/// Settings for one configured structural field.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 // sirno:witness:generated-link-policy:begin
-pub struct GeneratedLinkSettings {
-    /// Include `category` targets.
-    pub category: GeneratedLinkFieldSettings,
-    /// Include `belongs` targets.
-    pub belongs: GeneratedLinkFieldSettings,
-    /// Render clique sections derived from `belongs` targets.
-    pub clique: bool,
-    /// Include `refines` targets.
-    pub refines: GeneratedLinkFieldSettings,
+pub struct StructuralFieldSettings {
+    /// Generated-link policy for this structural field.
+    pub link: StructuralLinkSettings,
 }
 // sirno:witness:generated-link-policy:end
 
-impl Default for GeneratedLinkSettings {
-    fn default() -> Self {
-        Self {
-            category: GeneratedLinkFieldSettings::disabled(),
-            belongs: GeneratedLinkFieldSettings::enabled(),
-            clique: false,
-            refines: GeneratedLinkFieldSettings::disabled(),
-        }
+impl StructuralFieldSettings {
+    /// Construct structural field settings from a link policy.
+    pub fn new(link: StructuralLinkSettings) -> Self {
+        Self { link }
     }
 }
 
-impl GeneratedLinkSettings {
+/// Configured structural fields.
+///
+/// Each key names a metadata field that Sirno should treat as structural.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+// sirno:witness:generated-link-policy:begin
+pub struct StructuralSettings {
+    fields: BTreeMap<String, StructuralFieldSettings>,
+}
+// sirno:witness:generated-link-policy:end
+
+impl Default for StructuralSettings {
+    fn default() -> Self {
+        Self::from_fields([
+            (CATEGORY_FIELD, StructuralFieldSettings::default()),
+            (BELONGS_FIELD, StructuralFieldSettings::new(StructuralLinkSettings::enabled())),
+            (REFINES_FIELD, StructuralFieldSettings::default()),
+        ])
+    }
+}
+
+impl StructuralSettings {
+    /// Construct structural settings from explicit field settings.
+    pub fn from_fields(
+        fields: impl IntoIterator<Item = (impl Into<String>, StructuralFieldSettings)>,
+    ) -> Self {
+        Self {
+            fields: fields.into_iter().map(|(field, settings)| (field.into(), settings)).collect(),
+        }
+    }
+
+    /// Iterate configured fields in deterministic order.
+    pub fn fields(&self) -> impl Iterator<Item = (&str, &StructuralFieldSettings)> {
+        let mut fields = Vec::new();
+        for field in [CATEGORY_FIELD, BELONGS_FIELD, REFINES_FIELD] {
+            if let Some(settings) = self.fields.get(field) {
+                fields.push((field, settings));
+            }
+        }
+        fields.extend(self.fields.iter().filter_map(|(field, settings)| {
+            (!matches!(field.as_str(), CATEGORY_FIELD | BELONGS_FIELD | REFINES_FIELD))
+                .then_some((field.as_str(), settings))
+        }));
+        fields.into_iter()
+    }
+
+    /// Return true when a metadata field is configured as structural.
+    pub fn contains_field(&self, field: &str) -> bool {
+        self.fields.contains_key(field)
+    }
+
     /// Render the generated-link footer for one entry using only that entry as context.
     ///
     /// Use `GeneratedLinkIndex::from_entries` when clique expansion needs the full lake.
@@ -275,14 +285,12 @@ impl<'a> GeneratedLinkBody<'a> {
 
 /// Lake-wide context for generated-link rendering.
 ///
-/// Invariant: each `belongs` target maps to itself and every parsed entry that names it.
+/// Invariant: each clique target maps to itself and every parsed entry that names it.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 // sirno:witness:generated-footer:begin
 pub struct GeneratedLinkIndex {
-    category_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    cliques_by_belongs_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    belongs_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-    refines_sources_by_target: BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
+    sources_by_field_target: BTreeMap<String, BTreeMap<EntryId, BTreeSet<EntryId>>>,
+    cliques_by_field_target: BTreeMap<String, BTreeMap<EntryId, BTreeSet<EntryId>>>,
 }
 // sirno:witness:generated-footer:end
 
@@ -290,51 +298,32 @@ impl GeneratedLinkIndex {
     /// Construct a generated-link index from parsed entries.
     // sirno:witness:generated-footer:begin
     pub fn from_entries(entries: &[Entry]) -> Self {
-        let mut category_sources_by_target =
-            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut cliques_by_belongs_target =
-            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut belongs_sources_by_target =
-            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
-        let mut refines_sources_by_target =
-            BTreeMap::<crate::EntryId, BTreeSet<crate::EntryId>>::new();
+        let mut sources_by_field_target =
+            BTreeMap::<String, BTreeMap<EntryId, BTreeSet<EntryId>>>::new();
+        let mut cliques_by_field_target =
+            BTreeMap::<String, BTreeMap<EntryId, BTreeSet<EntryId>>>::new();
         for entry in entries {
-            Self::insert_sources(
-                &mut category_sources_by_target,
-                &entry.id,
-                &entry.metadata.category,
-            );
-            Self::insert_sources(
-                &mut belongs_sources_by_target,
-                &entry.id,
-                &entry.metadata.belongs,
-            );
-            Self::insert_sources(
-                &mut refines_sources_by_target,
-                &entry.id,
-                &entry.metadata.refines,
-            );
-            // sirno:witness:generated-footer:end
-            // sirno:witness:belongs:begin
-            for target in &entry.metadata.belongs {
-                let clique = cliques_by_belongs_target.entry(target.clone()).or_default();
-                clique.insert(target.clone());
-                clique.insert(entry.id.clone());
+            for (field, targets) in entry.metadata.structural_fields() {
+                Self::insert_sources(
+                    sources_by_field_target.entry(field.to_owned()).or_default(),
+                    &entry.id,
+                    targets,
+                );
+                Self::insert_cliques(
+                    cliques_by_field_target.entry(field.to_owned()).or_default(),
+                    &entry.id,
+                    targets,
+                );
             }
-            // sirno:witness:belongs:end
+            // sirno:witness:generated-footer:end
             // sirno:witness:generated-footer:begin
         }
-        Self {
-            category_sources_by_target,
-            cliques_by_belongs_target,
-            belongs_sources_by_target,
-            refines_sources_by_target,
-        }
+        Self { sources_by_field_target, cliques_by_field_target }
     }
     // sirno:witness:generated-footer:end
 
     /// Render the generated-link footer for one entry using this lake-wide index.
-    pub fn render_entry(&self, entry: &Entry, settings: &GeneratedLinkSettings) -> String {
+    pub fn render_entry(&self, entry: &Entry, settings: &StructuralSettings) -> String {
         // sirno:witness:generated-footer:begin
         let mut out = String::new();
         out.push_str(BEGIN_LINKS_GUARD);
@@ -343,44 +332,26 @@ impl GeneratedLinkIndex {
 
         // sirno:witness:generated-footer:begin
         let mut sections = Vec::new();
-        if settings.category.from {
-            sections.push(GeneratedLinkSection::new(
-                "Category (from)",
-                self.incoming_targets(&self.category_sources_by_target, entry),
-            ));
-        }
-        if settings.category.to {
-            sections.push(GeneratedLinkSection::new(
-                "Category (to)",
-                entry.metadata.category.iter().cloned().collect(),
-            ));
-        }
-        if settings.belongs.from {
-            sections.push(GeneratedLinkSection::new(
-                "Belongs (from)",
-                self.incoming_targets(&self.belongs_sources_by_target, entry),
-            ));
-        }
-        if settings.belongs.to {
-            sections.push(GeneratedLinkSection::new(
-                "Belongs (to)",
-                entry.metadata.belongs.iter().cloned().collect(),
-            ));
-        }
-        if settings.clique {
-            sections.push(GeneratedLinkSection::new("Clique", self.clique_targets(entry)));
-        }
-        if settings.refines.from {
-            sections.push(GeneratedLinkSection::new(
-                "Refines (from)",
-                self.incoming_targets(&self.refines_sources_by_target, entry),
-            ));
-        }
-        if settings.refines.to {
-            sections.push(GeneratedLinkSection::new(
-                "Refines (to)",
-                entry.metadata.refines.iter().cloned().collect(),
-            ));
+        for (field, field_settings) in settings.fields() {
+            let link = field_settings.link;
+            if link.from {
+                sections.push(GeneratedLinkSection::new(
+                    section_title(field, "from"),
+                    self.incoming_targets(field, entry),
+                ));
+            }
+            if link.to {
+                sections.push(GeneratedLinkSection::new(
+                    section_title(field, "to"),
+                    entry.metadata.structural_targets_for(field).iter().cloned().collect(),
+                ));
+            }
+            if link.clique {
+                sections.push(GeneratedLinkSection::new(
+                    section_title(field, "clique"),
+                    self.clique_targets(field, entry),
+                ));
+            }
         }
         // sirno:witness:generated-footer:end
 
@@ -399,30 +370,45 @@ impl GeneratedLinkIndex {
     }
 
     fn insert_sources(
-        sources_by_target: &mut BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-        source: &crate::EntryId, targets: &[crate::EntryId],
+        sources_by_target: &mut BTreeMap<EntryId, BTreeSet<EntryId>>, source: &EntryId,
+        targets: &[EntryId],
     ) {
         for target in targets {
             sources_by_target.entry(target.clone()).or_default().insert(source.clone());
         }
     }
 
-    fn incoming_targets(
-        &self, sources_by_target: &BTreeMap<crate::EntryId, BTreeSet<crate::EntryId>>,
-        entry: &Entry,
-    ) -> BTreeSet<crate::EntryId> {
-        sources_by_target.get(&entry.id).cloned().unwrap_or_default()
+    fn insert_cliques(
+        cliques_by_target: &mut BTreeMap<EntryId, BTreeSet<EntryId>>, source: &EntryId,
+        targets: &[EntryId],
+    ) {
+        for target in targets {
+            let clique = cliques_by_target.entry(target.clone()).or_default();
+            clique.insert(target.clone());
+            clique.insert(source.clone());
+        }
+    }
+
+    fn incoming_targets(&self, field: &str, entry: &Entry) -> BTreeSet<EntryId> {
+        self.sources_by_field_target
+            .get(field)
+            .and_then(|sources_by_target| sources_by_target.get(&entry.id))
+            .cloned()
+            .unwrap_or_default()
     }
 
     // sirno:witness:belongs:begin
-    fn clique_targets(&self, entry: &Entry) -> BTreeSet<crate::EntryId> {
+    fn clique_targets(&self, field: &str, entry: &Entry) -> BTreeSet<EntryId> {
         let mut targets = BTreeSet::new();
-        for target in &entry.metadata.belongs {
-            if let Some(clique) = self.cliques_by_belongs_target.get(target) {
+        let Some(cliques_by_target) = self.cliques_by_field_target.get(field) else {
+            return targets;
+        };
+        for target in entry.metadata.structural_targets_for(field) {
+            if let Some(clique) = cliques_by_target.get(target) {
                 targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
             }
         }
-        if let Some(clique) = self.cliques_by_belongs_target.get(&entry.id) {
+        if let Some(clique) = cliques_by_target.get(&entry.id) {
             targets.extend(clique.iter().filter(|id| *id != &entry.id).cloned());
         }
         targets
@@ -430,26 +416,49 @@ impl GeneratedLinkIndex {
     // sirno:witness:belongs:end
 }
 
+fn section_title(field: &str, direction: &str) -> String {
+    format!("{} ({direction})", humanize_field_name(field))
+}
+
+fn humanize_field_name(field: &str) -> String {
+    let mut out = String::new();
+    let mut new_word = true;
+    for character in field.chars() {
+        if matches!(character, '-' | '_') {
+            out.push(' ');
+            new_word = true;
+            continue;
+        }
+        if new_word {
+            out.extend(character.to_uppercase());
+            new_word = false;
+        } else {
+            out.push(character);
+        }
+    }
+    out
+}
+
 #[derive(Debug)]
 struct GeneratedLinkSection {
-    title: &'static str,
-    targets: BTreeSet<crate::EntryId>,
+    title: String,
+    targets: BTreeSet<EntryId>,
 }
 
 impl GeneratedLinkSection {
-    fn new(title: &'static str, targets: BTreeSet<crate::EntryId>) -> Self {
+    fn new(title: String, targets: BTreeSet<EntryId>) -> Self {
         Self { title, targets }
     }
 
     // sirno:witness:generated-footer:begin
     fn render(&self, out: &mut String) {
         if self.targets.is_empty() {
-            out.push_str(self.title);
+            out.push_str(&self.title);
             out.push_str(": (none)\n\n");
             return;
         }
 
-        out.push_str(self.title);
+        out.push_str(&self.title);
         out.push(':');
         out.push('\n');
         for id in &self.targets {
@@ -555,15 +564,23 @@ mod tests {
 
     fn entry() -> Entry {
         let mut metadata = EntryMetadata::new("Concept", "A named idea.").unwrap();
-        metadata.category.push(id("meta"));
-        metadata.belongs.push(id("core"));
-        metadata.refines.push(id("metadata"));
+        metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        metadata.push_structural_target(BELONGS_FIELD, id("core"));
+        metadata.push_structural_target(REFINES_FIELD, id("metadata"));
         Entry::new(id("concept"), metadata, "Body.\n")
+    }
+
+    fn structural_settings(
+        fields: impl IntoIterator<Item = (&'static str, StructuralLinkSettings)>,
+    ) -> StructuralSettings {
+        StructuralSettings::from_fields(
+            fields.into_iter().map(|(field, link)| (field, StructuralFieldSettings::new(link))),
+        )
     }
 
     #[test]
     fn default_settings_render_only_belongs_links() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
 
         assert!(!footer.contains("[meta](meta.md)"));
         assert!(footer.contains("- [core](core.md)"));
@@ -578,7 +595,7 @@ mod tests {
 
     #[test]
     fn quoted_guards_are_separated_from_link_list() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
 
         assert!(footer.contains(&format!(
             "{BEGIN_LINKS_GUARD}\n\nBelongs (from): (none)\n\nBelongs (to):\n"
@@ -588,12 +605,11 @@ mod tests {
 
     #[test]
     fn settings_can_enable_each_structural_field() {
-        let settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: true.into(),
-            clique: false,
-            refines: true.into(),
-        };
+        let settings = structural_settings([
+            (CATEGORY_FIELD, StructuralLinkSettings::enabled()),
+            (BELONGS_FIELD, StructuralLinkSettings::enabled()),
+            (REFINES_FIELD, StructuralLinkSettings::enabled()),
+        ]);
         let footer = settings.render_entry(&entry());
 
         assert!(footer.contains("- [meta](meta.md)"));
@@ -610,13 +626,8 @@ mod tests {
     #[test]
     fn repeated_targets_render_once() {
         let mut entry = entry();
-        entry.metadata.category.push(id("meta"));
-        let settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: false.into(),
-            clique: false,
-            refines: false.into(),
-        };
+        entry.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        let settings = structural_settings([(CATEGORY_FIELD, StructuralLinkSettings::enabled())]);
 
         let footer = settings.render_entry(&entry);
 
@@ -625,16 +636,11 @@ mod tests {
 
     #[test]
     fn boolean_field_settings_render_to_and_from_edges() {
-        let settings = GeneratedLinkSettings {
-            category: true.into(),
-            belongs: false.into(),
-            clique: false,
-            refines: false.into(),
-        };
+        let settings = structural_settings([(CATEGORY_FIELD, StructuralLinkSettings::enabled())]);
         let category =
             Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
         let mut member_metadata = EntryMetadata::new("Member", "A category member.").unwrap();
-        member_metadata.category.push(id("meta"));
+        member_metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
         let member = Entry::new(id("member"), member_metadata, "Body.\n");
         let entries = vec![category.clone(), member.clone()];
         let index = GeneratedLinkIndex::from_entries(&entries);
@@ -652,16 +658,14 @@ mod tests {
 
     #[test]
     fn table_field_settings_can_choose_one_side() {
-        let settings = GeneratedLinkSettings {
-            category: GeneratedLinkFieldSettings::new(false, true),
-            belongs: false.into(),
-            clique: false,
-            refines: false.into(),
-        };
+        let settings = structural_settings([(
+            CATEGORY_FIELD,
+            StructuralLinkSettings::new(false, true, false),
+        )]);
         let category =
             Entry::new(id("meta"), EntryMetadata::new("Meta", "A category.").unwrap(), "Body.\n");
         let mut member_metadata = EntryMetadata::new("Member", "A category member.").unwrap();
-        member_metadata.category.push(id("meta"));
+        member_metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
         let member = Entry::new(id("member"), member_metadata, "Body.\n");
         let entries = vec![category.clone(), member.clone()];
         let index = GeneratedLinkIndex::from_entries(&entries);
@@ -677,12 +681,8 @@ mod tests {
 
     #[test]
     fn clique_setting_expands_belongs_targets_to_edges() {
-        let settings = GeneratedLinkSettings {
-            category: false.into(),
-            belongs: false.into(),
-            clique: true,
-            refines: false.into(),
-        };
+        let settings =
+            structural_settings([(BELONGS_FIELD, StructuralLinkSettings::new(false, false, true))]);
 
         let closure = Entry::new(
             id("core"),
@@ -690,13 +690,13 @@ mod tests {
             "Body.\n",
         );
         let mut left_metadata = EntryMetadata::new("Left", "A neighborhood member.").unwrap();
-        left_metadata.belongs.push(id("core"));
+        left_metadata.push_structural_target(BELONGS_FIELD, id("core"));
         let left = Entry::new(id("left"), left_metadata, "Body.\n");
         let mut right_metadata = EntryMetadata::new("Right", "A neighborhood member.").unwrap();
-        right_metadata.belongs.push(id("core"));
+        right_metadata.push_structural_target(BELONGS_FIELD, id("core"));
         let right = Entry::new(id("right"), right_metadata, "Body.\n");
         let mut outside_metadata = EntryMetadata::new("Outside", "Another member.").unwrap();
-        outside_metadata.belongs.push(id("other"));
+        outside_metadata.push_structural_target(BELONGS_FIELD, id("other"));
         let outside = Entry::new(id("outside"), outside_metadata, "Body.\n");
         let entries = vec![closure.clone(), left.clone(), right.clone(), outside];
         let index = GeneratedLinkIndex::from_entries(&entries);
@@ -704,13 +704,13 @@ mod tests {
         let closure_footer = index.render_entry(&closure, &settings);
         let left_footer = index.render_entry(&left, &settings);
 
-        assert!(closure_footer.contains("Clique:"));
+        assert!(closure_footer.contains("Belongs (clique):"));
         assert!(!closure_footer.contains("Belongs (from)"));
         assert!(closure_footer.contains("- [left](left.md)"));
         assert!(closure_footer.contains("- [right](right.md)"));
         assert!(!closure_footer.contains("[core](core.md)"));
         assert!(!closure_footer.contains("[outside](outside.md)"));
-        assert!(left_footer.contains("Clique:"));
+        assert!(left_footer.contains("Belongs (clique):"));
         assert!(!left_footer.contains("Belongs (to)"));
         assert!(left_footer.contains("- [core](core.md)"));
         assert!(left_footer.contains("- [right](right.md)"));
@@ -720,12 +720,8 @@ mod tests {
 
     #[test]
     fn belongs_sections_remain_direct_when_clique_is_enabled() {
-        let settings = GeneratedLinkSettings {
-            category: false.into(),
-            belongs: true.into(),
-            clique: true,
-            refines: false.into(),
-        };
+        let settings =
+            structural_settings([(BELONGS_FIELD, StructuralLinkSettings::new(true, true, true))]);
 
         let closure = Entry::new(
             id("core"),
@@ -733,10 +729,10 @@ mod tests {
             "Body.\n",
         );
         let mut left_metadata = EntryMetadata::new("Left", "A neighborhood member.").unwrap();
-        left_metadata.belongs.push(id("core"));
+        left_metadata.push_structural_target(BELONGS_FIELD, id("core"));
         let left = Entry::new(id("left"), left_metadata, "Body.\n");
         let mut right_metadata = EntryMetadata::new("Right", "A neighborhood member.").unwrap();
-        right_metadata.belongs.push(id("core"));
+        right_metadata.push_structural_target(BELONGS_FIELD, id("core"));
         let right = Entry::new(id("right"), right_metadata, "Body.\n");
         let entries = vec![closure, left.clone(), right];
         let index = GeneratedLinkIndex::from_entries(&entries);
@@ -744,7 +740,7 @@ mod tests {
         let left_footer = index.render_entry(&left, &settings);
 
         assert!(left_footer.contains("Belongs (to):\n- [core](core.md)"));
-        assert!(left_footer.contains("Clique:"));
+        assert!(left_footer.contains("Belongs (clique):"));
         assert!(left_footer.contains("- [right](right.md)"));
     }
 
@@ -753,7 +749,7 @@ mod tests {
         let metadata = EntryMetadata::new("Meta", "A category.").unwrap();
         let entry = Entry::new(EntryId::new("meta").unwrap(), metadata, "Body.\n");
 
-        let footer = GeneratedLinkSettings::default().render_entry(&entry);
+        let footer = StructuralSettings::default().render_entry(&entry);
 
         assert!(footer.contains("Belongs (from): (none)"));
         assert!(footer.contains("Belongs (to): (none)"));
@@ -765,12 +761,11 @@ mod tests {
     fn renders_region_none_when_no_sections_are_enabled() {
         let metadata = EntryMetadata::new("Meta", "A category.").unwrap();
         let entry = Entry::new(EntryId::new("meta").unwrap(), metadata, "Body.\n");
-        let settings = GeneratedLinkSettings {
-            category: false.into(),
-            belongs: false.into(),
-            clique: false,
-            refines: false.into(),
-        };
+        let settings = StructuralSettings::from_fields([
+            (CATEGORY_FIELD, StructuralFieldSettings::default()),
+            (BELONGS_FIELD, StructuralFieldSettings::default()),
+            (REFINES_FIELD, StructuralFieldSettings::default()),
+        ]);
 
         let footer = settings.render_entry(&entry);
 
@@ -780,7 +775,7 @@ mod tests {
 
     #[test]
     fn appends_footer_when_missing() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
 
         let body = GeneratedLinkBody::new("Body.\n").apply(&footer).unwrap();
 
@@ -790,7 +785,7 @@ mod tests {
 
     #[test]
     fn appends_footer_without_duplicate_divider() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
 
         let body = GeneratedLinkBody::new("Body.\n\n---\n").apply(&footer).unwrap();
 
@@ -801,7 +796,7 @@ mod tests {
     fn replaces_only_existing_footer_region() {
         let old = format!("{BEGIN_LINKS_GUARD}\nold\n{END_LINKS_GUARD}\n");
         let body = format!("Before.\n\n{old}\nAfter.\n");
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
 
         let body = GeneratedLinkBody::new(&body).apply(&footer).unwrap();
 
@@ -813,7 +808,7 @@ mod tests {
 
     #[test]
     fn deletes_existing_footer_region() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
         let body = GeneratedLinkBody::new("Body.\n").apply(&footer).unwrap();
 
         let body = GeneratedLinkBody::new(&body).delete().unwrap();
@@ -824,7 +819,7 @@ mod tests {
 
     #[test]
     fn deletes_footer_without_touching_following_body() {
-        let footer = GeneratedLinkSettings::default().render_entry(&entry());
+        let footer = StructuralSettings::default().render_entry(&entry());
         let body = format!("Before.\n\n{footer}\nAfter.\n");
 
         let body = GeneratedLinkBody::new(&body).delete().unwrap();
@@ -841,16 +836,15 @@ mod tests {
 
     #[test]
     fn reports_generated_links_staleness() {
-        let expected = GeneratedLinkSettings::default().render_entry(&entry());
+        let expected = StructuralSettings::default().render_entry(&entry());
         let current = GeneratedLinkBody::new("Body.\n").apply(&expected).unwrap();
         let stale = GeneratedLinkBody::new("Body.\n")
             .apply(
-                &GeneratedLinkSettings {
-                    category: true.into(),
-                    belongs: true.into(),
-                    clique: false,
-                    refines: true.into(),
-                }
+                &structural_settings([
+                    (CATEGORY_FIELD, StructuralLinkSettings::enabled()),
+                    (BELONGS_FIELD, StructuralLinkSettings::enabled()),
+                    (REFINES_FIELD, StructuralLinkSettings::enabled()),
+                ])
                 .render_entry(&entry()),
             )
             .unwrap();

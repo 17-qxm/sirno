@@ -13,8 +13,10 @@ Every entry has a YAML metadata block.
 The required fields are `name` and `description`,
 both plain strings.
 
-The optional structural fields are `category`, `belongs`, and `refines`.
-They are always lists when present, and their values are entry ids.
+Configured structural fields are optional.
+The default field set is `category`, `belongs`, and `refines`.
+They are always lists when present,
+and their values are entry ids.
 
 `frozen:` declares that the entry file is read-only
 and must be melted before Sirno Frost can commit it.
@@ -47,9 +49,9 @@ category:
 ---
 ```
 
-The schema is intentionally conservative.
-Adding fields is future design work,
-because every accepted field becomes part of the public structure that readers and tools may rely on.
+The schema keeps required scalar fields small.
+New list-valued metadata can become structural when `[structural]` configures that field.
+Unconfigured structural fields remain visible as check warnings.
 
 ---
 
