@@ -37,6 +37,10 @@ Sirno strips generated-link regions from committed bodies,
 because *generated footers* are public *lake* projections.
 The commit writes one `eter` transaction and returns a `SnapshotRef`.
 That snapshot reference names the whole committed *lake* state.
+For the filesystem backend,
+`Eter.lock.toml` stores the committed version boundary.
+Version files above that boundary are ignored
+and removed before the next write.
 If the public *lake* is unchanged,
 the commit returns the current snapshot reference without writing.
 If a previously live *entry* is missing from the public *lake*,
