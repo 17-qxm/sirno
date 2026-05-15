@@ -71,6 +71,44 @@ impl Entry {
         Ok(format!("{}{}", &source[..body_start], body))
     }
     // sirno:witness:entry:end
+
+    /// Create the ordinary seed entries for a new Sirno Lake.
+    ///
+    /// The entries are normal entries.
+    /// Later operations do not privilege them.
+    pub fn default_seed_entries() -> Result<Vec<Self>, EntryParseError> {
+        // sirno:witness:meta:begin
+        let mut meta =
+            EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
+        meta.category.push(seed_id("meta"));
+        // sirno:witness:meta:end
+
+        // sirno:witness:concept:begin
+        let mut concept =
+            EntryMetadata::new("Concept", "A named idea that compresses project knowledge.")?;
+        concept.category.push(seed_id("meta"));
+        // sirno:witness:concept:end
+
+        // sirno:witness:narrative:begin
+        let mut narrative =
+            EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
+        narrative.category.push(seed_id("meta"));
+        // sirno:witness:narrative:end
+
+        Ok(vec![
+            Self::new(seed_id("meta"), meta, "Defines entries that classify other entries.\n"),
+            Self::new(
+                seed_id("concept"),
+                concept,
+                "A concept gives a stable name to compressed project knowledge.\n",
+            ),
+            Self::new(
+                seed_id("narrative"),
+                narrative,
+                "A narrative records an order in which a reader can understand concepts.\n",
+            ),
+        ])
+    }
 }
 
 /// Metadata for one Sirno entry.
@@ -185,43 +223,6 @@ impl EntryMetadata {
 pub enum FrozenMarker {
     /// The entry is frozen and should be read-only on disk.
     Present,
-}
-
-/// Create the ordinary seed entries for a new Sirno Lake.
-///
-/// The entries are normal entries.
-/// Later operations do not privilege them.
-pub fn default_seed_entries() -> Result<Vec<Entry>, EntryParseError> {
-    // sirno:witness:meta:begin
-    let mut meta =
-        EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
-    meta.category.push(seed_id("meta"));
-    // sirno:witness:meta:end
-
-    // sirno:witness:concept:begin
-    let mut concept =
-        EntryMetadata::new("Concept", "A named idea that compresses project knowledge.")?;
-    concept.category.push(seed_id("meta"));
-    // sirno:witness:concept:end
-
-    // sirno:witness:narrative:begin
-    let mut narrative = EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
-    narrative.category.push(seed_id("meta"));
-    // sirno:witness:narrative:end
-
-    Ok(vec![
-        Entry::new(seed_id("meta"), meta, "Defines entries that classify other entries.\n"),
-        Entry::new(
-            seed_id("concept"),
-            concept,
-            "A concept gives a stable name to compressed project knowledge.\n",
-        ),
-        Entry::new(
-            seed_id("narrative"),
-            narrative,
-            "A narrative records an order in which a reader can understand concepts.\n",
-        ),
-    ])
 }
 
 fn seed_id(raw: &str) -> EntryId {

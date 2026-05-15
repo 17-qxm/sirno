@@ -15,13 +15,13 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::trace;
 
-use crate::check::{CheckMode, CheckReport, check_entries};
-use crate::entry::{Entry, EntryMetadata, default_seed_entries};
+use crate::check::{CheckMode, CheckReport};
+use crate::entry::{Entry, EntryMetadata};
 use crate::id::{EntryId, EntryIdError};
 use crate::lake::{
     EntryDirectory, EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryWritePolicy,
 };
-use crate::links::delete_generated_links;
+use crate::links::GeneratedLinkBody;
 
 /// Lifecycle state used by Sirno entries in the `eter` backend.
 ///
@@ -79,7 +79,7 @@ impl SirnoFrost {
     pub fn open(root: impl Into<PathBuf>) -> Result<Self, FrostError> {
         trace!("sirno frost open begin");
         let root = root.into();
-        let backend = SirnoBackend::open(&root, sirno_registry())?;
+        let backend = SirnoBackend::open(&root, Self::registry())?;
         trace!("sirno frost open end");
         Ok(Self { root, backend })
     }
@@ -118,7 +118,7 @@ impl SirnoFrost {
     // sirno:witness:sirno-frost:begin
     pub fn put_entry(&mut self, entry: &Entry) -> Result<SnapshotRef, FrostError> {
         trace!("sirno put_entry begin: id={}", entry.id);
-        reject_frozen_entries(std::slice::from_ref(entry))?;
+        Self::reject_frozen_entries(std::slice::from_ref(entry))?;
         let fs_id = entry.id.to_filesystem_id()?;
         let facet = StoredEntryFacet::from_entry(entry);
         let snapshot = facet.apply_to(self.backend.write(), &fs_id).commit()?;
@@ -173,7 +173,7 @@ impl SirnoFrost {
     /// Check current entries at the selected boundary.
     pub fn check_current(&self, mode: CheckMode) -> Result<CheckReport, FrostError> {
         let entries = self.read_all_entries()?;
-        Ok(check_entries(&entries, mode))
+        Ok(mode.check_entries(&entries))
     }
 
     /// Freeze a public Markdown entry directory into Sirno Frost.
@@ -190,7 +190,7 @@ impl SirnoFrost {
         if report.has_errors() {
             return Err(FrostError::InvalidEntryDirectory(root));
         }
-        let entries = entries_without_generated_links(report.entries())?;
+        let entries = Self::entries_without_generated_links(report.entries())?;
         let version = self.commit_entries(&entries)?;
         trace!("sirno commit_entry_directory end: version={}", version.version());
         Ok(version)
@@ -218,7 +218,7 @@ impl SirnoFrost {
     // sirno:witness:sirno-frost:begin
     pub fn init_default_entries(&mut self) -> Result<SnapshotRef, FrostError> {
         trace!("sirno init_default_entries begin");
-        let entries = default_seed_entries()?;
+        let entries = Entry::default_seed_entries()?;
         for entry in &entries {
             let fs_id = entry.id.to_filesystem_id()?;
             if self.backend.entry_id_in_use(&fs_id)? {
@@ -233,7 +233,7 @@ impl SirnoFrost {
 
     // sirno:witness:sirno-frost:begin
     fn commit_entries(&mut self, entries: &[Entry]) -> Result<SnapshotRef, FrostError> {
-        reject_frozen_entries(entries)?;
+        Self::reject_frozen_entries(entries)?;
         let current = self.current_snapshot()?;
         if self.read_all_entries_at_snapshot(current)? == entries {
             return Ok(current);
@@ -258,40 +258,42 @@ impl SirnoFrost {
         }
         Ok(txn.commit()?)
     }
-    // sirno:witness:sirno-frost:end
-}
 
-fn reject_frozen_entries(entries: &[Entry]) -> Result<(), FrostError> {
-    if let Some(entry) = entries.iter().find(|entry| entry.metadata.frozen.is_some()) {
-        return Err(FrostError::FrozenEntryCommit(entry.id.clone()));
+    fn reject_frozen_entries(entries: &[Entry]) -> Result<(), FrostError> {
+        if let Some(entry) = entries.iter().find(|entry| entry.metadata.frozen.is_some()) {
+            return Err(FrostError::FrozenEntryCommit(entry.id.clone()));
+        }
+        Ok(())
     }
-    Ok(())
-}
 
-fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, FrostError> {
-    entries
-        .iter()
-        .map(|entry| {
-            let body = delete_generated_links(&entry.body).map_err(EntryDirectoryError::from)?;
-            let body = strip_trailing_generated_link_divider(&body);
-            Ok(Entry::new(entry.id.clone(), entry.metadata.clone(), body))
-        })
-        .collect()
-}
+    fn entries_without_generated_links(entries: &[Entry]) -> Result<Vec<Entry>, FrostError> {
+        entries
+            .iter()
+            .map(|entry| {
+                let body = GeneratedLinkBody::new(&entry.body)
+                    .delete()
+                    .map_err(EntryDirectoryError::from)?;
+                let body = Self::strip_trailing_generated_link_divider(&body);
+                Ok(Entry::new(entry.id.clone(), entry.metadata.clone(), body))
+            })
+            .collect()
+    }
 
-fn strip_trailing_generated_link_divider(body: &str) -> String {
-    body.strip_suffix("\n\n---\n")
-        .map(|before| format!("{before}\n"))
-        .unwrap_or_else(|| body.to_owned())
-}
+    fn strip_trailing_generated_link_divider(body: &str) -> String {
+        body.strip_suffix("\n\n---\n")
+            .map(|before| format!("{before}\n"))
+            .unwrap_or_else(|| body.to_owned())
+    }
 
-fn sirno_registry() -> eter::filesystem::FilesystemFieldRegistry {
-    eter::filesystem::builtins_registry::<EntryLifecycle>()
-        .with_field::<NameField>("name")
-        .with_field::<DescriptionField>("description")
-        .with_field::<CategoryField>("category")
-        .with_field::<BelongsField>("belongs")
-        .with_field::<RefinesField>("refines")
+    fn registry() -> eter::filesystem::FilesystemFieldRegistry {
+        eter::filesystem::builtins_registry::<EntryLifecycle>()
+            .with_field::<NameField>("name")
+            .with_field::<DescriptionField>("description")
+            .with_field::<CategoryField>("category")
+            .with_field::<BelongsField>("belongs")
+            .with_field::<RefinesField>("refines")
+    }
+    // sirno:witness:sirno-frost:end
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -330,6 +332,39 @@ impl StoredEntryFacet {
         metadata.refines = self.refines;
         Ok(Entry::new(id, metadata, body))
     }
+
+    fn resolve_optional_text<F: Field<Content = String>>(
+        backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
+    ) -> Result<Option<String>, FilesystemError> {
+        match backend.resolve::<F>(at, id)? {
+            | Resolution::Content(value) => Ok(Some(value)),
+            | Resolution::Deleted | Resolution::Absent => Ok(None),
+        }
+    }
+
+    fn resolve_optional_list<F: Field<Content = Vec<EntryId>>>(
+        backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
+    ) -> Result<Vec<EntryId>, FilesystemError> {
+        match backend.resolve::<F>(at, id)? {
+            | Resolution::Content(value) => Ok(value),
+            | Resolution::Deleted | Resolution::Absent => Ok(Vec::new()),
+        }
+    }
+
+    fn apply_optional_list<'a, F>(
+        txn: SirnoWriteTxn<'a>, fs_id: &FilesystemEntryId, value: &[EntryId],
+    ) -> SirnoWriteTxn<'a>
+    where
+        F: Field<Content = Vec<EntryId>>,
+    {
+        if value.is_empty() { txn.delete::<F>(fs_id) } else { txn.set::<F>(fs_id, value.to_vec()) }
+    }
+
+    fn required_text(value: &Option<String>, field: &'static str) -> String {
+        value.clone().unwrap_or_else(|| {
+            panic!("Sirno Frost entry facet is missing required `{field}` field")
+        })
+    }
 }
 
 impl EntryFacet<SirnoBackend> for StoredEntryFacet {
@@ -341,11 +376,11 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
         }
 
         Ok(Some(Self {
-            name: resolve_optional_text::<NameField>(backend, at, id)?,
-            description: resolve_optional_text::<DescriptionField>(backend, at, id)?,
-            category: resolve_optional_list::<CategoryField>(backend, at, id)?,
-            belongs: resolve_optional_list::<BelongsField>(backend, at, id)?,
-            refines: resolve_optional_list::<RefinesField>(backend, at, id)?,
+            name: Self::resolve_optional_text::<NameField>(backend, at, id)?,
+            description: Self::resolve_optional_text::<DescriptionField>(backend, at, id)?,
+            category: Self::resolve_optional_list::<CategoryField>(backend, at, id)?,
+            belongs: Self::resolve_optional_list::<BelongsField>(backend, at, id)?,
+            refines: Self::resolve_optional_list::<RefinesField>(backend, at, id)?,
             body: match backend.resolve_body(at, id)? {
                 | Resolution::Content(body) => Some(body),
                 | Resolution::Deleted | Resolution::Absent => None,
@@ -359,47 +394,14 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
     {
         let txn = txn
             .set::<Lifecycle<EntryLifecycle>>(id, EntryLifecycle::Active)
-            .set::<NameField>(id, required_facet_text(&self.name, "name"))
-            .set::<DescriptionField>(id, required_facet_text(&self.description, "description"));
+            .set::<NameField>(id, Self::required_text(&self.name, "name"))
+            .set::<DescriptionField>(id, Self::required_text(&self.description, "description"));
 
-        let txn = apply_optional_list::<CategoryField>(txn, id, &self.category);
-        let txn = apply_optional_list::<BelongsField>(txn, id, &self.belongs);
-        let txn = apply_optional_list::<RefinesField>(txn, id, &self.refines);
-        txn.set_body(id, required_facet_text(&self.body, "body"))
+        let txn = Self::apply_optional_list::<CategoryField>(txn, id, &self.category);
+        let txn = Self::apply_optional_list::<BelongsField>(txn, id, &self.belongs);
+        let txn = Self::apply_optional_list::<RefinesField>(txn, id, &self.refines);
+        txn.set_body(id, Self::required_text(&self.body, "body"))
     }
-}
-
-fn resolve_optional_text<F: Field<Content = String>>(
-    backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
-) -> Result<Option<String>, FilesystemError> {
-    match backend.resolve::<F>(at, id)? {
-        | Resolution::Content(value) => Ok(Some(value)),
-        | Resolution::Deleted | Resolution::Absent => Ok(None),
-    }
-}
-
-fn resolve_optional_list<F: Field<Content = Vec<EntryId>>>(
-    backend: &SirnoBackend, at: SnapshotRef, id: &FilesystemEntryId,
-) -> Result<Vec<EntryId>, FilesystemError> {
-    match backend.resolve::<F>(at, id)? {
-        | Resolution::Content(value) => Ok(value),
-        | Resolution::Deleted | Resolution::Absent => Ok(Vec::new()),
-    }
-}
-
-fn apply_optional_list<'a, F>(
-    txn: SirnoWriteTxn<'a>, fs_id: &FilesystemEntryId, value: &[EntryId],
-) -> SirnoWriteTxn<'a>
-where
-    F: Field<Content = Vec<EntryId>>,
-{
-    if value.is_empty() { txn.delete::<F>(fs_id) } else { txn.set::<F>(fs_id, value.to_vec()) }
-}
-
-fn required_facet_text(value: &Option<String>, field: &'static str) -> String {
-    value
-        .clone()
-        .unwrap_or_else(|| panic!("Sirno Frost entry facet is missing required `{field}` field"))
 }
 
 /// Error raised by Sirno Frost operations.
@@ -446,7 +448,7 @@ mod tests {
 
     use crate::entry::FrozenMarker;
     use crate::lake::EntryDirectoryWritePolicy;
-    use crate::links::{GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links};
+    use crate::links::{GeneratedLinkBody, GeneratedLinkIndex, GeneratedLinkSettings};
 
     #[test]
     fn init_creates_ordinary_seed_entries() {
@@ -509,7 +511,7 @@ mod tests {
         let mut entry = test_entry("alpha", "Alpha");
         let footer = GeneratedLinkIndex::from_entries(std::slice::from_ref(&entry))
             .render_entry(&entry, &GeneratedLinkSettings::default());
-        entry.body = apply_generated_links(&entry.body, &footer).unwrap();
+        entry.body = GeneratedLinkBody::new(&entry.body).apply(&footer).unwrap();
         write_public_entry(public.path(), &entry);
         let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
 

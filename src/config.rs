@@ -220,6 +220,30 @@ impl WitnessDelimiterSettings {
     pub fn new(begin: impl Into<String>, end: impl Into<String>) -> Self {
         Self { begin: begin.into(), end: end.into() }
     }
+
+    fn validate(&self, index: usize) -> Result<(), ConfigError> {
+        Self::validate_regex("witness.delimiters.begin", index, &self.begin)?;
+        Self::validate_regex("witness.delimiters.end", index, &self.end)?;
+        Ok(())
+    }
+
+    fn validate_regex(field: &'static str, index: usize, source: &str) -> Result<(), ConfigError> {
+        if source.trim().is_empty() {
+            return Err(ConfigError::WitnessRegex { field, index });
+        }
+        let regex = Regex::new(source).map_err(|source| ConfigError::WitnessRegexSyntax {
+            field,
+            index,
+            source,
+        })?;
+        if regex.captures_len() < 2 {
+            return Err(ConfigError::WitnessRegexCapture { field, index });
+        }
+        if regex.is_match("") {
+            return Err(ConfigError::WitnessRegexEmptyMatch { field, index });
+        }
+        Ok(())
+    }
 }
 
 impl WitnessSettings {
@@ -244,31 +268,10 @@ impl WitnessSettings {
             return Err(ConfigError::WitnessDelimiterList);
         }
         for (index, delimiter) in self.delimiters.iter().enumerate() {
-            validate_witness_regex("witness.delimiters.begin", index, &delimiter.begin)?;
-            validate_witness_regex("witness.delimiters.end", index, &delimiter.end)?;
+            delimiter.validate(index)?;
         }
         Ok(())
     }
-}
-
-fn validate_witness_regex(
-    field: &'static str, index: usize, source: &str,
-) -> Result<(), ConfigError> {
-    if source.trim().is_empty() {
-        return Err(ConfigError::WitnessRegex { field, index });
-    }
-    let regex = Regex::new(source).map_err(|source| ConfigError::WitnessRegexSyntax {
-        field,
-        index,
-        source,
-    })?;
-    if regex.captures_len() < 2 {
-        return Err(ConfigError::WitnessRegexCapture { field, index });
-    }
-    if regex.is_match("") {
-        return Err(ConfigError::WitnessRegexEmptyMatch { field, index });
-    }
-    Ok(())
 }
 
 /// Sirno project configuration.
@@ -406,17 +409,21 @@ impl SirnoConfig {
     /// Resolve the monograph path relative to a config file path when configured.
     // sirno:witness:project-config:begin
     pub fn resolve_mono(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
-        self.mono.as_ref().map(|mono| resolve_config_relative(config_path.as_ref(), &mono.path))
+        self.mono
+            .as_ref()
+            .map(|mono| Self::resolve_config_relative(config_path.as_ref(), &mono.path))
     }
 
     /// Resolve the entry lake path relative to a config file path.
     pub fn resolve_lake(&self, config_path: impl AsRef<Path>) -> PathBuf {
-        resolve_config_relative(config_path.as_ref(), &self.lake.path)
+        Self::resolve_config_relative(config_path.as_ref(), &self.lake.path)
     }
 
     /// Resolve the Sirno Frost root path relative to a config file path when configured.
     pub fn resolve_frost(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
-        self.frost.as_ref().map(|frost| resolve_config_relative(config_path.as_ref(), &frost.path))
+        self.frost
+            .as_ref()
+            .map(|frost| Self::resolve_config_relative(config_path.as_ref(), &frost.path))
     }
     // sirno:witness:project-config:end
 
@@ -440,173 +447,175 @@ impl SirnoConfig {
     }
 
     fn to_toml(&self) -> Result<String, ConfigError> {
-        render_config(self).map_err(ConfigError::Render)
+        ConfigRenderer::render(self).map_err(ConfigError::Render)
+    }
+
+    fn resolve_config_relative(config_path: &Path, configured_path: &Path) -> PathBuf {
+        if configured_path.is_absolute() {
+            return configured_path.to_path_buf();
+        }
+        config_path.parent().unwrap_or_else(|| Path::new(".")).join(configured_path)
     }
 }
 // sirno:witness:project-config:end
 
-fn resolve_config_relative(config_path: &Path, configured_path: &Path) -> PathBuf {
-    if configured_path.is_absolute() {
-        return configured_path.to_path_buf();
-    }
-    config_path.parent().unwrap_or_else(|| Path::new(".")).join(configured_path)
+struct ConfigRenderer {
+    out: String,
 }
 
-fn render_config(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
-    let mut out = String::new();
-
-    if let Some(mono) = &config.mono {
-        push_table(&mut out, "mono");
-        // sirno:witness:project-config-comments:begin
-        push_field(
-            &mut out,
-            "path",
-            &mono.path,
-            "Markdown monograph path, resolved relative to this config file.",
-        )?;
-        // sirno:witness:project-config-comments:end
-        out.push('\n');
+impl ConfigRenderer {
+    fn render(config: &SirnoConfig) -> Result<String, toml::ser::Error> {
+        let mut renderer = Self { out: String::new() };
+        renderer.push_config(config)?;
+        Ok(renderer.out)
     }
 
-    push_table(&mut out, "lake");
-    // sirno:witness:project-config-comments:begin
-    push_field(
-        &mut out,
-        "path",
-        &config.lake.path,
-        "Markdown entry lake path, resolved relative to this config file.",
-    )?;
-    if !config.lake.ignore.is_empty() {
-        push_field(
-            &mut out,
-            "ignore",
-            &config.lake.ignore,
-            "Lake-root paths Sirno skips while reading, checking, querying, and generating links.",
-        )?;
-    }
-    // sirno:witness:project-config-comments:end
-
-    if let Some(frost) = &config.frost {
-        out.push('\n');
-        push_table(&mut out, "frost");
-        // sirno:witness:project-config-comments:begin
-        push_field(
-            &mut out,
-            "path",
-            &frost.path,
-            "Sirno Frost root, kept outside the public lake.",
-        )?;
-        // sirno:witness:project-config-comments:end
-    }
-
-    if let Some(repo) = &config.repo
-        && !repo.members.is_empty()
-    {
-        out.push('\n');
-        push_table(&mut out, "repo");
-        // sirno:witness:project-config-comments:begin
-        push_field(
-            &mut out,
-            "members",
-            &repo.members,
-            "Repository files, directories, or globs scanned for witness blocks.",
-        )?;
-        // sirno:witness:project-config-comments:end
-    }
-
-    out.push('\n');
-    push_table(&mut out, "witness");
-    // sirno:witness:project-config-comments:begin
-    push_witness_delimiters(&mut out, &config.witness.delimiters)?;
-    // sirno:witness:project-config-comments:end
-
-    out.push('\n');
-    push_table(&mut out, "check");
-    // sirno:witness:project-config-comments:begin
-    push_field(
-        &mut out,
-        "link",
-        &config.check.link,
-        "Require generated footers to match current metadata during checks.",
-    )?;
-    // sirno:witness:project-config-comments:end
-
-    out.push('\n');
-    push_table(&mut out, "links");
-    // sirno:witness:project-config-comments:begin
-    push_field(
-        &mut out,
-        "category",
-        &config.links.category,
-        "Include category links; use a boolean or { to = bool, from = bool }.",
-    )?;
-    push_field(
-        &mut out,
-        "belongs",
-        &config.links.belongs,
-        "Include belongs links; use a boolean or { to = bool, from = bool }.",
-    )?;
-    push_field(
-        &mut out,
-        "clique",
-        &config.links.clique,
-        "Add clique sections derived from belongs targets.",
-    )?;
-    push_field(
-        &mut out,
-        "refines",
-        &config.links.refines,
-        "Include refines links; use a boolean or { to = bool, from = bool }.",
-    )?;
-    // sirno:witness:project-config-comments:end
-
-    Ok(out)
-}
-
-fn push_table(out: &mut String, name: &str) {
-    out.push('[');
-    out.push_str(name);
-    out.push_str("]\n");
-}
-
-fn push_field<T: Serialize + ?Sized>(
-    out: &mut String, name: &str, value: &T, comment: &str,
-) -> Result<(), toml::ser::Error> {
-    out.push_str("# ");
-    out.push_str(comment);
-    out.push('\n');
-    out.push_str(name);
-    out.push_str(" = ");
-    out.push_str(&toml_value(value)?);
-    out.push('\n');
-    Ok(())
-}
-
-// sirno:witness:project-config-comments:begin
-fn push_witness_delimiters(
-    out: &mut String, delimiters: &[WitnessDelimiterSettings],
-) -> Result<(), toml::ser::Error> {
-    out.push_str("# Witness delimiter regex pairs; each first capture group is the entry id.\n");
-    for (index, delimiter) in delimiters.iter().enumerate() {
-        if index > 0 {
-            out.push('\n');
+    fn push_config(&mut self, config: &SirnoConfig) -> Result<(), toml::ser::Error> {
+        if let Some(mono) = &config.mono {
+            self.push_table("mono");
+            // sirno:witness:project-config-comments:begin
+            self.push_field(
+                "path",
+                &mono.path,
+                "Markdown monograph path, resolved relative to this config file.",
+            )?;
+            // sirno:witness:project-config-comments:end
+            self.out.push('\n');
         }
-        push_array_table(out, "witness.delimiters");
-        push_field(out, "begin", &delimiter.begin, "Opening witness delimiter regex.")?;
-        push_field(out, "end", &delimiter.end, "Closing witness delimiter regex.")?;
+
+        self.push_table("lake");
+        // sirno:witness:project-config-comments:begin
+        self.push_field(
+            "path",
+            &config.lake.path,
+            "Markdown entry lake path, resolved relative to this config file.",
+        )?;
+        if !config.lake.ignore.is_empty() {
+            self.push_field(
+                "ignore",
+                &config.lake.ignore,
+                "Lake-root paths Sirno skips while reading, checking, querying, and generating links.",
+            )?;
+        }
+        // sirno:witness:project-config-comments:end
+
+        if let Some(frost) = &config.frost {
+            self.out.push('\n');
+            self.push_table("frost");
+            // sirno:witness:project-config-comments:begin
+            self.push_field(
+                "path",
+                &frost.path,
+                "Sirno Frost root, kept outside the public lake.",
+            )?;
+            // sirno:witness:project-config-comments:end
+        }
+
+        if let Some(repo) = &config.repo
+            && !repo.members.is_empty()
+        {
+            self.out.push('\n');
+            self.push_table("repo");
+            // sirno:witness:project-config-comments:begin
+            self.push_field(
+                "members",
+                &repo.members,
+                "Repository files, directories, or globs scanned for witness blocks.",
+            )?;
+            // sirno:witness:project-config-comments:end
+        }
+
+        self.out.push('\n');
+        self.push_table("witness");
+        // sirno:witness:project-config-comments:begin
+        self.push_witness_delimiters(&config.witness.delimiters)?;
+        // sirno:witness:project-config-comments:end
+
+        self.out.push('\n');
+        self.push_table("check");
+        // sirno:witness:project-config-comments:begin
+        self.push_field(
+            "link",
+            &config.check.link,
+            "Require generated footers to match current metadata during checks.",
+        )?;
+        // sirno:witness:project-config-comments:end
+
+        self.out.push('\n');
+        self.push_table("links");
+        // sirno:witness:project-config-comments:begin
+        self.push_field(
+            "category",
+            &config.links.category,
+            "Include category links; use a boolean or { to = bool, from = bool }.",
+        )?;
+        self.push_field(
+            "belongs",
+            &config.links.belongs,
+            "Include belongs links; use a boolean or { to = bool, from = bool }.",
+        )?;
+        self.push_field(
+            "clique",
+            &config.links.clique,
+            "Add clique sections derived from belongs targets.",
+        )?;
+        self.push_field(
+            "refines",
+            &config.links.refines,
+            "Include refines links; use a boolean or { to = bool, from = bool }.",
+        )?;
+        // sirno:witness:project-config-comments:end
+
+        Ok(())
     }
-    Ok(())
-}
-// sirno:witness:project-config-comments:end
 
-fn push_array_table(out: &mut String, name: &str) {
-    out.push_str("[[");
-    out.push_str(name);
-    out.push_str("]]\n");
-}
+    fn push_table(&mut self, name: &str) {
+        self.out.push('[');
+        self.out.push_str(name);
+        self.out.push_str("]\n");
+    }
 
-fn toml_value<T: Serialize + ?Sized>(value: &T) -> Result<String, toml::ser::Error> {
-    Ok(toml::Value::try_from(value)?.to_string())
+    fn push_field<T: Serialize + ?Sized>(
+        &mut self, name: &str, value: &T, comment: &str,
+    ) -> Result<(), toml::ser::Error> {
+        self.out.push_str("# ");
+        self.out.push_str(comment);
+        self.out.push('\n');
+        self.out.push_str(name);
+        self.out.push_str(" = ");
+        self.out.push_str(&Self::toml_value(value)?);
+        self.out.push('\n');
+        Ok(())
+    }
+
+    // sirno:witness:project-config-comments:begin
+    fn push_witness_delimiters(
+        &mut self, delimiters: &[WitnessDelimiterSettings],
+    ) -> Result<(), toml::ser::Error> {
+        self.out.push_str(
+            "# Witness delimiter regex pairs; each first capture group is the entry id.\n",
+        );
+        for (index, delimiter) in delimiters.iter().enumerate() {
+            if index > 0 {
+                self.out.push('\n');
+            }
+            self.push_array_table("witness.delimiters");
+            self.push_field("begin", &delimiter.begin, "Opening witness delimiter regex.")?;
+            self.push_field("end", &delimiter.end, "Closing witness delimiter regex.")?;
+        }
+        Ok(())
+    }
+    // sirno:witness:project-config-comments:end
+
+    fn push_array_table(&mut self, name: &str) {
+        self.out.push_str("[[");
+        self.out.push_str(name);
+        self.out.push_str("]]\n");
+    }
+
+    fn toml_value<T: Serialize + ?Sized>(value: &T) -> Result<String, toml::ser::Error> {
+        Ok(toml::Value::try_from(value)?.to_string())
+    }
 }
 
 /// Error raised by Sirno config operations.

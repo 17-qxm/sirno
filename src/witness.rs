@@ -63,11 +63,117 @@ impl WitnessCheckSettings {
             member_count = self.members.len(),
             "scan_witnesses begin"
         );
-        let files = resolve_member_files(self)?;
-        let output = run_mosaika_witness_scan(&self.root, &files, &self.witness)?;
-        let index = parse_witness_output(&output)?;
+        let files = self.resolve_member_files()?;
+        let output = self.run_mosaika_scan(&files)?;
+        let index = WitnessIndex::from_mosaika_output(&output)?;
         trace!(file_count = files.len(), "scan_witnesses end");
         Ok(index)
+    }
+    // sirno:witness:witness-lookup:end
+
+    // sirno:witness:witness-lookup:begin
+    fn resolve_member_files(&self) -> Result<Vec<PathBuf>, WitnessError> {
+        let mut files = BTreeSet::new();
+        for member in &self.members {
+            let before = files.len();
+            if member.has_glob_meta() {
+                self.collect_glob_member(member, &mut files)?;
+            } else {
+                let path = self.root.join(member.as_str());
+                self.collect_path_member(member, &path, &mut files)?;
+            }
+            if files.len() == before {
+                return Err(WitnessError::MissingMember { member: member.as_str().to_owned() });
+            }
+        }
+        Ok(files.into_iter().collect())
+    }
+    // sirno:witness:witness-lookup:end
+
+    // sirno:witness:witness-lookup:begin
+    fn collect_glob_member(
+        &self, member: &RepoMember, files: &mut BTreeSet<PathBuf>,
+    ) -> Result<(), WitnessError> {
+        let pattern = self.root.join(member.as_str()).to_string_lossy().to_string();
+        let matches = glob(&pattern).map_err(|source| WitnessError::InvalidGlob {
+            member: member.as_str().to_owned(),
+            source,
+        })?;
+        for path in matches {
+            self.collect_path_member(
+                member,
+                &path.map_err(|source| WitnessError::Glob {
+                    member: member.as_str().to_owned(),
+                    source,
+                })?,
+                files,
+            )?;
+        }
+        Ok(())
+    }
+    // sirno:witness:witness-lookup:end
+
+    // sirno:witness:witness-lookup:begin
+    fn collect_path_member(
+        &self, member: &RepoMember, path: &Path, files: &mut BTreeSet<PathBuf>,
+    ) -> Result<(), WitnessError> {
+        if !path.exists() {
+            return Ok(());
+        }
+        if path.is_file() {
+            files.insert(path.to_path_buf());
+            return Ok(());
+        }
+        if path.is_dir() {
+            self.collect_directory_files(member, path, files)?;
+            return Ok(());
+        }
+        Err(WitnessError::UnsupportedMember {
+            member: member.as_str().to_owned(),
+            path: path.to_path_buf(),
+        })
+    }
+    // sirno:witness:witness-lookup:end
+
+    // sirno:witness:witness-lookup:begin
+    fn collect_directory_files(
+        &self, member: &RepoMember, root: &Path, files: &mut BTreeSet<PathBuf>,
+    ) -> Result<(), WitnessError> {
+        for entry in std::fs::read_dir(root).map_err(|source| WitnessError::ReadDirectory {
+            member: member.as_str().to_owned(),
+            path: root.to_path_buf(),
+            source,
+        })? {
+            let path = entry
+                .map_err(|source| WitnessError::ReadDirectory {
+                    member: member.as_str().to_owned(),
+                    path: root.to_path_buf(),
+                    source,
+                })?
+                .path();
+            if path.is_dir() {
+                self.collect_directory_files(member, &path, files)?;
+            } else if path.is_file() {
+                files.insert(path);
+            }
+        }
+        Ok(())
+    }
+    // sirno:witness:witness-lookup:end
+
+    // sirno:witness:witness-lookup:begin
+    fn run_mosaika_scan(&self, files: &[PathBuf]) -> Result<String, WitnessError> {
+        if files.is_empty() {
+            return Ok(String::new());
+        }
+
+        let projection = self.witness.projection(files);
+        let scheme = Scheme::from_syntax(projection, &self.root).map_err(WitnessError::Scheme)?;
+        let mut output = Vec::new();
+        Engine::new("sirno witness scan", scheme)
+            .run_with_stdout(OverwriteMode::RejectExisting, &mut output)
+            .map_err(WitnessError::Engine)?;
+        String::from_utf8(output).map_err(WitnessError::Utf8)
     }
     // sirno:witness:witness-lookup:end
 }
@@ -103,6 +209,54 @@ impl WitnessIndex {
     pub fn entry_ids(&self) -> impl Iterator<Item = &EntryId> {
         self.records_by_entry.keys()
     }
+
+    // sirno:witness:witness-lookup:begin
+    fn from_mosaika_output(output: &str) -> Result<Self, WitnessError> {
+        let mut index = Self::new();
+        for line in output.lines().filter(|line| !line.trim().is_empty()) {
+            let record: MosaikaLogRecord =
+                serde_json::from_str(line).map_err(WitnessError::Json)?;
+            let marker = record
+                .delimiters
+                .first()
+                .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
+            let closing = record
+                .delimiters
+                .last()
+                .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
+            let raw_entry = marker
+                .captures
+                .first()
+                .ok_or_else(|| WitnessError::MissingCapture { line: line.to_owned() })?;
+            let raw_closing_entry = closing
+                .captures
+                .first()
+                .ok_or_else(|| WitnessError::MissingCapture { line: line.to_owned() })?;
+            if raw_entry != raw_closing_entry {
+                return Err(WitnessError::MismatchedEntryId {
+                    path: PathBuf::from(&record.file),
+                    opening: raw_entry.clone(),
+                    closing: raw_closing_entry.clone(),
+                });
+            }
+            let entry = EntryId::new(raw_entry).map_err(|source| WitnessError::InvalidEntryId {
+                path: PathBuf::from(&record.file),
+                marker: raw_entry.clone(),
+                source,
+            })?;
+            index.push(WitnessRecord {
+                entry,
+                path: PathBuf::from(record.file),
+                region: record.region.into(),
+                opening: marker.witness_span(),
+                closing: closing.witness_span(),
+                marker: marker.matched.clone(),
+                body: record.body,
+            });
+        }
+        Ok(index)
+    }
+    // sirno:witness:witness-lookup:end
 }
 
 /// One repository witness block resolved by `mosaika`.
@@ -148,203 +302,52 @@ pub struct WitnessSpan {
 }
 // sirno:witness:witness:end
 
-// sirno:witness:witness-lookup:begin
-fn resolve_member_files(settings: &WitnessCheckSettings) -> Result<Vec<PathBuf>, WitnessError> {
-    let mut files = BTreeSet::new();
-    for member in &settings.members {
-        let before = files.len();
-        if has_glob_meta(member.as_str()) {
-            collect_glob_member(&settings.root, member, &mut files)?;
-        } else {
-            let path = settings.root.join(member.as_str());
-            collect_path_member(member, &path, &mut files)?;
-        }
-        if files.len() == before {
-            return Err(WitnessError::MissingMember { member: member.as_str().to_owned() });
-        }
+impl RepoMember {
+    fn has_glob_meta(&self) -> bool {
+        self.as_str().contains('*') || self.as_str().contains('?') || self.as_str().contains('[')
     }
-    Ok(files.into_iter().collect())
 }
-// sirno:witness:witness-lookup:end
 
-// sirno:witness:witness-lookup:begin
-fn collect_glob_member(
-    root: &Path, member: &RepoMember, files: &mut BTreeSet<PathBuf>,
-) -> Result<(), WitnessError> {
-    let pattern = root.join(member.as_str()).to_string_lossy().to_string();
-    let matches = glob(&pattern).map_err(|source| WitnessError::InvalidGlob {
-        member: member.as_str().to_owned(),
-        source,
-    })?;
-    for path in matches {
-        collect_path_member(
-            member,
-            &path.map_err(|source| WitnessError::Glob {
-                member: member.as_str().to_owned(),
-                source,
-            })?,
-            files,
-        )?;
-    }
-    Ok(())
-}
-// sirno:witness:witness-lookup:end
-
-// sirno:witness:witness-lookup:begin
-fn collect_path_member(
-    member: &RepoMember, path: &Path, files: &mut BTreeSet<PathBuf>,
-) -> Result<(), WitnessError> {
-    if !path.exists() {
-        return Ok(());
-    }
-    if path.is_file() {
-        files.insert(path.to_path_buf());
-        return Ok(());
-    }
-    if path.is_dir() {
-        collect_directory_files(member, path, files)?;
-        return Ok(());
-    }
-    Err(WitnessError::UnsupportedMember {
-        member: member.as_str().to_owned(),
-        path: path.to_path_buf(),
-    })
-}
-// sirno:witness:witness-lookup:end
-
-// sirno:witness:witness-lookup:begin
-fn collect_directory_files(
-    member: &RepoMember, root: &Path, files: &mut BTreeSet<PathBuf>,
-) -> Result<(), WitnessError> {
-    for entry in std::fs::read_dir(root).map_err(|source| WitnessError::ReadDirectory {
-        member: member.as_str().to_owned(),
-        path: root.to_path_buf(),
-        source,
-    })? {
-        let path = entry
-            .map_err(|source| WitnessError::ReadDirectory {
-                member: member.as_str().to_owned(),
-                path: root.to_path_buf(),
-                source,
-            })?
-            .path();
-        if path.is_dir() {
-            collect_directory_files(member, &path, files)?;
-        } else if path.is_file() {
-            files.insert(path);
-        }
-    }
-    Ok(())
-}
-// sirno:witness:witness-lookup:end
-
-// sirno:witness:witness-lookup:begin
-fn run_mosaika_witness_scan(
-    root: &Path, files: &[PathBuf], witness: &WitnessSettings,
-) -> Result<String, WitnessError> {
-    if files.is_empty() {
-        return Ok(String::new());
-    }
-
-    let projection = witness_projection(files, witness);
-    let scheme = Scheme::from_syntax(projection, root).map_err(WitnessError::Scheme)?;
-    let mut output = Vec::new();
-    Engine::new("sirno witness scan", scheme)
-        .run_with_stdout(OverwriteMode::RejectExisting, &mut output)
-        .map_err(WitnessError::Engine)?;
-    String::from_utf8(output).map_err(WitnessError::Utf8)
-}
-// sirno:witness:witness-lookup:end
-
-// sirno:witness:witness-lookup:begin
-fn witness_projection(files: &[PathBuf], witness: &WitnessSettings) -> syn::Projection {
-    let transforms = witness
-        .delimiters
-        .iter()
-        .enumerate()
-        .map(|(index, delimiter)| Transform {
-            name: witness_transform_name(index),
-            delimiters: vec![
-                Delimiter::Regex(RegexDelimiter { regex: delimiter.begin.clone() }),
-                Delimiter::Regex(RegexDelimiter { regex: delimiter.end.clone() }),
-            ],
-            effects: vec![Effect::Log { log: true }],
-        })
-        .collect::<Vec<_>>();
-    let transform_names =
-        (0..witness.delimiters.len()).map(witness_transform_name).collect::<Vec<_>>();
-    syn::Projection {
-        transforms,
-        transactions: files
+impl WitnessSettings {
+    // sirno:witness:witness-lookup:begin
+    fn projection(&self, files: &[PathBuf]) -> syn::Projection {
+        let transforms = self
+            .delimiters
             .iter()
-            .map(|path| Transaction {
-                arrow: Arrow {
-                    src: path.clone(),
-                    dst: None,
-                    log: Some(LogDestination::Pipe(LogPipe { pipe: PipeName::Stdout })),
-                    pattern: None,
-                },
-                transform: transform_names.clone(),
+            .enumerate()
+            .map(|(index, delimiter)| Transform {
+                name: Self::transform_name(index),
+                delimiters: vec![
+                    Delimiter::Regex(RegexDelimiter { regex: delimiter.begin.clone() }),
+                    Delimiter::Regex(RegexDelimiter { regex: delimiter.end.clone() }),
+                ],
+                effects: vec![Effect::Log { log: true }],
             })
-            .collect(),
-        posts: Vec::new(),
-    }
-}
-// sirno:witness:witness-lookup:end
-
-fn witness_transform_name(index: usize) -> String {
-    format!("{WITNESS_TRANSFORM}-{index}")
-}
-
-// sirno:witness:witness-lookup:begin
-fn parse_witness_output(output: &str) -> Result<WitnessIndex, WitnessError> {
-    let mut index = WitnessIndex::new();
-    for line in output.lines().filter(|line| !line.trim().is_empty()) {
-        let record: MosaikaLogRecord = serde_json::from_str(line).map_err(WitnessError::Json)?;
-        let marker = record
-            .delimiters
-            .first()
-            .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
-        let closing = record
-            .delimiters
-            .last()
-            .ok_or_else(|| WitnessError::MissingDelimiter { line: line.to_owned() })?;
-        let raw_entry = marker
-            .captures
-            .first()
-            .ok_or_else(|| WitnessError::MissingCapture { line: line.to_owned() })?;
-        let raw_closing_entry = closing
-            .captures
-            .first()
-            .ok_or_else(|| WitnessError::MissingCapture { line: line.to_owned() })?;
-        if raw_entry != raw_closing_entry {
-            return Err(WitnessError::MismatchedEntryId {
-                path: PathBuf::from(&record.file),
-                opening: raw_entry.clone(),
-                closing: raw_closing_entry.clone(),
-            });
+            .collect::<Vec<_>>();
+        let transform_names =
+            (0..self.delimiters.len()).map(Self::transform_name).collect::<Vec<_>>();
+        syn::Projection {
+            transforms,
+            transactions: files
+                .iter()
+                .map(|path| Transaction {
+                    arrow: Arrow {
+                        src: path.clone(),
+                        dst: None,
+                        log: Some(LogDestination::Pipe(LogPipe { pipe: PipeName::Stdout })),
+                        pattern: None,
+                    },
+                    transform: transform_names.clone(),
+                })
+                .collect(),
+            posts: Vec::new(),
         }
-        let entry = EntryId::new(raw_entry).map_err(|source| WitnessError::InvalidEntryId {
-            path: PathBuf::from(&record.file),
-            marker: raw_entry.clone(),
-            source,
-        })?;
-        index.push(WitnessRecord {
-            entry,
-            path: PathBuf::from(record.file),
-            region: record.region.into(),
-            opening: delimiter_span(marker.span, &marker.matched),
-            closing: delimiter_span(closing.span, &closing.matched),
-            marker: marker.matched.clone(),
-            body: record.body,
-        });
     }
-    Ok(index)
-}
-// sirno:witness:witness-lookup:end
+    // sirno:witness:witness-lookup:end
 
-fn has_glob_meta(value: &str) -> bool {
-    value.contains('*') || value.contains('?') || value.contains('[')
+    fn transform_name(index: usize) -> String {
+        format!("{WITNESS_TRANSFORM}-{index}")
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -360,6 +363,18 @@ struct MosaikaDelimiterRecord {
     span: MosaikaSourceSpan,
     matched: String,
     captures: Vec<String>,
+}
+
+impl MosaikaDelimiterRecord {
+    fn witness_span(&self) -> WitnessSpan {
+        let mut span = WitnessSpan::from(self.span);
+        span.start_column += Self::leading_whitespace_len(&self.matched);
+        span
+    }
+
+    fn leading_whitespace_len(line: &str) -> usize {
+        line.bytes().take_while(|byte| matches!(byte, b' ' | b'\t')).count()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -379,16 +394,6 @@ impl From<MosaikaSourceSpan> for WitnessSpan {
             end_column: span.end_column,
         }
     }
-}
-
-fn delimiter_span(span: MosaikaSourceSpan, matched: &str) -> WitnessSpan {
-    let mut span = WitnessSpan::from(span);
-    span.start_column += leading_whitespace_len(matched);
-    span
-}
-
-fn leading_whitespace_len(line: &str) -> usize {
-    line.bytes().take_while(|byte| matches!(byte, b' ' | b'\t')).count()
 }
 
 /// Error raised while scanning repository witnesses.

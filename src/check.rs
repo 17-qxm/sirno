@@ -20,6 +20,62 @@ pub enum CheckMode {
     Review,
 }
 
+impl CheckMode {
+    /// Diagnostic severity used by this check boundary.
+    pub fn severity(self) -> CheckSeverity {
+        match self {
+            | Self::Edit => CheckSeverity::Warning,
+            | Self::Review => CheckSeverity::Error,
+        }
+    }
+
+    // sirno:witness:structural-check:begin
+    /// Check structural metadata targets for a set of entries.
+    ///
+    /// Parsing already enforces required fields, accepted field shapes, and valid id syntax.
+    /// This pass checks entry ids named by structural fields.
+    /// It also checks that `category` targets are categorized by `meta`.
+    pub fn check_entries<'a>(self, entries: impl IntoIterator<Item = &'a Entry>) -> CheckReport {
+        let entries = entries.into_iter().collect::<Vec<_>>();
+        let entries_by_id =
+            entries.iter().map(|entry| (entry.id.clone(), *entry)).collect::<BTreeMap<_, _>>();
+        let meta_id = EntryId::new(META_CATEGORY_ID)
+            .unwrap_or_else(|error| panic!("invalid built-in meta category id: {error}"));
+        let severity = self.severity();
+
+        let mut report = CheckReport::new();
+        for entry in entries {
+            for (field, target) in entry.metadata.structural_targets() {
+                if !entries_by_id.contains_key(target) {
+                    report.push(CheckDiagnostic {
+                        severity,
+                        kind: CheckDiagnosticKind::MissingTarget,
+                        entry: entry.id.clone(),
+                        field,
+                        target: target.clone(),
+                    });
+                }
+            }
+            for target in &entry.metadata.category {
+                let Some(category_entry) = entries_by_id.get(target) else {
+                    continue;
+                };
+                if !category_entry.metadata.category.contains(&meta_id) {
+                    report.push(CheckDiagnostic {
+                        severity,
+                        kind: CheckDiagnosticKind::CategoryTargetNotMeta,
+                        entry: entry.id.clone(),
+                        field: CATEGORY_FIELD,
+                        target: target.clone(),
+                    });
+                }
+            }
+        }
+        report
+    }
+    // sirno:witness:structural-check:end
+}
+
 /// Severity of one structural diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CheckSeverity {
@@ -27,6 +83,16 @@ pub enum CheckSeverity {
     Warning,
     /// A structural violation at the selected boundary.
     Error,
+}
+
+impl CheckSeverity {
+    /// Lowercase label used in human-readable diagnostic output.
+    pub fn label(self) -> &'static str {
+        match self {
+            | Self::Warning => "warning",
+            | Self::Error => "error",
+        }
+    }
 }
 
 /// Reason for one structural diagnostic.
@@ -102,57 +168,6 @@ impl CheckReport {
     }
 }
 
-// sirno:witness:structural-check:begin
-/// Check structural metadata targets for a set of entries.
-///
-/// Parsing already enforces required fields, accepted field shapes, and valid id syntax.
-/// This pass checks entry ids named by structural fields.
-/// It also checks that `category` targets are categorized by `meta`.
-pub fn check_entries<'a>(
-    entries: impl IntoIterator<Item = &'a Entry>, mode: CheckMode,
-) -> CheckReport {
-    let entries = entries.into_iter().collect::<Vec<_>>();
-    let entries_by_id =
-        entries.iter().map(|entry| (entry.id.clone(), *entry)).collect::<BTreeMap<_, _>>();
-    let meta_id = EntryId::new(META_CATEGORY_ID)
-        .unwrap_or_else(|error| panic!("invalid built-in meta category id: {error}"));
-    let severity = match mode {
-        | CheckMode::Edit => CheckSeverity::Warning,
-        | CheckMode::Review => CheckSeverity::Error,
-    };
-
-    let mut report = CheckReport::new();
-    for entry in entries {
-        for (field, target) in entry.metadata.structural_targets() {
-            if !entries_by_id.contains_key(target) {
-                report.push(CheckDiagnostic {
-                    severity,
-                    kind: CheckDiagnosticKind::MissingTarget,
-                    entry: entry.id.clone(),
-                    field,
-                    target: target.clone(),
-                });
-            }
-        }
-        for target in &entry.metadata.category {
-            let Some(category_entry) = entries_by_id.get(target) else {
-                continue;
-            };
-            if !category_entry.metadata.category.contains(&meta_id) {
-                report.push(CheckDiagnostic {
-                    severity,
-                    kind: CheckDiagnosticKind::CategoryTargetNotMeta,
-                    entry: entry.id.clone(),
-                    field: CATEGORY_FIELD,
-                    target: target.clone(),
-                });
-            }
-        }
-    }
-    report
-}
-// sirno:witness:structural-check:end
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -169,7 +184,7 @@ mod tests {
         let mut meta = entry("meta");
         meta.metadata.category.push(EntryId::new("meta").unwrap());
 
-        let report = check_entries([&concept, &meta], CheckMode::Review);
+        let report = CheckMode::Review.check_entries([&concept, &meta]);
         assert!(report.is_clean());
     }
 
@@ -178,7 +193,7 @@ mod tests {
         let mut concept = entry("concept");
         concept.metadata.category.push(EntryId::new("meta").unwrap());
 
-        let report = check_entries([&concept], CheckMode::Edit);
+        let report = CheckMode::Edit.check_entries([&concept]);
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::MissingTarget);
         assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Warning);
         assert!(!report.has_errors());
@@ -189,7 +204,7 @@ mod tests {
         let mut concept = entry("concept");
         concept.metadata.category.push(EntryId::new("meta").unwrap());
 
-        let report = check_entries([&concept], CheckMode::Review);
+        let report = CheckMode::Review.check_entries([&concept]);
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::MissingTarget);
         assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Error);
         assert!(report.has_errors());
@@ -206,7 +221,7 @@ mod tests {
         let mut meta = entry("meta");
         meta.metadata.category.push(EntryId::new("meta").unwrap());
 
-        let report = check_entries([&feature, &topic, &concept, &meta], CheckMode::Edit);
+        let report = CheckMode::Edit.check_entries([&feature, &topic, &concept, &meta]);
 
         assert_eq!(report.diagnostics().len(), 1);
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::CategoryTargetNotMeta);
@@ -225,7 +240,7 @@ mod tests {
         let mut meta = entry("meta");
         meta.metadata.category.push(EntryId::new("meta").unwrap());
 
-        let report = check_entries([&feature, &topic, &concept, &meta], CheckMode::Review);
+        let report = CheckMode::Review.check_entries([&feature, &topic, &concept, &meta]);
 
         assert_eq!(report.diagnostics().len(), 1);
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::CategoryTargetNotMeta);

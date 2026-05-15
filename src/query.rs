@@ -90,9 +90,9 @@ impl EntryQuery {
     // sirno:witness:query:begin
     pub fn matches(&self, entry: &Entry) -> bool {
         self.matches_text(entry)
-            && matches_targets(&entry.metadata.category, &self.category)
-            && matches_targets(&entry.metadata.belongs, &self.belongs)
-            && matches_targets(&entry.metadata.refines, &self.refines)
+            && Self::matches_targets(&entry.metadata.category, &self.category)
+            && Self::matches_targets(&entry.metadata.belongs, &self.belongs)
+            && Self::matches_targets(&entry.metadata.refines, &self.refines)
     }
     // sirno:witness:query:end
 
@@ -114,8 +114,13 @@ impl EntryQuery {
             return true;
         }
 
-        let haystack = entry_text(entry);
+        let haystack = entry.query_text();
         self.text_terms.iter().all(|term| term.matches(&haystack))
+    }
+
+    fn matches_targets(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
+        query_targets.is_empty()
+            || query_targets.iter().any(|target| entry_targets.contains(target))
     }
 }
 
@@ -152,7 +157,7 @@ impl VagueEntryQuery {
             return true;
         }
 
-        let haystack = vague_entry_text(entry, entries_by_id);
+        let haystack = entry.vague_query_text(entries_by_id);
         self.text_terms.iter().all(|term| term.matches(&haystack))
     }
     // sirno:witness:query:end
@@ -171,28 +176,26 @@ impl VagueEntryQuery {
     // sirno:witness:query:end
 }
 
-fn matches_targets(entry_targets: &[EntryId], query_targets: &[EntryId]) -> bool {
-    query_targets.is_empty() || query_targets.iter().any(|target| entry_targets.contains(target))
-}
-
-fn entry_text(entry: &Entry) -> String {
-    format!("{}\n{}\n{}\n{}", entry.id, entry.metadata.name, entry.metadata.description, entry.body)
-        .to_lowercase()
-}
-
-fn vague_entry_text(entry: &Entry, entries_by_id: &BTreeMap<&EntryId, &Entry>) -> String {
-    let mut text = entry_text(entry);
-    for target in entry.metadata.structural_targets().map(|(_, target)| target) {
-        text.push('\n');
-        text.push_str(target.as_str());
-        if let Some(target_entry) = entries_by_id.get(target) {
-            text.push('\n');
-            text.push_str(&target_entry.metadata.name);
-            text.push('\n');
-            text.push_str(&target_entry.metadata.description);
-        }
+impl Entry {
+    fn query_text(&self) -> String {
+        format!("{}\n{}\n{}\n{}", self.id, self.metadata.name, self.metadata.description, self.body)
+            .to_lowercase()
     }
-    text.to_lowercase()
+
+    fn vague_query_text(&self, entries_by_id: &BTreeMap<&EntryId, &Entry>) -> String {
+        let mut text = self.query_text();
+        for target in self.metadata.structural_targets().map(|(_, target)| target) {
+            text.push('\n');
+            text.push_str(target.as_str());
+            if let Some(target_entry) = entries_by_id.get(target) {
+                text.push('\n');
+                text.push_str(&target_entry.metadata.name);
+                text.push('\n');
+                text.push_str(&target_entry.metadata.description);
+            }
+        }
+        text.to_lowercase()
+    }
 }
 
 #[cfg(test)]

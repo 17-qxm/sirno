@@ -15,12 +15,11 @@ use std::os::unix::fs::PermissionsExt;
 use thiserror::Error;
 use tracing::trace;
 
-use crate::check::{CheckMode, CheckReport, CheckSeverity, check_entries};
-use crate::entry::{Entry, EntryParseError, EntryRenderError, FrozenMarker, default_seed_entries};
+use crate::check::{CheckMode, CheckReport, CheckSeverity};
+use crate::entry::{Entry, EntryParseError, EntryRenderError, FrozenMarker};
 use crate::id::EntryId;
 use crate::links::{
-    GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings, apply_generated_links,
-    delete_generated_links, generated_links_are_stale, validate_generated_links,
+    GeneratedLinkBody, GeneratedLinkError, GeneratedLinkIndex, GeneratedLinkSettings,
 };
 use crate::witness::{WitnessCheckSettings, WitnessError};
 
@@ -207,8 +206,8 @@ impl EntryDirectory {
         &self, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
     ) -> Result<EntryDirectoryReport, EntryDirectoryError> {
         trace!("check_entry_directory begin: root={}", self.root.display());
-        let loaded = load_entry_directory(&self.root, mode, settings)?;
-        let structural_report = check_entries(&loaded.entries, mode);
+        let loaded = LoadedEntryDirectory::load(&self.root, mode, settings)?;
+        let structural_report = mode.check_entries(&loaded.entries);
         trace!(
             "check_entry_directory end: entries={} file_diagnostics={} structural_diagnostics={}",
             loaded.entries.len(),
@@ -233,8 +232,8 @@ impl EntryDirectory {
         trace!("init_entry_directory begin: root={}", self.root.display());
         fs::create_dir_all(&self.root)?;
         let mut paths = Vec::new();
-        for entry in default_seed_entries()? {
-            let path = write_new_entry_file(&self.root, &entry)?;
+        for entry in Entry::default_seed_entries()? {
+            let path = self.write_new_entry_file(&entry)?;
             paths.push(path);
         }
         trace!("init_entry_directory end: entries={}", paths.len());
@@ -250,7 +249,7 @@ impl EntryDirectory {
     pub fn create_entry(&self, entry: &Entry) -> Result<PathBuf, EntryDirectoryError> {
         trace!("create_entry_file begin: root={} id={}", self.root.display(), entry.id);
         fs::create_dir_all(&self.root)?;
-        let path = write_new_entry_file(&self.root, entry)?;
+        let path = self.write_new_entry_file(entry)?;
         trace!("create_entry_file end: path={}", path.display());
         Ok(path)
     }
@@ -261,7 +260,7 @@ impl EntryDirectory {
     /// The entry metadata gains the canonical `frozen:` marker.
     /// The file's write bits are removed after the marker is written.
     pub fn freeze_entry(&self, id: &EntryId) -> Result<PathBuf, EntryDirectoryError> {
-        set_entry_file_frozen(&self.root, id, true)
+        self.set_entry_frozen(id, true)
     }
 
     /// Mark one public Markdown entry as melted and writable.
@@ -269,7 +268,7 @@ impl EntryDirectory {
     /// The canonical `frozen:` marker is removed from entry metadata.
     /// The file is left writable so normal editing can resume.
     pub fn melt_entry(&self, id: &EntryId) -> Result<PathBuf, EntryDirectoryError> {
-        set_entry_file_frozen(&self.root, id, false)
+        self.set_entry_frozen(id, false)
     }
 
     /// Write a complete public Markdown entry directory.
@@ -284,10 +283,10 @@ impl EntryDirectory {
             self.root.display(),
             entries.len()
         );
-        prepare_entry_directory_target(&self.root, policy)?;
+        self.prepare_target(policy)?;
         let mut paths = Vec::new();
         for entry in entries {
-            paths.push(write_new_entry_file(&self.root, entry)?);
+            paths.push(self.write_new_entry_file(entry)?);
         }
         trace!("write_entry_directory end: entries={}", paths.len());
         Ok(paths)
@@ -300,7 +299,7 @@ impl EntryDirectory {
     pub fn set_readonly(
         &self, settings: &EntryDirectoryCheckSettings,
     ) -> Result<(), EntryDirectoryError> {
-        set_entry_directory_writability(&self.root, settings, false)
+        self.set_writability(settings, false)
     }
 
     /// Mark this directory as writable.
@@ -309,7 +308,7 @@ impl EntryDirectory {
     pub fn set_writable(
         &self, settings: &EntryDirectoryCheckSettings,
     ) -> Result<(), EntryDirectoryError> {
-        set_entry_directory_writability(&self.root, settings, true)
+        self.set_writability(settings, true)
     }
 
     /// Add read-only checkout warnings to rendered entry files.
@@ -393,7 +392,7 @@ impl EntryDirectory {
                 .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
             let source = fs::read_to_string(path)?;
             let footer = index.render_entry(entry, settings);
-            let body = apply_generated_links(&entry.body, &footer)?;
+            let body = GeneratedLinkBody::new(&entry.body).apply(&footer)?;
             let rendered = Entry::replace_markdown_body(&source, &body)?;
             if rendered != source {
                 if operation.writes() {
@@ -449,7 +448,7 @@ impl EntryDirectory {
                 .entry_path(&entry.id)
                 .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
             let source = fs::read_to_string(path)?;
-            let body = delete_generated_links(&entry.body)?;
+            let body = GeneratedLinkBody::new(&entry.body).delete()?;
             let rendered = Entry::replace_markdown_body(&source, &body)?;
             if rendered != source {
                 fs::write(path, rendered).map_err(|source| EntryDirectoryError::WriteFile {
@@ -470,6 +469,168 @@ impl EntryDirectory {
             entry_count: checked.entries().len(),
             changed_paths,
         })
+    }
+
+    fn write_new_entry_file(&self, entry: &Entry) -> Result<PathBuf, EntryDirectoryError> {
+        let path = self.root.join(format!("{}.md", entry.id.as_str()));
+        let source = entry.to_markdown()?;
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .map_err(|source| EntryDirectoryError::CreateFile { path: path.clone(), source })?;
+        file.write_all(source.as_bytes())
+            .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+        Ok(path)
+    }
+
+    fn set_entry_frozen(&self, id: &EntryId, frozen: bool) -> Result<PathBuf, EntryDirectoryError> {
+        if !self.root.exists() {
+            return Err(EntryDirectoryError::MissingDirectory(self.root.clone()));
+        }
+        if !self.root.is_dir() {
+            return Err(EntryDirectoryError::NotDirectory(self.root.clone()));
+        }
+
+        let path = self.root.join(format!("{}.md", id.as_str()));
+        let source = fs::read_to_string(&path)?;
+        let mut entry = Entry::from_markdown(id.clone(), &source)?;
+        entry.metadata.frozen = frozen.then_some(FrozenMarker::Present);
+        let rendered = entry.to_markdown()?;
+        if rendered != source {
+            set_path_writable(&path)?;
+            fs::write(&path, rendered)
+                .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
+        }
+
+        if frozen {
+            set_path_readonly(&path)?;
+        } else {
+            set_path_writable(&path)?;
+        }
+        Ok(path)
+    }
+
+    fn prepare_target(&self, policy: EntryDirectoryWritePolicy) -> Result<(), EntryDirectoryError> {
+        match policy {
+            | EntryDirectoryWritePolicy::EmptyDirectory => {
+                if self.root.exists() {
+                    if !self.root.is_dir() {
+                        return Err(EntryDirectoryError::NotDirectory(self.root.clone()));
+                    }
+                    if fs::read_dir(&self.root)?.next().is_some() {
+                        return Err(EntryDirectoryError::DirectoryNotEmpty(self.root.clone()));
+                    }
+                } else {
+                    fs::create_dir_all(&self.root)?;
+                }
+            }
+            | EntryDirectoryWritePolicy::ReplaceDirectory { ignore } => {
+                if self.root.exists() {
+                    if !self.root.is_dir() {
+                        return Err(EntryDirectoryError::NotDirectory(self.root.clone()));
+                    }
+                    set_path_writable(&self.root)?;
+                    let settings = EntryDirectoryCheckSettings {
+                        ignore,
+                        witness: None,
+                        ..EntryDirectoryCheckSettings::default()
+                    };
+                    self.remove_managed_entry_files(&settings)?;
+                } else {
+                    fs::create_dir_all(&self.root)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn remove_managed_entry_files(
+        &self, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<(), EntryDirectoryError> {
+        for path in sorted_directory_paths(&self.root)? {
+            let relative_path =
+                path.strip_prefix(&self.root).map_err(|source| EntryDirectoryError::StripRoot {
+                    path: path.clone(),
+                    root: self.root.clone(),
+                    source,
+                })?;
+            if settings.ignores(relative_path) {
+                continue;
+            }
+
+            let file_type = fs::symlink_metadata(&path)?.file_type();
+            if file_type.is_file()
+                && path.extension().and_then(|extension| extension.to_str()) == Some("md")
+                && Self::is_managed_entry_file(&path)?
+            {
+                set_path_writable(&path)?;
+                fs::remove_file(&path)?;
+                continue;
+            }
+
+            return Err(EntryDirectoryError::CheckoutConflict(path));
+        }
+        Ok(())
+    }
+
+    fn is_managed_entry_file(path: &Path) -> Result<bool, EntryDirectoryError> {
+        let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+            return Ok(false);
+        };
+        let Ok(id) = EntryId::new(stem) else {
+            return Ok(false);
+        };
+        let source = fs::read_to_string(path)?;
+        Ok(Entry::from_markdown(id, &source).is_ok())
+    }
+
+    fn set_writability(
+        &self, settings: &EntryDirectoryCheckSettings, writable: bool,
+    ) -> Result<(), EntryDirectoryError> {
+        if !self.root.exists() {
+            return Err(EntryDirectoryError::MissingDirectory(self.root.clone()));
+        }
+        if !self.root.is_dir() {
+            return Err(EntryDirectoryError::NotDirectory(self.root.clone()));
+        }
+
+        if writable {
+            set_path_writable(&self.root)?;
+        }
+        self.set_child_writability(&self.root, settings, writable)?;
+        if !writable {
+            set_path_readonly(&self.root)?;
+        }
+        Ok(())
+    }
+
+    fn set_child_writability(
+        &self, directory: &Path, settings: &EntryDirectoryCheckSettings, writable: bool,
+    ) -> Result<(), EntryDirectoryError> {
+        for path in sorted_directory_paths(directory)? {
+            let relative_path =
+                path.strip_prefix(&self.root).map_err(|source| EntryDirectoryError::StripRoot {
+                    path: path.clone(),
+                    root: self.root.clone(),
+                    source,
+                })?;
+            if settings.ignores(relative_path) {
+                continue;
+            }
+
+            let file_type = fs::symlink_metadata(&path)?.file_type();
+            if writable {
+                set_path_writable(&path)?;
+            }
+            if file_type.is_dir() {
+                self.set_child_writability(&path, settings, writable)?;
+            }
+            if !writable {
+                set_path_readonly(&path)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -499,184 +660,180 @@ struct LoadedEntryDirectory {
     file_diagnostics: Vec<EntryFileDiagnostic>,
 }
 
-fn load_entry_directory(
-    root: &Path, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
-) -> Result<LoadedEntryDirectory, EntryDirectoryError> {
-    if !root.exists() {
-        return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
-    }
-    if !root.is_dir() {
-        return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
-    }
-
-    let non_entry_severity = match mode {
-        | CheckMode::Edit => CheckSeverity::Warning,
-        | CheckMode::Review => CheckSeverity::Error,
-    };
-    let mut entries = Vec::new();
-    let mut paths_by_id = BTreeMap::<EntryId, PathBuf>::new();
-    let mut seen_ids = BTreeSet::<EntryId>::new();
-    let mut file_diagnostics = Vec::new();
-
-    for path in sorted_directory_paths(root)? {
-        let relative_path = path.strip_prefix(root).map_err(|source| {
-            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
-        })?;
-        if settings.ignores(relative_path) {
-            continue;
+impl LoadedEntryDirectory {
+    fn load(
+        root: &Path, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<Self, EntryDirectoryError> {
+        if !root.exists() {
+            return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
+        }
+        if !root.is_dir() {
+            return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
         }
 
-        let file_type = fs::symlink_metadata(&path)?.file_type();
-        if file_type.is_dir() {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                non_entry_severity,
-                &path,
-                "entry directory contains unsupported subdirectory",
-            ));
-            continue;
-        }
-        if !file_type.is_file() {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                non_entry_severity,
-                &path,
-                "entry directory contains unsupported filesystem item",
-            ));
-            continue;
-        }
-        if path.extension().and_then(|extension| extension.to_str()) != Some("md") {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                non_entry_severity,
-                &path,
-                "entry directory contains non-Markdown file",
-            ));
-            continue;
-        }
+        let non_entry_severity = mode.severity();
+        let mut entries = Vec::new();
+        let mut paths_by_id = BTreeMap::<EntryId, PathBuf>::new();
+        let mut seen_ids = BTreeSet::<EntryId>::new();
+        let mut file_diagnostics = Vec::new();
 
-        let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                CheckSeverity::Error,
-                &path,
-                "entry file stem must be valid UTF-8",
-            ));
-            continue;
-        };
+        for path in sorted_directory_paths(root)? {
+            let relative_path =
+                path.strip_prefix(root).map_err(|source| EntryDirectoryError::StripRoot {
+                    path: path.clone(),
+                    root: root.to_path_buf(),
+                    source,
+                })?;
+            if settings.ignores(relative_path) {
+                continue;
+            }
 
-        let id = match EntryId::new(stem) {
-            | Ok(id) => id,
-            | Err(source) => {
+            let file_type = fs::symlink_metadata(&path)?.file_type();
+            if file_type.is_dir() {
                 file_diagnostics.push(EntryFileDiagnostic::new(
-                    CheckSeverity::Error,
+                    non_entry_severity,
                     &path,
-                    format!("entry file stem is not a valid id: {source}"),
+                    "entry directory contains unsupported subdirectory",
                 ));
                 continue;
             }
-        };
-
-        if seen_ids.contains(&id) {
-            let first_path = paths_by_id
-                .get(&id)
-                .map(|path| path.display().to_string())
-                .unwrap_or_else(|| "<unknown>".to_owned());
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                CheckSeverity::Error,
-                &path,
-                format!("entry id `{id}` also appears at {first_path}"),
-            ));
-            continue;
-        }
-
-        let source = fs::read_to_string(&path)?;
-        let entry = match Entry::from_markdown(id.clone(), &source) {
-            | Ok(entry) => entry,
-            | Err(source) => {
+            if !file_type.is_file() {
                 file_diagnostics.push(EntryFileDiagnostic::new(
-                    CheckSeverity::Error,
+                    non_entry_severity,
                     &path,
-                    format!("failed to parse entry: {source}"),
+                    "entry directory contains unsupported filesystem item",
                 ));
                 continue;
             }
-        };
-        seen_ids.insert(id.clone());
-        paths_by_id.insert(id, path);
-        entries.push(entry);
-    }
+            if path.extension().and_then(|extension| extension.to_str()) != Some("md") {
+                file_diagnostics.push(EntryFileDiagnostic::new(
+                    non_entry_severity,
+                    &path,
+                    "entry directory contains non-Markdown file",
+                ));
+                continue;
+            }
 
-    entries.sort_by(|left, right| left.id.cmp(&right.id));
-    add_generated_link_diagnostics(&entries, &paths_by_id, mode, settings, &mut file_diagnostics)?;
-    add_witness_diagnostics(&entries, mode, settings, &mut file_diagnostics)?;
-    Ok(LoadedEntryDirectory { entries, paths_by_id, file_diagnostics })
-}
+            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+                file_diagnostics.push(EntryFileDiagnostic::new(
+                    CheckSeverity::Error,
+                    &path,
+                    "entry file stem must be valid UTF-8",
+                ));
+                continue;
+            };
 
-fn add_generated_link_diagnostics(
-    entries: &[Entry], paths_by_id: &BTreeMap<EntryId, PathBuf>, mode: CheckMode,
-    settings: &EntryDirectoryCheckSettings, file_diagnostics: &mut Vec<EntryFileDiagnostic>,
-) -> Result<(), EntryDirectoryError> {
-    let index = GeneratedLinkIndex::from_entries(entries);
-    for entry in entries {
-        let path = paths_by_id
-            .get(&entry.id)
-            .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
-        match validate_generated_links(&entry.body) {
-            | Ok(()) if settings.link => {
-                let expected = index.render_entry(entry, &settings.links);
-                if generated_links_are_stale(&entry.body, &expected)? {
+            let id = match EntryId::new(stem) {
+                | Ok(id) => id,
+                | Err(source) => {
                     file_diagnostics.push(EntryFileDiagnostic::new(
-                        mode_severity(mode),
+                        CheckSeverity::Error,
+                        &path,
+                        format!("entry file stem is not a valid id: {source}"),
+                    ));
+                    continue;
+                }
+            };
+
+            if seen_ids.contains(&id) {
+                let first_path = paths_by_id
+                    .get(&id)
+                    .map(|path| path.display().to_string())
+                    .unwrap_or_else(|| "<unknown>".to_owned());
+                file_diagnostics.push(EntryFileDiagnostic::new(
+                    CheckSeverity::Error,
+                    &path,
+                    format!("entry id `{id}` also appears at {first_path}"),
+                ));
+                continue;
+            }
+
+            let source = fs::read_to_string(&path)?;
+            let entry = match Entry::from_markdown(id.clone(), &source) {
+                | Ok(entry) => entry,
+                | Err(source) => {
+                    file_diagnostics.push(EntryFileDiagnostic::new(
+                        CheckSeverity::Error,
+                        &path,
+                        format!("failed to parse entry: {source}"),
+                    ));
+                    continue;
+                }
+            };
+            seen_ids.insert(id.clone());
+            paths_by_id.insert(id, path);
+            entries.push(entry);
+        }
+
+        entries.sort_by(|left, right| left.id.cmp(&right.id));
+        let mut loaded = Self { entries, paths_by_id, file_diagnostics };
+        loaded.add_generated_link_diagnostics(mode, settings)?;
+        loaded.add_witness_diagnostics(mode, settings)?;
+        Ok(loaded)
+    }
+
+    fn add_generated_link_diagnostics(
+        &mut self, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<(), EntryDirectoryError> {
+        let index = GeneratedLinkIndex::from_entries(&self.entries);
+        for entry in &self.entries {
+            let path = self
+                .paths_by_id
+                .get(&entry.id)
+                .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
+            let body = GeneratedLinkBody::new(&entry.body);
+            match body.validate() {
+                | Ok(()) if settings.link => {
+                    let expected = index.render_entry(entry, &settings.links);
+                    if body.is_stale(&expected)? {
+                        self.file_diagnostics.push(EntryFileDiagnostic::new(
+                            mode.severity(),
+                            path,
+                            "generated links are stale; run `sirno gen-link`",
+                        ));
+                    }
+                }
+                | Ok(()) => {}
+                | Err(source) => {
+                    self.file_diagnostics.push(EntryFileDiagnostic::new(
+                        CheckSeverity::Error,
                         path,
-                        "generated links are stale; run `sirno gen-link`",
+                        format!("malformed generated links: {source}"),
                     ));
                 }
             }
-            | Ok(()) => {}
-            | Err(source) => {
-                file_diagnostics.push(EntryFileDiagnostic::new(
-                    CheckSeverity::Error,
-                    path,
-                    format!("malformed generated links: {source}"),
+        }
+        Ok(())
+    }
+
+    fn add_witness_diagnostics(
+        &mut self, mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+    ) -> Result<(), EntryDirectoryError> {
+        let Some(witness) = &settings.witness else {
+            return Ok(());
+        };
+        if witness.is_empty() {
+            return Ok(());
+        }
+
+        let index = witness.scan()?;
+        let ids = self.entries.iter().map(|entry| entry.id.clone()).collect::<BTreeSet<_>>();
+        let severity = mode.severity();
+
+        for witness_id in index.entry_ids() {
+            if ids.contains(witness_id) {
+                continue;
+            }
+            for record in index.records_for(witness_id) {
+                self.file_diagnostics.push(EntryFileDiagnostic::new(
+                    severity,
+                    &record.path,
+                    format!("repository witness block references missing entry `{witness_id}`"),
                 ));
             }
         }
-    }
-    Ok(())
-}
 
-fn add_witness_diagnostics(
-    entries: &[Entry], mode: CheckMode, settings: &EntryDirectoryCheckSettings,
-    file_diagnostics: &mut Vec<EntryFileDiagnostic>,
-) -> Result<(), EntryDirectoryError> {
-    let Some(witness) = &settings.witness else {
-        return Ok(());
-    };
-    if witness.is_empty() {
-        return Ok(());
-    }
-
-    let index = witness.scan()?;
-    let ids = entries.iter().map(|entry| entry.id.clone()).collect::<BTreeSet<_>>();
-    let severity = mode_severity(mode);
-
-    for witness_id in index.entry_ids() {
-        if ids.contains(witness_id) {
-            continue;
-        }
-        for record in index.records_for(witness_id) {
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                severity,
-                &record.path,
-                format!("repository witness block references missing entry `{witness_id}`"),
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-fn mode_severity(mode: CheckMode) -> CheckSeverity {
-    match mode {
-        | CheckMode::Edit => CheckSeverity::Warning,
-        | CheckMode::Review => CheckSeverity::Error,
+        Ok(())
     }
 }
 
@@ -686,48 +843,6 @@ fn sorted_directory_paths(root: &Path) -> Result<Vec<PathBuf>, EntryDirectoryErr
         .collect::<Result<Vec<_>, _>>()?;
     paths.sort();
     Ok(paths)
-}
-
-fn write_new_entry_file(root: &Path, entry: &Entry) -> Result<PathBuf, EntryDirectoryError> {
-    let path = root.join(format!("{}.md", entry.id.as_str()));
-    let source = entry.to_markdown()?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .map_err(|source| EntryDirectoryError::CreateFile { path: path.clone(), source })?;
-    file.write_all(source.as_bytes())
-        .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
-    Ok(path)
-}
-
-fn set_entry_file_frozen(
-    root: &Path, id: &EntryId, frozen: bool,
-) -> Result<PathBuf, EntryDirectoryError> {
-    if !root.exists() {
-        return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
-    }
-    if !root.is_dir() {
-        return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
-    }
-
-    let path = root.join(format!("{}.md", id.as_str()));
-    let source = fs::read_to_string(&path)?;
-    let mut entry = Entry::from_markdown(id.clone(), &source)?;
-    entry.metadata.frozen = frozen.then_some(FrozenMarker::Present);
-    let rendered = entry.to_markdown()?;
-    if rendered != source {
-        set_path_writable(&path)?;
-        fs::write(&path, rendered)
-            .map_err(|source| EntryDirectoryError::WriteFile { path: path.clone(), source })?;
-    }
-
-    if frozen {
-        set_path_readonly(&path)?;
-    } else {
-        set_path_writable(&path)?;
-    }
-    Ok(path)
 }
 
 fn add_readonly_checkout_warning(path: &Path, source: &str) -> Result<String, EntryDirectoryError> {
@@ -742,124 +857,6 @@ fn add_readonly_checkout_warning(path: &Path, source: &str) -> Result<String, En
     }
     let body = format!("{READONLY_CHECKOUT_WARNING}{}", entry.body);
     Ok(Entry::replace_markdown_body(source, &body)?)
-}
-
-fn prepare_entry_directory_target(
-    root: &Path, policy: EntryDirectoryWritePolicy,
-) -> Result<(), EntryDirectoryError> {
-    match policy {
-        | EntryDirectoryWritePolicy::EmptyDirectory => {
-            if root.exists() {
-                if !root.is_dir() {
-                    return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
-                }
-                if fs::read_dir(root)?.next().is_some() {
-                    return Err(EntryDirectoryError::DirectoryNotEmpty(root.to_path_buf()));
-                }
-            } else {
-                fs::create_dir_all(root)?;
-            }
-        }
-        | EntryDirectoryWritePolicy::ReplaceDirectory { ignore } => {
-            if root.exists() {
-                if !root.is_dir() {
-                    return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
-                }
-                set_path_writable(root)?;
-                let settings = EntryDirectoryCheckSettings {
-                    ignore,
-                    witness: None,
-                    ..EntryDirectoryCheckSettings::default()
-                };
-                remove_managed_entry_files(root, &settings)?;
-            } else {
-                fs::create_dir_all(root)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-fn remove_managed_entry_files(
-    root: &Path, settings: &EntryDirectoryCheckSettings,
-) -> Result<(), EntryDirectoryError> {
-    for path in sorted_directory_paths(root)? {
-        let relative_path = path.strip_prefix(root).map_err(|source| {
-            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
-        })?;
-        if settings.ignores(relative_path) {
-            continue;
-        }
-
-        let file_type = fs::symlink_metadata(&path)?.file_type();
-        if file_type.is_file()
-            && path.extension().and_then(|extension| extension.to_str()) == Some("md")
-            && is_managed_entry_file(&path)?
-        {
-            set_path_writable(&path)?;
-            fs::remove_file(&path)?;
-            continue;
-        }
-
-        return Err(EntryDirectoryError::CheckoutConflict(path));
-    }
-    Ok(())
-}
-
-fn is_managed_entry_file(path: &Path) -> Result<bool, EntryDirectoryError> {
-    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-        return Ok(false);
-    };
-    let Ok(id) = EntryId::new(stem) else {
-        return Ok(false);
-    };
-    let source = fs::read_to_string(path)?;
-    Ok(Entry::from_markdown(id, &source).is_ok())
-}
-
-fn set_entry_directory_writability(
-    root: &Path, settings: &EntryDirectoryCheckSettings, writable: bool,
-) -> Result<(), EntryDirectoryError> {
-    if !root.exists() {
-        return Err(EntryDirectoryError::MissingDirectory(root.to_path_buf()));
-    }
-    if !root.is_dir() {
-        return Err(EntryDirectoryError::NotDirectory(root.to_path_buf()));
-    }
-
-    if writable {
-        set_path_writable(root)?;
-    }
-    set_child_writability(root, root, settings, writable)?;
-    if !writable {
-        set_path_readonly(root)?;
-    }
-    Ok(())
-}
-
-fn set_child_writability(
-    root: &Path, directory: &Path, settings: &EntryDirectoryCheckSettings, writable: bool,
-) -> Result<(), EntryDirectoryError> {
-    for path in sorted_directory_paths(directory)? {
-        let relative_path = path.strip_prefix(root).map_err(|source| {
-            EntryDirectoryError::StripRoot { path: path.clone(), root: root.to_path_buf(), source }
-        })?;
-        if settings.ignores(relative_path) {
-            continue;
-        }
-
-        let file_type = fs::symlink_metadata(&path)?.file_type();
-        if writable {
-            set_path_writable(&path)?;
-        }
-        if file_type.is_dir() {
-            set_child_writability(root, &path, settings, writable)?;
-        }
-        if !writable {
-            set_path_readonly(&path)?;
-        }
-    }
-    Ok(())
 }
 
 fn set_path_readonly(path: &Path) -> Result<(), EntryDirectoryError> {

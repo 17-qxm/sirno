@@ -8,12 +8,11 @@ use std::process::ExitCode;
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
 use sirno::{
-    CONFIG_FILE_NAME, CheckMode, CheckSeverity, ConfigError, Entry, EntryDirectory,
-    EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryReport,
-    EntryDirectoryWritePolicy, EntryId, EntryIdError, EntryMetadata, EntryParseError, EntryQuery,
-    Eterator, FrostError, FrostLockStatus, GenLinkDirectoryReport, GeneratedLinkSettings,
-    LockError, SirnoConfig, SirnoFrost, SirnoLock, VagueEntryQuery, WitnessCheckSettings,
-    WitnessError, WitnessRecord,
+    CONFIG_FILE_NAME, CheckMode, ConfigError, Entry, EntryDirectory, EntryDirectoryCheckSettings,
+    EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
+    EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
+    GenLinkDirectoryReport, GeneratedLinkSettings, LockError, SirnoConfig, SirnoFrost, SirnoLock,
+    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessRecord,
 };
 use thiserror::Error;
 
@@ -270,7 +269,7 @@ impl From<CliCompletionShell> for Shell {
 }
 
 fn main() -> ExitCode {
-    match run(Cli::parse()) {
+    match Cli::parse().run() {
         | Ok(code) => code,
         | Err(error) => {
             eprintln!("sirno: {error}");
@@ -279,298 +278,322 @@ fn main() -> ExitCode {
     }
 }
 
-fn run(cli: Cli) -> Result<ExitCode, CliError> {
-    let config_path = cli.config.unwrap_or_else(default_config_path);
-    let lake_path = cli.lake_path;
-    match cli.command {
-        | Command::Init { mono, lake } => {
-            let mut config = SirnoConfig::new(
-                lake.or_else(|| lake_path.clone()).unwrap_or_else(default_lake_path),
-            );
-            if let Some(mono) = mono {
-                config = config.with_mono(mono);
+impl Cli {
+    fn run(self) -> Result<ExitCode, CliError> {
+        let config_path = self.config.unwrap_or_else(default_config_path);
+        let lake_path = self.lake_path;
+        match self.command {
+            | Command::Init { mono, lake } => {
+                let mut config = SirnoConfig::new(
+                    lake.or_else(|| lake_path.clone()).unwrap_or_else(default_lake_path),
+                );
+                if let Some(mono) = mono {
+                    config = config.with_mono(mono);
+                }
+                let lake_path = config.resolve_lake(&config_path);
+                config.write_new(&config_path)?;
+                let paths = EntryDirectory::new(&lake_path).init()?;
+                println!(
+                    "initialized {} with {} entries in {}",
+                    config_path.display(),
+                    paths.len(),
+                    lake_path.display()
+                );
+                Ok(ExitCode::SUCCESS)
             }
-            let lake_path = config.resolve_lake(&config_path);
-            config.write_new(&config_path)?;
-            let paths = EntryDirectory::new(&lake_path).init()?;
-            println!(
-                "initialized {} with {} entries in {}",
-                config_path.display(),
-                paths.len(),
-                lake_path.display()
-            );
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::Mv { lake } => {
-            let config = SirnoConfig::from_file(&config_path)?;
-            let old_lake = config.resolve_lake(&config_path);
-            let config = config.with_lake(lake);
-            config.validate_for_file(&config_path)?;
-            let new_lake = config.resolve_lake(&config_path);
-            move_configured_path_and_write_config(&old_lake, &new_lake, &config, &config_path)?;
-            println!("moved lake {} to {}", old_lake.display(), new_lake.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::New { id, name, description, category, belongs, refines, body } => {
-            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            let id = EntryId::new(&id)?;
-            let mut metadata =
-                EntryMetadata::new(name.unwrap_or_else(|| title_name_from_id(&id)), description)?;
-            metadata.category = parse_entry_ids(category)?;
-            metadata.belongs = parse_entry_ids(belongs)?;
-            metadata.refines = parse_entry_ids(refines)?;
-
-            let entry = Entry::new(id, metadata, body.unwrap_or_default());
-            let path = EntryDirectory::new(&lake).create_entry(&entry)?;
-            println!("created {}", path.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::Freeze { id } => {
-            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            let id = EntryId::new(&id)?;
-            let path = EntryDirectory::new(&lake).freeze_entry(&id)?;
-            println!("froze entry {id} at {}", path.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::Melt { id } => {
-            let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            let id = EntryId::new(&id)?;
-            let path = EntryDirectory::new(&lake).melt_entry(&id)?;
-            println!("melted entry {id} at {}", path.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::Query {
-            terms,
-            exact_terms,
-            exact_category,
-            exact_belongs,
-            exact_refines,
-            format,
-        } => {
-            let (lake, mut settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            settings.link = false;
-            settings.links = GeneratedLinkSettings::default();
-            settings.witness = None;
-            let report =
-                EntryDirectory::new(&lake).check_with_settings(CheckMode::Edit, &settings)?;
-            if report.has_errors() {
-                print_entry_directory_report(&report);
-                return Ok(ExitCode::FAILURE);
-            }
-
-            let vague_query = VagueEntryQuery::new().with_text_terms(terms);
-            let exact_query = EntryQuery::new()
-                .with_text_terms(exact_terms)
-                .with_category(parse_entry_ids(exact_category)?)
-                .with_belongs(parse_entry_ids(exact_belongs)?)
-                .with_refines(parse_entry_ids(exact_refines)?);
-            let vague_matches = vague_query.select_entries(report.entries());
-            let matches = exact_query.select_entries(vague_matches);
-            print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
-            Ok(ExitCode::SUCCESS)
-        }
-        | Command::Check { frost_root, mode } => {
-            if lake_path.is_some() && frost_root.is_some() {
-                return Err(CliError::LakePathWithFrostRoot);
-            }
-            let mode = mode.unwrap_or(CliCheckMode::Review);
-            if lake_path.is_some() {
-                let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-                let report =
-                    EntryDirectory::new(lake).check_with_settings(mode.into(), &settings)?;
-                print_entry_directory_report(&report);
-                return if report.has_errors() {
-                    Ok(ExitCode::FAILURE)
-                } else {
-                    Ok(ExitCode::SUCCESS)
-                };
-            }
-
-            let Some(frost_root) = frost_root else {
+            | Command::Mv { lake } => {
                 let config = SirnoConfig::from_file(&config_path)?;
-                let report = EntryDirectory::new(config.resolve_lake(&config_path))
-                    .check_with_settings(
-                        mode.into(),
-                        &entry_directory_check_settings(&config_path, &config),
-                    )?;
-                print_entry_directory_report(&report);
-                return if report.has_errors() {
-                    Ok(ExitCode::FAILURE)
-                } else {
-                    Ok(ExitCode::SUCCESS)
-                };
-            };
-
-            let frost = SirnoFrost::open(frost_root)?;
-            let report = frost.check_current(mode.into())?;
-            if report.is_clean() {
-                println!("ok: {}", frost.root().display());
-                return Ok(ExitCode::SUCCESS);
+                let old_lake = config.resolve_lake(&config_path);
+                let config = config.with_lake(lake);
+                config.validate_for_file(&config_path)?;
+                let new_lake = config.resolve_lake(&config_path);
+                move_configured_path_and_write_config(&old_lake, &new_lake, &config, &config_path)?;
+                println!("moved lake {} to {}", old_lake.display(), new_lake.display());
+                Ok(ExitCode::SUCCESS)
             }
+            | Command::New { id, name, description, category, belongs, refines, body } => {
+                let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let id = EntryId::new(&id)?;
+                let mut metadata = EntryMetadata::new(
+                    name.unwrap_or_else(|| title_name_from_id(&id)),
+                    description,
+                )?;
+                metadata.category = parse_entry_ids(category)?;
+                metadata.belongs = parse_entry_ids(belongs)?;
+                metadata.refines = parse_entry_ids(refines)?;
 
-            for diagnostic in report.diagnostics() {
-                println!("{}: {}", severity_label(diagnostic.severity), diagnostic.message());
+                let entry = Entry::new(id, metadata, body.unwrap_or_default());
+                let path = EntryDirectory::new(&lake).create_entry(&entry)?;
+                println!("created {}", path.display());
+                Ok(ExitCode::SUCCESS)
             }
-
-            if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
-        }
-        | Command::GenLink { command, dry } => match command {
-            | None => {
+            | Command::Freeze { id } => {
+                let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let id = EntryId::new(&id)?;
+                let path = EntryDirectory::new(&lake).freeze_entry(&id)?;
+                println!("froze entry {id} at {}", path.display());
+                Ok(ExitCode::SUCCESS)
+            }
+            | Command::Melt { id } => {
+                let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let id = EntryId::new(&id)?;
+                let path = EntryDirectory::new(&lake).melt_entry(&id)?;
+                println!("melted entry {id} at {}", path.display());
+                Ok(ExitCode::SUCCESS)
+            }
+            | Command::Query {
+                terms,
+                exact_terms,
+                exact_category,
+                exact_belongs,
+                exact_refines,
+                format,
+            } => {
                 let (lake, mut settings) =
                     resolve_lake_directory(lake_path.as_deref(), &config_path)?;
                 settings.link = false;
+                settings.links = GeneratedLinkSettings::default();
                 settings.witness = None;
-
-                let directory = EntryDirectory::new(&lake);
-                let check = directory.check_with_settings(CheckMode::Review, &settings)?;
-                if check.has_errors() {
-                    print_entry_directory_report(&check);
+                let report =
+                    EntryDirectory::new(&lake).check_with_settings(CheckMode::Edit, &settings)?;
+                if report.has_errors() {
+                    print_entry_directory_report(&report);
                     return Ok(ExitCode::FAILURE);
                 }
 
-                if dry {
-                    let report = directory.check_generated_links_with_ignored_paths(
+                let vague_query = VagueEntryQuery::new().with_text_terms(terms);
+                let exact_query = EntryQuery::new()
+                    .with_text_terms(exact_terms)
+                    .with_category(parse_entry_ids(exact_category)?)
+                    .with_belongs(parse_entry_ids(exact_belongs)?)
+                    .with_refines(parse_entry_ids(exact_refines)?);
+                let vague_matches = vague_query.select_entries(report.entries());
+                let matches = exact_query.select_entries(vague_matches);
+                print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
+                Ok(ExitCode::SUCCESS)
+            }
+            | Command::Check { frost_root, mode } => {
+                if lake_path.is_some() && frost_root.is_some() {
+                    return Err(CliError::LakePathWithFrostRoot);
+                }
+                let mode = mode.unwrap_or(CliCheckMode::Review);
+                if lake_path.is_some() {
+                    let (lake, settings) =
+                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    let report =
+                        EntryDirectory::new(lake).check_with_settings(mode.into(), &settings)?;
+                    print_entry_directory_report(&report);
+                    return if report.has_errors() {
+                        Ok(ExitCode::FAILURE)
+                    } else {
+                        Ok(ExitCode::SUCCESS)
+                    };
+                }
+
+                let Some(frost_root) = frost_root else {
+                    let config = SirnoConfig::from_file(&config_path)?;
+                    let report = EntryDirectory::new(config.resolve_lake(&config_path))
+                        .check_with_settings(
+                            mode.into(),
+                            &entry_directory_check_settings(&config_path, &config),
+                        )?;
+                    print_entry_directory_report(&report);
+                    return if report.has_errors() {
+                        Ok(ExitCode::FAILURE)
+                    } else {
+                        Ok(ExitCode::SUCCESS)
+                    };
+                };
+
+                let frost = SirnoFrost::open(frost_root)?;
+                let report = frost.check_current(mode.into())?;
+                if report.is_clean() {
+                    println!("ok: {}", frost.root().display());
+                    return Ok(ExitCode::SUCCESS);
+                }
+
+                for diagnostic in report.diagnostics() {
+                    println!("{}: {}", diagnostic.severity.label(), diagnostic.message());
+                }
+
+                if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
+            }
+            | Command::GenLink { command, dry } => match command {
+                | None => {
+                    let (lake, mut settings) =
+                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    settings.link = false;
+                    settings.witness = None;
+
+                    let directory = EntryDirectory::new(&lake);
+                    let check = directory.check_with_settings(CheckMode::Review, &settings)?;
+                    if check.has_errors() {
+                        print_entry_directory_report(&check);
+                        return Ok(ExitCode::FAILURE);
+                    }
+
+                    if dry {
+                        let report = directory.check_generated_links_with_ignored_paths(
+                            &settings.links,
+                            settings.ignore.clone(),
+                        )?;
+                        print_gen_link_report(&report);
+                        return Ok(ExitCode::SUCCESS);
+                    }
+
+                    let report = directory.generate_links_with_ignored_paths(
                         &settings.links,
                         settings.ignore.clone(),
                     )?;
                     print_gen_link_report(&report);
-                    return Ok(ExitCode::SUCCESS);
+                    Ok(ExitCode::SUCCESS)
                 }
+                | Some(GenLinkCommand::Delete) => {
+                    if dry {
+                        return Err(CliError::DryWithGenLinkSubcommand);
+                    }
+                    let (lake, mut settings) =
+                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    settings.witness = None;
 
-                let report = directory
-                    .generate_links_with_ignored_paths(&settings.links, settings.ignore.clone())?;
-                print_gen_link_report(&report);
-                Ok(ExitCode::SUCCESS)
-            }
-            | Some(GenLinkCommand::Delete) => {
-                if dry {
-                    return Err(CliError::DryWithGenLinkSubcommand);
+                    let report = EntryDirectory::new(&lake)
+                        .delete_generated_links_with_ignored_paths(settings.ignore)?;
+                    print_gen_link_report(&report);
+                    Ok(ExitCode::SUCCESS)
                 }
-                let (lake, mut settings) =
-                    resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-                settings.witness = None;
-
-                let report = EntryDirectory::new(&lake)
-                    .delete_generated_links_with_ignored_paths(settings.ignore)?;
-                print_gen_link_report(&report);
-                Ok(ExitCode::SUCCESS)
+            },
+            | Command::Status => {
+                let config = SirnoConfig::from_file(&config_path)?;
+                let mono = config.resolve_mono(&config_path);
+                let frost = config.resolve_frost(&config_path);
+                let lock_path = SirnoLock::path_for_config(&config_path);
+                let lock = if frost.is_some() {
+                    SirnoLock::from_file_if_exists(&lock_path)?
+                } else {
+                    None
+                };
+                let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let report =
+                    EntryDirectory::new(&lake).check_with_settings(CheckMode::Review, &settings)?;
+                print_status(
+                    &config_path,
+                    mono.as_deref(),
+                    frost.as_deref(),
+                    lock.as_ref(),
+                    &config,
+                    &report,
+                );
+                if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
             }
-        },
-        | Command::Status => {
-            let config = SirnoConfig::from_file(&config_path)?;
-            let mono = config.resolve_mono(&config_path);
-            let frost = config.resolve_frost(&config_path);
-            let lock_path = SirnoLock::path_for_config(&config_path);
-            let lock = if frost.is_some() { read_lock_if_exists(&lock_path)? } else { None };
-            let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
-            let report =
-                EntryDirectory::new(&lake).check_with_settings(CheckMode::Review, &settings)?;
-            print_status(
-                &config_path,
-                mono.as_deref(),
-                frost.as_deref(),
-                lock.as_ref(),
-                &config,
-                &report,
-            );
-            if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
+            | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
+            | Command::Frost { command } => command.run(&config_path, lake_path.as_deref()),
+            | Command::Util { command } => command.run(),
         }
-        | Command::Witness { id, full } => run_witness_command(&config_path, &id, full),
-        | Command::Frost { command } => {
-            run_frost_command(command, &config_path, lake_path.as_deref())
-        }
-        | Command::Util { command } => run_util_command(command),
     }
 }
 
-fn run_frost_command(
-    command: FrostCommand, config_path: &std::path::Path, lake_path: Option<&Path>,
-) -> Result<ExitCode, CliError> {
-    match command {
-        | FrostCommand::Init { frost } => {
-            let config = SirnoConfig::from_file(config_path)?;
-            let existing_frost = config.frost.as_ref().map(|settings| settings.path.clone());
-            let frost_path =
-                frost.or_else(|| existing_frost.clone()).unwrap_or_else(default_frost_path);
-            if let Some(existing_frost) = existing_frost
-                && existing_frost != frost_path
-            {
-                return Err(CliError::FrostAlreadyConfigured(existing_frost));
-            }
+impl FrostCommand {
+    fn run(
+        self, config_path: &std::path::Path, lake_path: Option<&Path>,
+    ) -> Result<ExitCode, CliError> {
+        match self {
+            | FrostCommand::Init { frost } => {
+                let config = SirnoConfig::from_file(config_path)?;
+                let existing_frost = config.frost.as_ref().map(|settings| settings.path.clone());
+                let frost_path =
+                    frost.or_else(|| existing_frost.clone()).unwrap_or_else(default_frost_path);
+                if let Some(existing_frost) = existing_frost
+                    && existing_frost != frost_path
+                {
+                    return Err(CliError::FrostAlreadyConfigured(existing_frost));
+                }
 
-            let needs_config_write = config.frost.is_none();
-            let config = if needs_config_write { config.with_frost(frost_path) } else { config };
-            config.validate_for_file(config_path)?;
+                let needs_config_write = config.frost.is_none();
+                let config =
+                    if needs_config_write { config.with_frost(frost_path) } else { config };
+                config.validate_for_file(config_path)?;
 
-            let frost_root =
-                config.resolve_frost(config_path).expect("frost path configured by init");
-            let lake_path = resolve_lake_path(lake_path, config_path, &config);
-            let mut frost = SirnoFrost::open(&frost_root)?;
-            let version = frost.commit_entry_directory(
-                &lake_path,
-                &entry_directory_check_settings(config_path, &config),
-            )?;
-            if needs_config_write {
-                config.write(config_path)?;
+                let frost_root =
+                    config.resolve_frost(config_path).expect("frost path configured by init");
+                let lake_path = resolve_lake_path(lake_path, config_path, &config);
+                let mut frost = SirnoFrost::open(&frost_root)?;
+                let version = frost.commit_entry_directory(
+                    &lake_path,
+                    &entry_directory_check_settings(config_path, &config),
+                )?;
+                if needs_config_write {
+                    config.write(config_path)?;
+                }
+                SirnoLock::current(version).write(SirnoLock::path_for_config(config_path))?;
+                println!(
+                    "initialized frost {} at version {} from {}",
+                    frost_root.display(),
+                    version.version(),
+                    lake_path.display()
+                );
+                Ok(ExitCode::SUCCESS)
             }
-            SirnoLock::current(version).write(SirnoLock::path_for_config(config_path))?;
-            println!(
-                "initialized frost {} at version {} from {}",
-                frost_root.display(),
-                version.version(),
-                lake_path.display()
-            );
-            Ok(ExitCode::SUCCESS)
-        }
-        | FrostCommand::Mv { frost } => {
-            let config = SirnoConfig::from_file(config_path)?;
-            let Some(old_frost) = config.resolve_frost(config_path) else {
-                return Err(CliError::FrostNotConfigured);
-            };
-            let config = config.with_frost(frost);
-            config.validate_for_file(config_path)?;
-            let new_frost = config.resolve_frost(config_path).expect("frost path configured by mv");
-            move_configured_path_and_write_config(&old_frost, &new_frost, &config, config_path)?;
-            println!("moved frost {} to {}", old_frost.display(), new_frost.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | FrostCommand::Commit => {
-            let context = FrostContext::load(config_path, lake_path)?;
-            reject_immutable_checkout(&context.lock_path)?;
-            let mut frost = SirnoFrost::open(&context.frost_root)?;
-            let version = frost.commit_entry_directory(&context.lake_path, &context.settings)?;
-            context.lake().set_writable(&context.settings)?;
-            SirnoLock::current(version).write(&context.lock_path)?;
-            println!("froze version {} from {}", version.version(), context.lake_path.display());
-            Ok(ExitCode::SUCCESS)
-        }
-        | FrostCommand::Checkout { version, unsafe_mutable } => {
-            let context = FrostContext::load(config_path, lake_path)?;
-            let version = frost_version(version)?;
-            let frost = SirnoFrost::open(&context.frost_root)?;
-            let snapshot = frost.snapshot_for_version(version)?;
-            let paths = frost.checkout_entry_directory(
-                snapshot,
-                &context.lake_path,
-                EntryDirectoryWritePolicy::ReplaceDirectory {
-                    ignore: context.settings.ignore.clone(),
-                },
-            )?;
-            if unsafe_mutable {
+            | FrostCommand::Mv { frost } => {
+                let config = SirnoConfig::from_file(config_path)?;
+                let Some(old_frost) = config.resolve_frost(config_path) else {
+                    return Err(CliError::FrostNotConfigured);
+                };
+                let config = config.with_frost(frost);
+                config.validate_for_file(config_path)?;
+                let new_frost =
+                    config.resolve_frost(config_path).expect("frost path configured by mv");
+                move_configured_path_and_write_config(
+                    &old_frost,
+                    &new_frost,
+                    &config,
+                    config_path,
+                )?;
+                println!("moved frost {} to {}", old_frost.display(), new_frost.display());
+                Ok(ExitCode::SUCCESS)
+            }
+            | FrostCommand::Commit => {
+                let context = FrostContext::load(config_path, lake_path)?;
+                context.reject_immutable_checkout()?;
+                let mut frost = SirnoFrost::open(&context.frost_root)?;
+                let version =
+                    frost.commit_entry_directory(&context.lake_path, &context.settings)?;
                 context.lake().set_writable(&context.settings)?;
-            } else {
-                context.lake().add_readonly_checkout_warnings(&paths)?;
-                context.lake().set_readonly(&context.settings)?;
+                SirnoLock::current(version).write(&context.lock_path)?;
+                println!(
+                    "froze version {} from {}",
+                    version.version(),
+                    context.lake_path.display()
+                );
+                Ok(ExitCode::SUCCESS)
             }
-            SirnoLock::checked_out(snapshot, unsafe_mutable).write(&context.lock_path)?;
-            println!(
-                "checked out frost version {} into {} ({} entries, {})",
-                snapshot.version(),
-                context.lake_path.display(),
-                paths.len(),
-                if unsafe_mutable { "unsafe mutable" } else { "immutable" }
-            );
-            Ok(ExitCode::SUCCESS)
+            | FrostCommand::Checkout { version, unsafe_mutable } => {
+                let context = FrostContext::load(config_path, lake_path)?;
+                let version = frost_version(version)?;
+                let frost = SirnoFrost::open(&context.frost_root)?;
+                let snapshot = frost.snapshot_for_version(version)?;
+                let paths = frost.checkout_entry_directory(
+                    snapshot,
+                    &context.lake_path,
+                    EntryDirectoryWritePolicy::ReplaceDirectory {
+                        ignore: context.settings.ignore.clone(),
+                    },
+                )?;
+                if unsafe_mutable {
+                    context.lake().set_writable(&context.settings)?;
+                } else {
+                    context.lake().add_readonly_checkout_warnings(&paths)?;
+                    context.lake().set_readonly(&context.settings)?;
+                }
+                SirnoLock::checked_out(snapshot, unsafe_mutable).write(&context.lock_path)?;
+                println!(
+                    "checked out frost version {} into {} ({} entries, {})",
+                    snapshot.version(),
+                    context.lake_path.display(),
+                    paths.len(),
+                    if unsafe_mutable { "unsafe mutable" } else { "immutable" }
+                );
+                Ok(ExitCode::SUCCESS)
+            }
         }
     }
 }
@@ -636,24 +659,16 @@ impl FrostContext {
     fn lake(&self) -> EntryDirectory {
         EntryDirectory::new(&self.lake_path)
     }
-}
 
-fn read_lock_if_exists(lock_path: &Path) -> Result<Option<SirnoLock>, CliError> {
-    match SirnoLock::from_file(lock_path) {
-        | Ok(lock) => Ok(Some(lock)),
-        | Err(LockError::Read { source, .. }) if source.kind() == ErrorKind::NotFound => Ok(None),
-        | Err(source) => Err(CliError::Lock(source)),
+    fn reject_immutable_checkout(&self) -> Result<(), CliError> {
+        let Some(lock) = SirnoLock::from_file_if_exists(&self.lock_path)? else {
+            return Ok(());
+        };
+        if lock.frost.is_checked_out() && !lock.frost.is_unsafe_mutable_checkout() {
+            return Err(CliError::ImmutableFrostCheckout(lock.frost.version));
+        }
+        Ok(())
     }
-}
-
-fn reject_immutable_checkout(lock_path: &Path) -> Result<(), CliError> {
-    let Some(lock) = read_lock_if_exists(lock_path)? else {
-        return Ok(());
-    };
-    if lock.frost.is_checked_out() && !lock.frost.is_unsafe_mutable_checkout() {
-        return Err(CliError::ImmutableFrostCheckout(lock.frost.version));
-    }
-    Ok(())
 }
 
 fn frost_version(version: u64) -> Result<Eterator, CliError> {
@@ -724,14 +739,16 @@ fn format_witness_summary(record: &WitnessRecord) -> String {
     )
 }
 
-fn run_util_command(command: UtilCommand) -> Result<ExitCode, CliError> {
-    match command {
-        | UtilCommand::Completion { shell } => {
-            let shell = Shell::from(shell);
-            let mut command = Cli::command();
-            let mut stdout = std::io::stdout();
-            generate(shell, &mut command, "sirno", &mut stdout);
-            Ok(ExitCode::SUCCESS)
+impl UtilCommand {
+    fn run(self) -> Result<ExitCode, CliError> {
+        match self {
+            | UtilCommand::Completion { shell } => {
+                let shell = Shell::from(shell);
+                let mut command = Cli::command();
+                let mut stdout = std::io::stdout();
+                generate(shell, &mut command, "sirno", &mut stdout);
+                Ok(ExitCode::SUCCESS)
+            }
         }
     }
 }
@@ -932,7 +949,7 @@ fn print_entry_directory_report(report: &EntryDirectoryReport) {
     for diagnostic in report.file_diagnostics() {
         println!(
             "{}: {}: {}",
-            severity_label(diagnostic.severity),
+            diagnostic.severity.label(),
             diagnostic.path.display(),
             diagnostic.message
         );
@@ -942,20 +959,13 @@ fn print_entry_directory_report(report: &EntryDirectoryReport) {
         if let Some(path) = report.entry_path(&diagnostic.entry) {
             println!(
                 "{}: {}: {}",
-                severity_label(diagnostic.severity),
+                diagnostic.severity.label(),
                 path.display(),
                 diagnostic.message()
             );
         } else {
-            println!("{}: {}", severity_label(diagnostic.severity), diagnostic.message());
+            println!("{}: {}", diagnostic.severity.label(), diagnostic.message());
         }
-    }
-}
-
-fn severity_label(severity: CheckSeverity) -> &'static str {
-    match severity {
-        | CheckSeverity::Warning => "warning",
-        | CheckSeverity::Error => "error",
     }
 }
 
@@ -1057,7 +1067,7 @@ mod tests {
 
     use crate::{
         Cli, CliError, Command, FrostCommand, format_gen_link_report, format_witness_record,
-        format_witness_records, run,
+        format_witness_records,
     };
 
     #[test]
@@ -1073,14 +1083,15 @@ mod tests {
         let config_path = temp.path().join(CONFIG_FILE_NAME);
         let docs = temp.path().join("sirno-docs");
 
-        run(Cli::parse_from([
+        Cli::parse_from([
             "sirno",
             "--config",
             config_path.to_str().unwrap(),
             "--lake-path",
             "sirno-docs",
             "init",
-        ]))
+        ])
+        .run()
         .unwrap();
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
@@ -1143,14 +1154,15 @@ mod tests {
 
     #[test]
     fn lake_path_conflicts_with_frost_root_check() {
-        let error = run(Cli::parse_from([
+        let error = Cli::parse_from([
             "sirno",
             "--lake-path",
             "scratch-docs",
             "check",
             "--frost-root",
             "sirno-frost",
-        ]))
+        ])
+        .run()
         .unwrap_err();
 
         assert!(matches!(error, CliError::LakePathWithFrostRoot));
@@ -1183,14 +1195,9 @@ mod tests {
         fs::create_dir(&old_lake).unwrap();
         fs::write(old_lake.join("entry.md"), "entry").unwrap();
 
-        run(Cli::parse_from([
-            "sirno",
-            "--config",
-            config_path.to_str().unwrap(),
-            "mv",
-            "sirno-docs",
-        ]))
-        .unwrap();
+        Cli::parse_from(["sirno", "--config", config_path.to_str().unwrap(), "mv", "sirno-docs"])
+            .run()
+            .unwrap();
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
         assert_eq!(config.lake.path, PathBuf::from("sirno-docs"));
@@ -1208,13 +1215,14 @@ mod tests {
         fs::create_dir(&old_lake).unwrap();
         fs::create_dir(&new_lake).unwrap();
 
-        let error = run(Cli::parse_from([
+        let error = Cli::parse_from([
             "sirno",
             "--config",
             config_path.to_str().unwrap(),
             "mv",
             "sirno-docs",
-        ]))
+        ])
+        .run()
         .unwrap_err();
 
         assert!(matches!(error, CliError::MoveDestinationExists(_)));
@@ -1233,14 +1241,15 @@ mod tests {
         fs::create_dir(&old_frost).unwrap();
         fs::write(old_frost.join("row"), "frost").unwrap();
 
-        run(Cli::parse_from([
+        Cli::parse_from([
             "sirno",
             "--config",
             config_path.to_str().unwrap(),
             "frost",
             "mv",
             "frost",
-        ]))
+        ])
+        .run()
         .unwrap();
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
@@ -1269,19 +1278,15 @@ Body.
         )
         .unwrap();
 
-        run(Cli::parse_from([
-            "sirno",
-            "--config",
-            config_path.to_str().unwrap(),
-            "freeze",
-            "alpha",
-        ]))
-        .unwrap();
+        Cli::parse_from(["sirno", "--config", config_path.to_str().unwrap(), "freeze", "alpha"])
+            .run()
+            .unwrap();
         let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
         assert!(source.contains("frozen:\n"));
         assert!(fs::metadata(docs.join("alpha.md")).unwrap().permissions().readonly());
 
-        run(Cli::parse_from(["sirno", "--config", config_path.to_str().unwrap(), "melt", "alpha"]))
+        Cli::parse_from(["sirno", "--config", config_path.to_str().unwrap(), "melt", "alpha"])
+            .run()
             .unwrap();
         let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
         assert!(!source.contains("frozen:\n"));
@@ -1308,7 +1313,7 @@ Body.
         fs::write(configured_docs.join("alpha.md"), entry).unwrap();
         fs::write(override_docs.join("alpha.md"), entry).unwrap();
 
-        run(Cli::parse_from([
+        Cli::parse_from([
             "sirno",
             "--config",
             config_path.to_str().unwrap(),
@@ -1316,7 +1321,8 @@ Body.
             "alpha",
             "--lake-path",
             override_docs.to_str().unwrap(),
-        ]))
+        ])
+        .run()
         .unwrap();
 
         assert!(!fs::read_to_string(configured_docs.join("alpha.md")).unwrap().contains("frozen:"));

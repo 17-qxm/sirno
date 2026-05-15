@@ -5,7 +5,7 @@
 
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -71,6 +71,17 @@ impl SirnoLock {
     }
     // sirno:witness:sirno-lock:end
 
+    /// Load a lock from a file path when it exists.
+    pub fn from_file_if_exists(path: impl AsRef<Path>) -> Result<Option<Self>, LockError> {
+        match Self::from_file(path) {
+            | Ok(lock) => Ok(Some(lock)),
+            | Err(LockError::Read { source, .. }) if source.kind() == ErrorKind::NotFound => {
+                Ok(None)
+            }
+            | Err(source) => Err(source),
+        }
+    }
+
     /// Write this lock to an existing or new file.
     ///
     /// The lock is first written to a sibling temporary file.
@@ -80,7 +91,7 @@ impl SirnoLock {
         let path = path.as_ref();
         trace!("sirno lock write begin: path={}", path.display());
         let source = self.to_toml()?;
-        let temporary_path = temporary_lock_path(path);
+        let temporary_path = Self::temporary_path(path);
         let mut file =
             OpenOptions::new().write(true).create_new(true).open(&temporary_path).map_err(
                 |source| LockError::CreateTemporary { path: temporary_path.clone(), source },
@@ -116,20 +127,20 @@ impl SirnoLock {
         source.push_str(&toml::to_string_pretty(self).map_err(LockError::Render)?);
         Ok(source)
     }
-    // sirno:witness:sirno-lock:end
-}
 
-fn temporary_lock_path(path: &Path) -> PathBuf {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path.file_name().unwrap_or_else(|| OsStr::new(LOCK_FILE_NAME));
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_nanos())
-        .unwrap_or(0);
-    let mut temporary_name = OsString::from(".");
-    temporary_name.push(file_name);
-    temporary_name.push(format!(".{}.{}.tmp", std::process::id(), nonce));
-    parent.join(temporary_name)
+    fn temporary_path(path: &Path) -> PathBuf {
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let file_name = path.file_name().unwrap_or_else(|| OsStr::new(LOCK_FILE_NAME));
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or(0);
+        let mut temporary_name = OsString::from(".");
+        temporary_name.push(file_name);
+        temporary_name.push(format!(".{}.{}.tmp", std::process::id(), nonce));
+        parent.join(temporary_name)
+    }
+    // sirno:witness:sirno-lock:end
 }
 
 /// Frost state recorded in `Sirno.lock.toml`.
