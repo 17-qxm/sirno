@@ -72,12 +72,28 @@ and local rules for how the *lake* should grow.
 The documentation paradigm can live inside the project documentation itself.
 <!-- sirno:witness:readme:end -->
 
-## The Small Move
+<!-- sirno:witness:readme:begin -->
+### Interactive Narrative
+
+Understanding is a deeply personalized journey.
+An interactive narrative turns the *lake* into a route shaped around the reader's background and goals.
+It chooses which entries to visit first, which details to defer,
+and when to stop and assess learning retention.
+
+Try it with our repository-local narrative-session skill:
+
+```text
+Use $sirno-narrative-session for an introduction session based on sirno-docs/introduction.md.
+I am new to Sirno. Ask about my background and goals. Guide me through the entries I should care about.
+```
+<!-- sirno:witness:readme:end -->
+
+## The Small Move of Entry
 
 Instead of asking a reader or agent to understand the whole project at once,
-Sirno gives important design objects names.
+Sirno names important design objects (which are called *entries*).
 
-```yaml
+```markdown
 ---
 name: README
 description: The first-impression route that demonstrates Sirno's documentation principles.
@@ -91,7 +107,6 @@ refines:
   - witness
   - meta
 ---
-```
 
 This is ordinary Markdown documentation.
 It is also a structural object.
@@ -101,6 +116,7 @@ The metadata says what kind of object it is,
 where it should be reviewed,
 which broader ideas it makes concrete,
 and whether repository evidence exists.
+```
 
 A human sees a page worth reading.
 A tool sees exact fields.
@@ -167,20 +183,6 @@ Sirno uses `mosaika` to discover those regions inside paths selected by `[repo].
 Generated footers make the structural graph easy to follow in Markdown tools.
 The footer is bounded by sentinels and owned by Sirno.
 Metadata remains the source of structural truth.
-
-## Narratives
-
-A narrative is a route through entries for a reader.
-It decides what must be understood first,
-what can be named and deferred,
-and where a reader should go next.
-
-This repository is a Sirno-managed project whose design subject is Sirno itself.
-That self-application is intentional.
-Start with [`sirno-docs/introduction.md`](sirno-docs/introduction.md),
-then use [`sirno-docs/methodology.md`](sirno-docs/methodology.md) as the working guide.
-The route through the bootstrap problem lives in
-[`sirno-docs/bootstrap-resolution.md`](sirno-docs/bootstrap-resolution.md).
 
 ## Try It Here
 
