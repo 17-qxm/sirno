@@ -70,6 +70,10 @@ Exact structural predicates use `--exact FIELD=ENTRY_ID`.
 It forwards its arguments to the `rg` binary,
 then appends the resolved *lake* path.
 It preserves `rg` exit codes.
+With `--no-generated-footer`,
+it asks `rg` to search Markdown *entries* through a preprocessor
+that masks Sirno-owned *generated footer* regions.
+The mask preserves paths, line breaks, and byte offsets outside those regions.
 
 `sirno witness ENTRY_ID` scans configured repo members through `mosaika`
 and reports repository *witness* blocks for the selected *entry* id.

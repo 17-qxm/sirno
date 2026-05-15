@@ -1,12 +1,14 @@
 //! Command-line interface for Sirno.
 
 use std::collections::BTreeMap;
+use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command as ProcessCommand, ExitCode, ExitStatus};
 use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 use clap_complete::{Shell, generate};
@@ -15,10 +17,13 @@ use sirno::{
     CONFIG_FILE_NAME, CheckMode, ConfigError, Entry, EntryDirectory, EntryDirectoryCheckSettings,
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
     EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
-    GenLinkDirectoryReport, LockError, SirnoConfig, SirnoFrost, SirnoLock, StructuralSettings,
-    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessRecord,
+    GenLinkDirectoryReport, GeneratedLinkBody, GeneratedLinkError, LockError, SirnoConfig,
+    SirnoFrost, SirnoLock, StructuralSettings, VagueEntryQuery, WitnessCheckSettings, WitnessError,
+    WitnessRecord,
 };
 use thiserror::Error;
+
+const RG_PREPROCESSOR_ARGV0_PREFIX: &str = "sirno-rg-preprocess-";
 
 /// Sirno command-line entry point.
 #[derive(Debug, Parser)]
@@ -116,6 +121,9 @@ enum Command {
     /// Run ripgrep in the configured public Markdown lake.
     // sirno:witness:storage-and-interfaces:begin
     Rg {
+        /// Search as if Sirno-owned generated-footer regions contain only whitespace.
+        #[arg(long = "no-generated-footer")]
+        no_generated_footer: bool,
         /// Arguments forwarded to ripgrep before the lake path.
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<OsString>,
@@ -397,6 +405,16 @@ impl From<CliCompletionShell> for Shell {
 }
 
 fn main() -> ExitCode {
+    if is_rg_preprocessor_invocation() {
+        return match run_rg_preprocessor_from_env() {
+            | Ok(code) => code,
+            | Err(error) => {
+                eprintln!("sirno: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+
     match Cli::parse().run() {
         | Ok(code) => code,
         | Err(error) => {
@@ -494,7 +512,9 @@ impl Cli {
                 print_query_results(&report, &matches, &fields, format)?;
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Rg { args } => run_rg_command(lake_path.as_deref(), &config_path, args),
+            | Command::Rg { no_generated_footer, args } => {
+                run_rg_command(lake_path.as_deref(), &config_path, no_generated_footer, args)
+            }
             | Command::Check { frost_root, mode } => {
                 if lake_path.is_some() && frost_root.is_some() {
                     return Err(CliError::LakePathWithFrostRoot);
@@ -830,12 +850,27 @@ fn print_witness_records(records: &[WitnessRecord], full: bool) {
 }
 
 fn run_rg_command(
-    lake_path: Option<&Path>, config_path: &Path, args: Vec<OsString>,
+    lake_path: Option<&Path>, config_path: &Path, no_generated_footer: bool, args: Vec<OsString>,
 ) -> Result<ExitCode, CliError> {
+    if no_generated_footer && rg_args_include_preprocessor(&args) {
+        return Err(CliError::RgPreprocessorConflict);
+    }
+
     let lake = resolve_lake_path_for_rg(lake_path, config_path)?;
-    let status =
-        ProcessCommand::new("rg").args(args).arg(lake).status().map_err(CliError::RunRg)?;
+    let preprocessor = if no_generated_footer { Some(RgPreprocessorLink::create()?) } else { None };
+
+    let mut command = ProcessCommand::new("rg");
+    if let Some(preprocessor) = &preprocessor {
+        command.arg("--pre").arg(preprocessor.path()).arg("--pre-glob").arg("*.md");
+    }
+    let status = command.args(args).arg(lake).status().map_err(CliError::RunRg)?;
     Ok(exit_code_from_status(status))
+}
+
+fn rg_args_include_preprocessor(args: &[OsString]) -> bool {
+    args.iter()
+        .filter_map(|arg| arg.to_str())
+        .any(|arg| arg == "--pre" || arg.starts_with("--pre="))
 }
 
 fn resolve_lake_path_for_rg(
@@ -855,6 +890,83 @@ fn exit_code_from_status(status: ExitStatus) -> ExitCode {
     }
 
     ExitCode::FAILURE
+}
+
+fn is_rg_preprocessor_invocation() -> bool {
+    env::args_os()
+        .next()
+        .and_then(|arg| PathBuf::from(arg).file_name().map(|name| name.to_os_string()))
+        .is_some_and(|name| name.to_string_lossy().starts_with(RG_PREPROCESSOR_ARGV0_PREFIX))
+}
+
+fn run_rg_preprocessor_from_env() -> Result<ExitCode, CliError> {
+    let mut args = env::args_os().skip(1);
+    let Some(path) = args.next() else {
+        return Err(CliError::RgPreprocessorArgumentCount);
+    };
+    if args.next().is_some() {
+        return Err(CliError::RgPreprocessorArgumentCount);
+    }
+
+    run_rg_preprocessor(&PathBuf::from(path))
+}
+
+fn run_rg_preprocessor(path: &Path) -> Result<ExitCode, CliError> {
+    let body = fs::read_to_string(path)
+        .map_err(|source| CliError::ReadRgPreprocessorInput { path: path.to_path_buf(), source })?;
+    let masked = GeneratedLinkBody::new(&body).mask()?;
+    io::stdout().write_all(masked.as_bytes()).map_err(CliError::WriteRgPreprocessorOutput)?;
+    Ok(ExitCode::SUCCESS)
+}
+
+#[derive(Debug)]
+struct RgPreprocessorLink {
+    path: PathBuf,
+}
+
+impl RgPreprocessorLink {
+    fn create() -> Result<Self, CliError> {
+        let current_exe = env::current_exe().map_err(CliError::LocateCurrentExe)?;
+        let mut path = env::temp_dir();
+        path.push(format!(
+            "{RG_PREPROCESSOR_ARGV0_PREFIX}{}-{}",
+            std::process::id(),
+            current_time_nanos()
+        ));
+        #[cfg(not(unix))]
+        if let Some(extension) = current_exe.extension() {
+            path.set_extension(extension);
+        }
+
+        create_rg_preprocessor_invoker(&current_exe, &path).map_err(|source| {
+            CliError::CreateRgPreprocessorInvoker { path: path.clone(), source }
+        })?;
+        Ok(Self { path })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for RgPreprocessorLink {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
+fn current_time_nanos() -> u128 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_nanos()
+}
+
+#[cfg(unix)]
+fn create_rg_preprocessor_invoker(current_exe: &Path, path: &Path) -> io::Result<()> {
+    std::os::unix::fs::symlink(current_exe, path)
+}
+
+#[cfg(not(unix))]
+fn create_rg_preprocessor_invoker(current_exe: &Path, path: &Path) -> io::Result<()> {
+    fs::copy(current_exe, path).map(|_| ())
 }
 
 fn format_witness_records(records: &[WitnessRecord], full: bool) -> String {
@@ -1304,6 +1416,36 @@ enum CliError {
     /// Exact query named a structural field not configured for this project.
     #[error("structural field `{0}` is not configured; add it under [structural] in Sirno.toml")]
     UnconfiguredExactField(String),
+    /// Generated-footer masking cannot compose with another ripgrep preprocessor.
+    #[error("`sirno rg --no-generated-footer` cannot be combined with `rg --pre`")]
+    RgPreprocessorConflict,
+    /// Ripgrep generated-footer preprocessor received an unexpected argument shape.
+    #[error("rg generated-footer preprocessor expects one path argument")]
+    RgPreprocessorArgumentCount,
+    /// The current executable path could not be resolved.
+    #[error("failed to locate current executable for rg preprocessor")]
+    LocateCurrentExe(#[source] std::io::Error),
+    /// A temporary ripgrep preprocessor invoker could not be created.
+    #[error("failed to create rg preprocessor invoker at {path}")]
+    CreateRgPreprocessorInvoker {
+        /// Invoker path that could not be created.
+        path: PathBuf,
+        /// Underlying I/O error.
+        #[source]
+        source: std::io::Error,
+    },
+    /// The generated-footer preprocessor could not read one file.
+    #[error("failed to read rg preprocessor input {path}")]
+    ReadRgPreprocessorInput {
+        /// Path passed by ripgrep.
+        path: PathBuf,
+        /// Underlying I/O error.
+        #[source]
+        source: std::io::Error,
+    },
+    /// The generated-footer preprocessor could not write masked output.
+    #[error("failed to write rg preprocessor output")]
+    WriteRgPreprocessorOutput(#[source] std::io::Error),
     /// Config-backed command failed.
     #[error(transparent)]
     Config(#[from] ConfigError),
@@ -1325,6 +1467,9 @@ enum CliError {
     /// Entry metadata construction failed.
     #[error(transparent)]
     EntryParse(#[from] EntryParseError),
+    /// Generated-link footer handling failed.
+    #[error(transparent)]
+    GeneratedLink(#[from] GeneratedLinkError),
     /// Ripgrep could not be started.
     #[error("failed to run rg")]
     RunRg(#[source] std::io::Error),
@@ -1350,6 +1495,7 @@ mod tests {
         Cli, CliError, CliExactPredicate, CliQueryField, CliQueryFields, CliQueryOutputFormat,
         Command, FrostCommand, exact_query_from_predicates, format_gen_link_report,
         format_query_json, format_query_table, format_witness_record, format_witness_records,
+        rg_args_include_preprocessor,
     };
 
     #[test]
@@ -1575,9 +1721,30 @@ mod tests {
 
         assert!(matches!(
             cli.command,
-            Command::Rg { args }
+            Command::Rg { no_generated_footer: false, args }
                 if args == vec![OsString::from("--json"), OsString::from("metadata")]
         ));
+    }
+
+    #[test]
+    fn rg_accepts_generated_footer_preprocessor_flag() {
+        let cli = Cli::parse_from(["sirno", "rg", "--no-generated-footer", "metadata"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::Rg { no_generated_footer: true, args }
+                if args == vec![OsString::from("metadata")]
+        ));
+    }
+
+    #[test]
+    fn rg_detects_forwarded_preprocessor_arguments() {
+        assert!(rg_args_include_preprocessor(&[OsString::from("--pre"), OsString::from("cat")]));
+        assert!(rg_args_include_preprocessor(&[OsString::from("--pre=cat")]));
+        assert!(!rg_args_include_preprocessor(&[
+            OsString::from("--pre-glob"),
+            OsString::from("*.md")
+        ]));
     }
 
     #[test]

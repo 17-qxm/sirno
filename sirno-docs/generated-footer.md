@@ -55,6 +55,9 @@ The `[structural]` link policy controls which *structural fields* appear.
 `sirno gen-link --dry` reports *generated footer* regions that would change without writing files.
 `sirno gen-link delete` removes them.
 The mutating commands leave prose outside the guard-bounded region under user ownership.
+`sirno rg --no-generated-footer` searches the *lake*
+as if those guard-bounded regions contain only whitespace.
+That keeps literal searches focused on authored metadata and prose.
 
 The *generated footers* should stay boring.
 Their job is to make the edges of the page useful to tools,

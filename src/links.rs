@@ -253,6 +253,28 @@ impl<'a> GeneratedLinkBody<'a> {
     }
     // sirno:witness:generated-footer:end
 
+    /// Replace the generated-link region with whitespace while preserving byte length and newlines.
+    ///
+    /// If no generated-link region exists, the body is returned unchanged.
+    // sirno:witness:generated-footer:begin
+    pub fn mask(&self) -> Result<String, GeneratedLinkError> {
+        let Some(bounds) = self.bounds()? else {
+            return Ok(self.body.to_owned());
+        };
+        let region_end = bounds.next_line_start(self.body);
+        let body = self.body.as_bytes();
+        let mut out = Vec::with_capacity(body.len());
+
+        out.extend_from_slice(&body[..bounds.region_start]);
+        for byte in &body[bounds.region_start..region_end] {
+            out.push(if *byte == b'\n' { b'\n' } else { b' ' });
+        }
+        out.extend_from_slice(&body[region_end..]);
+
+        Ok(String::from_utf8(out).expect("masked generated-link body remains UTF-8"))
+    }
+    // sirno:witness:generated-footer:end
+
     fn bounds(&self) -> Result<Option<GeneratedLinkBounds>, GeneratedLinkError> {
         GeneratedLinkBounds::find(self.body)
     }
@@ -839,6 +861,28 @@ mod tests {
     #[test]
     fn delete_is_noop_when_footer_is_missing() {
         let body = GeneratedLinkBody::new("Body.\n").delete().unwrap();
+
+        assert_eq!(body, "Body.\n");
+    }
+
+    #[test]
+    fn masks_existing_footer_region() {
+        let footer = StructuralSettings::default().render_entry(&entry());
+        let body = format!("Before.\n\n{footer}\nAfter.\n");
+
+        let masked = GeneratedLinkBody::new(&body).mask().unwrap();
+
+        assert_eq!(masked.len(), body.len());
+        assert_eq!(masked.lines().count(), body.lines().count());
+        assert!(masked.contains("Before."));
+        assert!(masked.contains("After."));
+        assert!(!masked.contains(BEGIN_LINKS_GUARD));
+        assert!(!masked.contains("belongs"));
+    }
+
+    #[test]
+    fn mask_is_noop_when_footer_is_missing() {
+        let body = GeneratedLinkBody::new("Body.\n").mask().unwrap();
 
         assert_eq!(body, "Body.\n");
     }

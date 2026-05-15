@@ -97,10 +97,12 @@ Use `sirno rg` for literal lake text search:
 
 ```sh
 cargo run -- rg generated-footer
+cargo run -- rg --no-generated-footer generated-footer
 cargo run -- rg --files
 ```
 
 `sirno rg` forwards arguments to the real `rg` command and appends the configured lake path.
+Use `--no-generated-footer` when generated links add noise to an authored-prose search.
 
 ## Witness Strategy
 
