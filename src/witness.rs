@@ -33,7 +33,7 @@ const WITNESS_TRANSFORM: &str = "sirno-witness";
 pub struct WitnessCheckSettings {
     /// Directory relative to which repo members are resolved.
     pub root: PathBuf,
-    /// Configured repository members scanned for witness markers.
+    /// Configured repository members scanned for witness blocks.
     pub members: Vec<RepoMember>,
     /// Configured witness delimiter syntax.
     pub witness: WitnessSettings,
@@ -81,7 +81,7 @@ impl WitnessIndex {
         self.records_by_entry.contains_key(id)
     }
 
-    /// Iterate over entry ids with at least one witness marker.
+    /// Iterate over entry ids with at least one witness block.
     pub fn entry_ids(&self) -> impl Iterator<Item = &EntryId> {
         self.records_by_entry.keys()
     }
@@ -491,16 +491,16 @@ mod tests {
 
     // sirno:witness:witness-fixture-isolation:begin
     const WITNESS_COMMENT_PREFIX: &str = "// sirno";
-    const WITNESS_FIELD_PREFIX: &str = ":witness:";
+    const WITNESS_SENTINEL_PREFIX: &str = ":witness:";
     const WITNESS_BEGIN_SUFFIX: &str = ":begin";
     const WITNESS_END_SUFFIX: &str = ":end";
 
     fn witness_begin(id: &str) -> String {
-        format!("{WITNESS_COMMENT_PREFIX}{WITNESS_FIELD_PREFIX}{id}{WITNESS_BEGIN_SUFFIX}")
+        format!("{WITNESS_COMMENT_PREFIX}{WITNESS_SENTINEL_PREFIX}{id}{WITNESS_BEGIN_SUFFIX}")
     }
 
     fn witness_end(id: &str) -> String {
-        format!("{WITNESS_COMMENT_PREFIX}{WITNESS_FIELD_PREFIX}{id}{WITNESS_END_SUFFIX}")
+        format!("{WITNESS_COMMENT_PREFIX}{WITNESS_SENTINEL_PREFIX}{id}{WITNESS_END_SUFFIX}")
     }
 
     fn witness_block_with_end(id: &str, end_id: &str) -> String {

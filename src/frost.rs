@@ -16,7 +16,7 @@ use thiserror::Error;
 use tracing::trace;
 
 use crate::check::{CheckMode, CheckReport, check_entries};
-use crate::entry::{Entry, EntryMetadata, WitnessMarker, default_seed_entries};
+use crate::entry::{Entry, EntryMetadata, default_seed_entries};
 use crate::id::{EntryId, EntryIdError};
 use crate::lake::{
     EntryDirectoryCheckSettings, EntryDirectoryError, EntryDirectoryWritePolicy,
@@ -60,11 +60,6 @@ impl Field for BelongsField {
 struct RefinesField;
 impl Field for RefinesField {
     type Content = Vec<EntryId>;
-}
-
-struct WitnessField;
-impl Field for WitnessField {
-    type Content = WitnessMarker;
 }
 
 /// Sirno Frost facade for Sirno entries.
@@ -298,7 +293,6 @@ fn sirno_registry() -> eter::filesystem::FilesystemFieldRegistry {
         .with_field::<CategoryField>("category")
         .with_field::<BelongsField>("belongs")
         .with_field::<RefinesField>("refines")
-        .with_field::<WitnessField>("witness")
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -308,7 +302,6 @@ struct StoredEntryFacet {
     category: Vec<EntryId>,
     belongs: Vec<EntryId>,
     refines: Vec<EntryId>,
-    witness: Option<WitnessMarker>,
     body: Option<String>,
 }
 
@@ -320,7 +313,6 @@ impl StoredEntryFacet {
             category: entry.metadata.category.clone(),
             belongs: entry.metadata.belongs.clone(),
             refines: entry.metadata.refines.clone(),
-            witness: entry.metadata.witness,
             body: Some(entry.body.clone()),
         }
     }
@@ -337,7 +329,6 @@ impl StoredEntryFacet {
         metadata.category = self.category;
         metadata.belongs = self.belongs;
         metadata.refines = self.refines;
-        metadata.witness = self.witness;
         Ok(Entry::new(id, metadata, body))
     }
 }
@@ -356,10 +347,6 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
             category: resolve_optional_list::<CategoryField>(backend, at, id)?,
             belongs: resolve_optional_list::<BelongsField>(backend, at, id)?,
             refines: resolve_optional_list::<RefinesField>(backend, at, id)?,
-            witness: match backend.resolve::<WitnessField>(at, id)? {
-                | Resolution::Content(marker) => Some(marker),
-                | Resolution::Deleted | Resolution::Absent => None,
-            },
             body: match backend.resolve_body(at, id)? {
                 | Resolution::Content(body) => Some(body),
                 | Resolution::Deleted | Resolution::Absent => None,
@@ -379,10 +366,6 @@ impl EntryFacet<SirnoBackend> for StoredEntryFacet {
         let txn = apply_optional_list::<CategoryField>(txn, id, &self.category);
         let txn = apply_optional_list::<BelongsField>(txn, id, &self.belongs);
         let txn = apply_optional_list::<RefinesField>(txn, id, &self.refines);
-        let txn = match self.witness {
-            | Some(marker) => txn.set::<WitnessField>(id, marker),
-            | None => txn.delete::<WitnessField>(id),
-        };
         txn.set_body(id, required_facet_text(&self.body, "body"))
     }
 }
@@ -485,7 +468,6 @@ mod tests {
         let mut frost = SirnoFrost::open(temp.path()).unwrap();
         let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
         metadata.category.push(EntryId::new("concept").unwrap());
-        metadata.witness = Some(WitnessMarker::Present);
         let entry = Entry::new(EntryId::new("witness").unwrap(), metadata, "Body.\n");
 
         frost.put_entry(&entry).unwrap();

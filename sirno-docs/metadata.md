@@ -16,11 +16,9 @@ both plain strings.
 The optional structural fields are `category`, `belongs`, and `refines`.
 They are always lists when present, and their values are entry ids.
 
-The optional marker fields are `witness:` and `frozen:`.
-They are written without values.
-`witness:` declares that repository evidence should exist for the entry id.
 `frozen:` declares that the entry file is read-only
 and must be melted before Sirno Frost can commit it.
+It is written without a value.
 
 Operational structure is formed only from metadata.
 Prose links may help readers and external tools,
@@ -46,7 +44,6 @@ name: Concept
 description: A named idea that compresses project knowledge.
 category:
   - concept
-witness:
 ---
 ```
 

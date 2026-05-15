@@ -52,7 +52,6 @@ pub struct EntryQuery {
     category: Vec<EntryId>,
     belongs: Vec<EntryId>,
     refines: Vec<EntryId>,
-    witness: bool,
 }
 // sirno:witness:query:end
 
@@ -87,12 +86,6 @@ impl EntryQuery {
         self
     }
 
-    /// Require the canonical witness marker.
-    pub fn with_witness(mut self, witness: bool) -> Self {
-        self.witness = witness;
-        self
-    }
-
     /// Returns true when this query selects the entry.
     // sirno:witness:query:begin
     pub fn matches(&self, entry: &Entry) -> bool {
@@ -100,7 +93,6 @@ impl EntryQuery {
             && matches_targets(&entry.metadata.category, &self.category)
             && matches_targets(&entry.metadata.belongs, &self.belongs)
             && matches_targets(&entry.metadata.refines, &self.refines)
-            && (!self.witness || entry.metadata.witness.is_some())
     }
     // sirno:witness:query:end
 
@@ -205,7 +197,7 @@ fn vague_entry_text(entry: &Entry, entries_by_id: &BTreeMap<&EntryId, &Entry>) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::entry::{EntryMetadata, WitnessMarker};
+    use crate::entry::EntryMetadata;
 
     fn id(raw: &str) -> EntryId {
         EntryId::new(raw).unwrap()
@@ -259,18 +251,6 @@ mod tests {
 
         assert!(matching.matches(&concept));
         assert!(!missing.matches(&concept));
-    }
-
-    #[test]
-    fn witness_filter_requires_marker() {
-        let plain = entry("concept", "Concept", "A named idea.", "");
-        let mut witnessed = entry("witnessed", "Witnessed", "A witnessed idea.", "");
-        witnessed.metadata.witness = Some(WitnessMarker::Present);
-
-        let query = EntryQuery::new().with_witness(true);
-
-        assert!(!query.matches(&plain));
-        assert!(query.matches(&witnessed));
     }
 
     #[test]

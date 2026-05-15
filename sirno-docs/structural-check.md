@@ -51,7 +51,7 @@ This lets query results, generated footers, and reader navigation agree about th
 
 Semantic review remains human and agent work.
 The checker can say that a witness block is shaped correctly.
-It can also say whether a configured repository witness block exists for the entry id.
+It can report configured witness blocks that refer to missing entry ids.
 It cannot say that the witnessed repository artifact is a good implementation of the claim.
 That distinction keeps Sirno useful without pretending to solve judgment.
 

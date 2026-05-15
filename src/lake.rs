@@ -586,7 +586,7 @@ fn load_entry_directory(
 
     entries.sort_by(|left, right| left.id.cmp(&right.id));
     add_generated_link_diagnostics(&entries, &paths_by_id, mode, settings, &mut file_diagnostics)?;
-    add_witness_diagnostics(&entries, &paths_by_id, mode, settings, &mut file_diagnostics)?;
+    add_witness_diagnostics(&entries, mode, settings, &mut file_diagnostics)?;
     Ok(LoadedEntryDirectory { entries, paths_by_id, file_diagnostics })
 }
 
@@ -624,8 +624,8 @@ fn add_generated_link_diagnostics(
 }
 
 fn add_witness_diagnostics(
-    entries: &[Entry], paths_by_id: &BTreeMap<EntryId, PathBuf>, mode: CheckMode,
-    settings: &EntryDirectoryCheckSettings, file_diagnostics: &mut Vec<EntryFileDiagnostic>,
+    entries: &[Entry], mode: CheckMode, settings: &EntryDirectoryCheckSettings,
+    file_diagnostics: &mut Vec<EntryFileDiagnostic>,
 ) -> Result<(), EntryDirectoryError> {
     let Some(witness) = &settings.witness else {
         return Ok(());
@@ -637,22 +637,6 @@ fn add_witness_diagnostics(
     let index = scan_witnesses(witness)?;
     let ids = entries.iter().map(|entry| entry.id.clone()).collect::<BTreeSet<_>>();
     let severity = mode_severity(mode);
-
-    for entry in entries {
-        if entry.metadata.witness.is_some() && !index.contains_entry(&entry.id) {
-            let path = paths_by_id
-                .get(&entry.id)
-                .ok_or_else(|| EntryDirectoryError::MissingEntryPath(entry.id.clone()))?;
-            file_diagnostics.push(EntryFileDiagnostic::new(
-                severity,
-                path,
-                format!(
-                    "entry `{}` declares `witness:` but no repository witness block was found",
-                    entry.id
-                ),
-            ));
-        }
-    }
 
     for witness_id in index.entry_ids() {
         if ids.contains(witness_id) {
@@ -1133,7 +1117,6 @@ category:
 ---
 name: Witnessed
 description: A witnessed entry.
-witness:
 ---
 
 Body.
@@ -1149,39 +1132,6 @@ Body.
         .unwrap();
 
         assert!(report.is_clean());
-    }
-
-    #[test]
-    fn check_reports_missing_witness_block() {
-        let temp = tempfile::tempdir().unwrap();
-        let docs = temp.path().join("docs");
-        let src = temp.path().join("src");
-        fs::create_dir_all(&docs).unwrap();
-        fs::create_dir_all(&src).unwrap();
-        write_entry(
-            &docs,
-            "witnessed.md",
-            "\
----
-name: Witnessed
-description: A witnessed entry.
-witness:
----
-
-Body.
-",
-        );
-        fs::write(src.join("lib.rs"), "fn main() {}\n").unwrap();
-
-        let report = check_entry_directory_with_settings(
-            &docs,
-            CheckMode::Review,
-            &witness_settings(temp.path()),
-        )
-        .unwrap();
-
-        assert!(report.has_errors());
-        assert!(report.file_diagnostics()[0].message.contains("no repository witness block"));
     }
 
     #[test]

@@ -12,7 +12,7 @@ use sirno::{
     EntryDirectoryError, EntryDirectoryReport, EntryDirectoryWritePolicy, EntryId, EntryIdError,
     EntryMetadata, EntryParseError, EntryQuery, Eterator, FrostError, FrostLockStatus,
     GenLinkDirectoryReport, GeneratedLinkSettings, LockError, SirnoConfig, SirnoFrost, SirnoLock,
-    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessMarker, WitnessRecord,
+    VagueEntryQuery, WitnessCheckSettings, WitnessError, WitnessRecord,
     add_readonly_checkout_warnings, check_entry_directory_with_settings,
     check_gen_link_entry_directory_with_ignored_paths, create_entry_file,
     delete_gen_link_entry_directory_with_ignored_paths, freeze_entry_file,
@@ -73,9 +73,6 @@ enum Command {
         /// Broader entry target for `refines`.
         #[arg(long)]
         refines: Vec<String>,
-        /// Add a canonical witness marker.
-        #[arg(long)]
-        witness: bool,
         /// Initial Markdown body.
         #[arg(long)]
         body: Option<String>,
@@ -122,9 +119,6 @@ enum Command {
         /// Exact broader entry target for `refines`.
         #[arg(long)]
         exact_refines: Vec<String>,
-        /// Select only entries with a canonical witness marker.
-        #[arg(long)]
-        exact_witness: bool,
         /// Output format.
         #[arg(long, value_enum)]
         format: Option<CliQueryFormat>,
@@ -338,17 +332,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             println!("moved lake {} to {}", old_lake.display(), new_lake.display());
             Ok(ExitCode::SUCCESS)
         }
-        | Command::New {
-            id,
-            name,
-            description,
-            category,
-            belongs,
-            refines,
-            witness,
-            body,
-            entries,
-        } => {
+        | Command::New { id, name, description, category, belongs, refines, body, entries } => {
             let entries = match entries {
                 | Some(entries) => entries,
                 | None => {
@@ -362,9 +346,6 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             metadata.category = parse_entry_ids(category)?;
             metadata.belongs = parse_entry_ids(belongs)?;
             metadata.refines = parse_entry_ids(refines)?;
-            if witness {
-                metadata.witness = Some(WitnessMarker::Present);
-            }
 
             let entry = Entry::new(id, metadata, body.unwrap_or_default());
             let path = create_entry_file(&entries, &entry)?;
@@ -391,7 +372,6 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
             exact_category,
             exact_belongs,
             exact_refines,
-            exact_witness,
             format,
             entries,
         } => {
@@ -410,8 +390,7 @@ fn run(cli: Cli) -> Result<ExitCode, CliError> {
                 .with_text_terms(exact_terms)
                 .with_category(parse_entry_ids(exact_category)?)
                 .with_belongs(parse_entry_ids(exact_belongs)?)
-                .with_refines(parse_entry_ids(exact_refines)?)
-                .with_witness(exact_witness);
+                .with_refines(parse_entry_ids(exact_refines)?);
             let vague_matches = vague_query_entries(report.entries(), &vague_query);
             let matches = query_entries(vague_matches, &exact_query);
             print_query_results(&report, &matches, format.unwrap_or(CliQueryFormat::Summary))?;
@@ -1269,6 +1248,15 @@ Body.
         let source = fs::read_to_string(docs.join("alpha.md")).unwrap();
         assert!(!source.contains("frozen:\n"));
         assert!(!fs::metadata(docs.join("alpha.md")).unwrap().permissions().readonly());
+    }
+
+    #[test]
+    fn new_rejects_witness_flag() {
+        let error =
+            Cli::try_parse_from(["sirno", "new", "alpha", "--description", "Alpha.", "--witness"])
+                .unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     #[test]

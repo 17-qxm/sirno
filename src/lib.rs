@@ -25,9 +25,7 @@ pub use crate::config::{
     CONFIG_FILE_NAME, CheckSettings, ConfigError, FrostSettings, LakeSettings, MonoSettings,
     RepoMember, RepoSettings, SirnoConfig, WitnessDelimiterSettings, WitnessSettings,
 };
-pub use crate::entry::{
-    Entry, EntryMetadata, EntryParseError, FrozenMarker, WitnessMarker, default_seed_entries,
-};
+pub use crate::entry::{Entry, EntryMetadata, EntryParseError, FrozenMarker, default_seed_entries};
 pub use crate::frost::{FrostError, SirnoFrost};
 pub use crate::id::{EntryId, EntryIdError};
 pub use crate::lake::{

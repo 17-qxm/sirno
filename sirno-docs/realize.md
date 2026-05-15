@@ -12,7 +12,7 @@ refines:
 
 Realizing uses entries to guide implementation.
 Before editing code, read the entries that govern the work,
-follow their category, belongs, refines, and witness fields,
+follow their category, belongs, and refines structure,
 and inspect any witnessed repository regions.
 
 A realization step should be able to answer which entry explains a local design commitment.

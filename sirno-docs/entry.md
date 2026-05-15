@@ -16,9 +16,7 @@ case-sensitive, and written as lowercase ASCII kebab-case with optional digits.
 Each *entry* has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.
 The *structural fields* are `category`, `belongs`, and `refines`.
-The marker fields are `witness:` and `frozen:`.
-`witness:` connects the *entry* to repository evidence found by *entry* id.
-`frozen:` makes the entry file read-only through `sirno freeze ENTRY_ID`.
+The `frozen:` field makes the entry file read-only through `sirno freeze ENTRY_ID`.
 
 An *entry* should be focused enough to read in place.
 It can state a concept, category, review neighborhood, refinement, invariant,

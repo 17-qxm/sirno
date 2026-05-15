@@ -19,9 +19,6 @@ const CATEGORY_FIELD: &str = "category";
 const BELONGS_FIELD: &str = "belongs";
 const REFINES_FIELD: &str = "refines";
 // sirno:witness:structural-field:end
-// sirno:witness:witness:begin
-const WITNESS_FIELD: &str = "witness";
-// sirno:witness:witness:end
 const FROZEN_FIELD: &str = "frozen";
 
 // sirno:witness:entry:begin
@@ -98,8 +95,6 @@ pub struct EntryMetadata {
     /// Broader entries refined by this entry.
     pub refines: Vec<EntryId>,
     // sirno:witness:refines:end
-    /// Witness marker declaring that this entry has repository evidence.
-    pub witness: Option<WitnessMarker>,
     /// Freeze marker declaring that this public entry file is read-only.
     pub frozen: Option<FrozenMarker>,
 }
@@ -120,7 +115,6 @@ impl EntryMetadata {
             category: Vec::new(),
             belongs: Vec::new(),
             refines: Vec::new(),
-            witness: None,
             frozen: None,
         })
     }
@@ -129,7 +123,6 @@ impl EntryMetadata {
     /// Parse metadata from YAML source without surrounding `---` sentinels.
     // sirno:witness:metadata:begin
     pub fn from_yaml_source(source: &str) -> Result<Self, EntryParseError> {
-        let canonical_witness = has_canonical_marker(source, WITNESS_FIELD);
         let canonical_frozen = has_canonical_marker(source, FROZEN_FIELD);
         let value: Value = serde_yaml::from_str(source).map_err(EntryParseError::Yaml)?;
         let mut mapping = match value {
@@ -147,10 +140,9 @@ impl EntryMetadata {
         let category = take_optional_id_list(&mut mapping, CATEGORY_FIELD)?;
         let belongs = take_optional_id_list(&mut mapping, BELONGS_FIELD)?;
         let refines = take_optional_id_list(&mut mapping, REFINES_FIELD)?;
-        let witness = take_witness_marker(&mut mapping, canonical_witness)?;
         let frozen = take_frozen_marker(&mut mapping, canonical_frozen)?;
 
-        Ok(Self { name, description, category, belongs, refines, witness, frozen })
+        Ok(Self { name, description, category, belongs, refines, frozen })
     }
     // sirno:witness:metadata:end
 
@@ -166,9 +158,6 @@ impl EntryMetadata {
         render_id_list(&mut out, CATEGORY_FIELD, &self.category);
         render_id_list(&mut out, BELONGS_FIELD, &self.belongs);
         render_id_list(&mut out, REFINES_FIELD, &self.refines);
-        if self.witness.is_some() {
-            out.push_str("witness:\n");
-        }
         if self.frozen.is_some() {
             out.push_str("frozen:\n");
         }
@@ -186,17 +175,6 @@ impl EntryMetadata {
             .chain(self.refines.iter().map(|id| (REFINES_FIELD, id)))
     }
     // sirno:witness:metadata:end
-}
-
-/// Marker for the canonical `witness:` metadata field.
-///
-/// The public Markdown syntax has no value for this marker.
-/// Storage backends may encode the presence bit internally,
-/// but rendered entry metadata normalizes back to `witness:`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum WitnessMarker {
-    /// The entry has repository evidence queried by entry id.
-    Present,
 }
 
 /// Marker for the canonical `frozen:` metadata field.
@@ -218,7 +196,6 @@ pub fn default_seed_entries() -> Result<Vec<Entry>, EntryParseError> {
     let mut meta =
         EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
     meta.category.push(seed_id("meta"));
-    meta.witness = None;
     // sirno:witness:meta:end
 
     // sirno:witness:concept:begin
@@ -276,7 +253,6 @@ fn reject_unknown_fields(mapping: &Mapping) -> Result<(), EntryParseError> {
         CATEGORY_FIELD,
         BELONGS_FIELD,
         REFINES_FIELD,
-        WITNESS_FIELD,
         FROZEN_FIELD,
     ]);
     for key in mapping.keys() {
@@ -321,18 +297,6 @@ fn take_optional_id_list(
             | _ => Err(EntryParseError::ListItemMustBeString(field)),
         })
         .collect()
-}
-
-fn take_witness_marker(
-    mapping: &mut Mapping, canonical_witness: bool,
-) -> Result<Option<WitnessMarker>, EntryParseError> {
-    let Some(value) = mapping.remove(Value::String(WITNESS_FIELD.to_owned())) else {
-        return Ok(None);
-    };
-    if value != Value::Null || !canonical_witness {
-        return Err(EntryParseError::InvalidWitnessMarker);
-    }
-    Ok(Some(WitnessMarker::Present))
 }
 
 fn take_frozen_marker(
@@ -429,9 +393,6 @@ pub enum EntryParseError {
     /// The metadata block contains a field outside Sirno's exact schema.
     #[error("unknown metadata field `{0}`")]
     UnknownField(String),
-    /// The witness field is present with a value or noncanonical spelling.
-    #[error("metadata field `witness` must be written as canonical marker `witness:`")]
-    InvalidWitnessMarker,
     /// The frozen field is present with a value or noncanonical spelling.
     #[error("metadata field `frozen` must be written as canonical marker `frozen:`")]
     InvalidFrozenMarker,
@@ -464,7 +425,6 @@ name: Witness
 description: An entry whose claim is evidenced by repository artifacts.
 category:
   - concept
-witness:
 ---
 
 Body.
@@ -473,7 +433,6 @@ Body.
         let entry = Entry::from_markdown(entry_id(), source).unwrap();
         assert_eq!(entry.metadata.name, "Witness");
         assert_eq!(entry.metadata.category, vec![EntryId::new("concept").unwrap()]);
-        assert_eq!(entry.metadata.witness, Some(WitnessMarker::Present));
         assert_eq!(entry.body, "Body.\n");
     }
 
@@ -492,44 +451,18 @@ category: concept
     }
 
     #[test]
-    fn rejects_noncanonical_witness_value() {
+    fn rejects_repository_evidence_metadata_key() {
         let source = "\
 ---
 name: Bad
-description: Bad witness.
-witness: true
+description: Bad metadata.
+witness:
 ---
 ";
 
         let error = Entry::from_markdown(entry_id(), source).unwrap_err();
-        assert!(matches!(error, EntryParseError::InvalidWitnessMarker));
-    }
 
-    #[test]
-    fn rejects_explicit_null_witness_value() {
-        let source = "\
----
-name: Bad
-description: Bad witness.
-witness: null
----
-";
-
-        let error = Entry::from_markdown(entry_id(), source).unwrap_err();
-        assert!(matches!(error, EntryParseError::InvalidWitnessMarker));
-    }
-
-    #[test]
-    fn renders_canonical_witness_marker() {
-        let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
-        metadata.category.push(EntryId::new("concept").unwrap());
-        metadata.witness = Some(WitnessMarker::Present);
-        let entry = Entry::new(entry_id(), metadata, "Body.\n");
-
-        let rendered = entry.to_markdown().unwrap();
-        assert!(rendered.contains("witness:\n"));
-        assert!(!rendered.contains("witness: null"));
-        assert!(!rendered.contains("witness: true"));
+        assert!(matches!(error, EntryParseError::UnknownField(field) if field == "witness"));
     }
 
     #[test]

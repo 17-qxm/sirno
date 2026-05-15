@@ -105,8 +105,7 @@ impl CheckReport {
 // sirno:witness:structural-check:begin
 /// Check structural metadata targets for a set of entries.
 ///
-/// Parsing already enforces required fields, accepted field shapes,
-/// valid id syntax, and canonical `witness:` spelling.
+/// Parsing already enforces required fields, accepted field shapes, and valid id syntax.
 /// This pass checks entry ids named by structural fields.
 /// It also checks that `category` targets are categorized by `meta`.
 pub fn check_entries<'a>(

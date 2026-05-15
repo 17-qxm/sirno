@@ -81,7 +81,6 @@ refines:
   - concept-driven-development
   - witness
   - meta
-witness:
 ---
 ```
 
@@ -127,7 +126,7 @@ Each entry has a YAML metadata block and a prose body.
 
 The required metadata fields are `name` and `description`.
 The optional structural fields are `category`, `belongs`, and `refines`.
-The optional marker fields are `witness:` and `frozen:`.
+The optional `frozen:` field marks one public entry file as read-only.
 
 `category` classifies an entry by other entries.
 Category targets are themselves entries categorized by `meta`,
