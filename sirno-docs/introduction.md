@@ -82,6 +82,11 @@ The detailed design lives in the *entries* themselves:
 Read this *entry* first,
 then follow `belongs`, `refines`, and *witnesses* to the local design you need.
 
+Agents act inside this *lake* through a packaged skill set;
+the `agent-skills` *entry* is its front door.
+The `sirno-skill-synthesizer` skill rebuilds that set from the *lake*'s `meta` *entries*,
+so onboarding and the skills run the same method instead of drifting apart.
+
 ---
 
 > **Sirno generated links begin. Do not edit this section.**
