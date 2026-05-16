@@ -43,6 +43,38 @@ struct Cli {
 /// Supported Sirno commands.
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Run a lake operation at the top level.
+    // sirno:witness:interfaces:begin
+    #[command(flatten)]
+    TopLevelLake(LakeCommand),
+    /// Manage public Markdown lake entries.
+    Lake {
+        /// Lake command.
+        #[command(subcommand)]
+        command: LakeCommand,
+    },
+    // sirno:witness:interfaces:end
+    /// Manage optional Sirno Frost snapshots.
+    // sirno:witness:interfaces:begin
+    Frost {
+        /// Frost command.
+        #[command(subcommand)]
+        command: FrostCommand,
+    },
+    // sirno:witness:interfaces:end
+    /// Utility commands.
+    // sirno:witness:interfaces:begin
+    Util {
+        /// Utility command.
+        #[command(subcommand)]
+        command: UtilCommand,
+    },
+    // sirno:witness:interfaces:end
+}
+
+/// Supported public lake commands.
+#[derive(Debug, Subcommand)]
+enum LakeCommand {
     /// Create a Sirno config and ordinary seed entries.
     // sirno:witness:interfaces:begin
     Init {
@@ -162,22 +194,6 @@ enum Command {
         /// Print full witness regions instead of only their locations.
         #[arg(short = 'f', long)]
         full: bool,
-    },
-    // sirno:witness:interfaces:end
-    /// Manage optional Sirno Frost snapshots.
-    // sirno:witness:interfaces:begin
-    Frost {
-        /// Frost command.
-        #[command(subcommand)]
-        command: FrostCommand,
-    },
-    // sirno:witness:interfaces:end
-    /// Utility commands.
-    // sirno:witness:interfaces:begin
-    Util {
-        /// Utility command.
-        #[command(subcommand)]
-        command: UtilCommand,
     },
     // sirno:witness:interfaces:end
 }
@@ -432,15 +448,28 @@ impl Cli {
         let config_path = self.config.unwrap_or_else(default_config_path);
         let lake_path = self.lake_path;
         match self.command {
-            | Command::Init { mono, lake } => {
+            | Command::TopLevelLake(command) | Command::Lake { command } => {
+                command.run(&config_path, lake_path.as_deref())
+            }
+            | Command::Frost { command } => command.run(&config_path, lake_path.as_deref()),
+            | Command::Util { command } => command.run(),
+        }
+    }
+}
+
+impl LakeCommand {
+    fn run(self, config_path: &Path, lake_path: Option<&Path>) -> Result<ExitCode, CliError> {
+        match self {
+            | LakeCommand::Init { mono, lake } => {
                 let mut config = SirnoConfig::new(
-                    lake.or_else(|| lake_path.clone()).unwrap_or_else(default_lake_path),
+                    lake.or_else(|| lake_path.map(Path::to_path_buf))
+                        .unwrap_or_else(default_lake_path),
                 );
                 if let Some(mono) = mono {
                     config = config.with_mono(mono);
                 }
-                let lake_path = config.resolve_lake(&config_path);
-                config.write_new(&config_path)?;
+                let lake_path = config.resolve_lake(config_path);
+                config.write_new(config_path)?;
                 let paths = EntryDirectory::new(&lake_path).init()?;
                 println!(
                     "initialized {} with {} entries in {}",
@@ -450,18 +479,18 @@ impl Cli {
                 );
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Move { lake } => {
-                let config = SirnoConfig::from_file(&config_path)?;
-                let old_lake = config.resolve_lake(&config_path);
+            | LakeCommand::Move { lake } => {
+                let config = SirnoConfig::from_file(config_path)?;
+                let old_lake = config.resolve_lake(config_path);
                 let config = config.with_lake(lake);
-                config.validate_for_file(&config_path)?;
-                let new_lake = config.resolve_lake(&config_path);
-                move_configured_path_and_write_config(&old_lake, &new_lake, &config, &config_path)?;
+                config.validate_for_file(config_path)?;
+                let new_lake = config.resolve_lake(config_path);
+                move_configured_path_and_write_config(&old_lake, &new_lake, &config, config_path)?;
                 println!("moved lake {} to {}", old_lake.display(), new_lake.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::New { id, name, desc, structural, body } => {
-                let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+            | LakeCommand::New { id, name, desc, structural, body } => {
+                let (lake, settings) = resolve_lake_directory(lake_path, config_path)?;
                 let id = EntryId::new(&id)?;
                 let mut metadata =
                     EntryMetadata::new(name.unwrap_or_else(|| title_name_from_id(&id)), desc)?;
@@ -476,23 +505,22 @@ impl Cli {
                 println!("created {}", path.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Freeze { id } => {
-                let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+            | LakeCommand::Freeze { id } => {
+                let (lake, _) = resolve_lake_directory(lake_path, config_path)?;
                 let id = EntryId::new(&id)?;
                 let path = EntryDirectory::new(&lake).freeze_entry(&id)?;
                 println!("froze entry {id} at {}", path.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Melt { id } => {
-                let (lake, _) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+            | LakeCommand::Melt { id } => {
+                let (lake, _) = resolve_lake_directory(lake_path, config_path)?;
                 let id = EntryId::new(&id)?;
                 let path = EntryDirectory::new(&lake).melt_entry(&id)?;
                 println!("melted entry {id} at {}", path.display());
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Query { terms, exact_terms, exact, fields, format } => {
-                let (lake, mut settings) =
-                    resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+            | LakeCommand::Query { terms, exact_terms, exact, fields, format } => {
+                let (lake, mut settings) = resolve_lake_directory(lake_path, config_path)?;
                 settings.link = false;
                 settings.witness = None;
                 let report =
@@ -515,17 +543,16 @@ impl Cli {
                 print_query_results(&report, &matches, &fields, format)?;
                 Ok(ExitCode::SUCCESS)
             }
-            | Command::Rg { with_generated_footer, args } => {
-                run_rg_command(lake_path.as_deref(), &config_path, with_generated_footer, args)
+            | LakeCommand::Rg { with_generated_footer, args } => {
+                run_rg_command(lake_path, config_path, with_generated_footer, args)
             }
-            | Command::Check { frost_path, mode } => {
+            | LakeCommand::Check { frost_path, mode } => {
                 if lake_path.is_some() && frost_path.is_some() {
                     return Err(CliError::LakePathWithFrostPath);
                 }
                 let mode = mode.unwrap_or(CliCheckMode::Review);
                 if lake_path.is_some() {
-                    let (lake, settings) =
-                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    let (lake, settings) = resolve_lake_directory(lake_path, config_path)?;
                     let report =
                         EntryDirectory::new(lake).check_with_settings(mode.into(), &settings)?;
                     print_entry_directory_report(&report);
@@ -537,11 +564,11 @@ impl Cli {
                 }
 
                 let Some(frost_path) = frost_path else {
-                    let config = SirnoConfig::from_file(&config_path)?;
-                    let report = EntryDirectory::new(config.resolve_lake(&config_path))
+                    let config = SirnoConfig::from_file(config_path)?;
+                    let report = EntryDirectory::new(config.resolve_lake(config_path))
                         .check_with_settings(
                             mode.into(),
-                            &entry_directory_check_settings(&config_path, &config),
+                            &entry_directory_check_settings(config_path, &config),
                         )?;
                     print_entry_directory_report(&report);
                     return if report.has_errors() {
@@ -564,10 +591,9 @@ impl Cli {
 
                 if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
             }
-            | Command::GenLink { command, dry } => match command {
+            | LakeCommand::GenLink { command, dry } => match command {
                 | None => {
-                    let (lake, mut settings) =
-                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    let (lake, mut settings) = resolve_lake_directory(lake_path, config_path)?;
                     settings.link = false;
                     settings.witness = None;
 
@@ -598,8 +624,7 @@ impl Cli {
                     if dry {
                         return Err(CliError::DryWithGenLinkSubcommand);
                     }
-                    let (lake, mut settings) =
-                        resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                    let (lake, mut settings) = resolve_lake_directory(lake_path, config_path)?;
                     settings.witness = None;
 
                     let report = EntryDirectory::new(&lake)
@@ -608,21 +633,21 @@ impl Cli {
                     Ok(ExitCode::SUCCESS)
                 }
             },
-            | Command::Status => {
-                let config = SirnoConfig::from_file(&config_path)?;
-                let mono = config.resolve_mono(&config_path);
-                let frost = config.resolve_frost(&config_path);
-                let lock_path = SirnoLock::path_for_config(&config_path);
+            | LakeCommand::Status => {
+                let config = SirnoConfig::from_file(config_path)?;
+                let mono = config.resolve_mono(config_path);
+                let frost = config.resolve_frost(config_path);
+                let lock_path = SirnoLock::path_for_config(config_path);
                 let lock = if frost.is_some() {
                     SirnoLock::from_file_if_exists(&lock_path)?
                 } else {
                     None
                 };
-                let (lake, settings) = resolve_lake_directory(lake_path.as_deref(), &config_path)?;
+                let (lake, settings) = resolve_lake_directory(lake_path, config_path)?;
                 let report =
                     EntryDirectory::new(&lake).check_with_settings(CheckMode::Review, &settings)?;
                 print_status(
-                    &config_path,
+                    config_path,
                     mono.as_deref(),
                     frost.as_deref(),
                     lock.as_ref(),
@@ -631,11 +656,9 @@ impl Cli {
                 );
                 if report.has_errors() { Ok(ExitCode::FAILURE) } else { Ok(ExitCode::SUCCESS) }
             }
-            | Command::Witness { id, full } => {
-                run_witness_command(&config_path, lake_path.as_deref(), &id, full)
+            | LakeCommand::Witness { id, full } => {
+                run_witness_command(config_path, lake_path, &id, full)
             }
-            | Command::Frost { command } => command.run(&config_path, lake_path.as_deref()),
-            | Command::Util { command } => command.run(),
         }
     }
 }
@@ -1520,7 +1543,7 @@ mod tests {
 
     use crate::{
         Cli, CliCheckMode, CliError, CliQueryField, CliQueryFields, CliQueryOutputFormat,
-        CliStructuralPredicate, Command, FrostCommand, exact_query_from_predicates,
+        CliStructuralPredicate, Command, FrostCommand, LakeCommand, exact_query_from_predicates,
         format_gen_link_report, format_query_json, format_query_table, format_witness_record,
         format_witness_records, rg_args_include_preprocessor,
     };
@@ -1560,7 +1583,7 @@ mod tests {
         let cli = Cli::parse_from(["sirno", "-C", "Sirno.alt.toml", "status"]);
 
         assert_eq!(cli.config, Some(PathBuf::from("Sirno.alt.toml")));
-        assert!(matches!(cli.command, Command::Status));
+        assert!(matches!(cli.command, Command::TopLevelLake(LakeCommand::Status)));
     }
 
     #[test]
@@ -1568,7 +1591,7 @@ mod tests {
         let cli = Cli::parse_from(["sirno", "-L", "scratch-docs", "status"]);
 
         assert_eq!(cli.lake_path.as_deref(), Some(Path::new("scratch-docs")));
-        assert!(matches!(cli.command, Command::Status));
+        assert!(matches!(cli.command, Command::TopLevelLake(LakeCommand::Status)));
     }
 
     #[test]
@@ -1691,14 +1714,31 @@ Body.
     fn move_accepts_lake_path() {
         let cli = Cli::parse_from(["sirno", "move", "sirno-docs"]);
 
-        assert!(matches!(cli.command, Command::Move { lake } if lake == Path::new("sirno-docs")));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Move { lake }) if lake == Path::new("sirno-docs")
+        ));
     }
 
     #[test]
     fn mv_alias_accepts_lake_path() {
         let cli = Cli::parse_from(["sirno", "mv", "sirno-docs"]);
 
-        assert!(matches!(cli.command, Command::Move { lake } if lake == Path::new("sirno-docs")));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Move { lake }) if lake == Path::new("sirno-docs")
+        ));
+    }
+
+    #[test]
+    fn lake_move_accepts_mv_alias() {
+        let cli = Cli::parse_from(["sirno", "lake", "mv", "sirno-docs"]);
+
+        assert!(matches!(
+            cli.command,
+            Command::Lake { command: LakeCommand::Move { lake } }
+                if lake == Path::new("sirno-docs")
+        ));
     }
 
     #[test]
@@ -1776,7 +1816,10 @@ Body.
     fn freeze_accepts_entry_id() {
         let cli = Cli::parse_from(["sirno", "freeze", "alpha"]);
 
-        assert!(matches!(cli.command, Command::Freeze { id, .. } if id == "alpha"));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Freeze { id, .. }) if id == "alpha"
+        ));
     }
 
     #[test]
@@ -1795,7 +1838,13 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::New { id, name: Some(name), desc, body: Some(body), .. }
+            Command::TopLevelLake(LakeCommand::New {
+                id,
+                name: Some(name),
+                desc,
+                body: Some(body),
+                ..
+            })
                 if id == "alpha"
                     && name == "Alpha"
                     && desc == "Alpha desc."
@@ -1819,7 +1868,7 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::New { structural, .. }
+            Command::TopLevelLake(LakeCommand::New { structural, .. })
                 if structural == vec![
                     CliStructuralPredicate {
                         field: "topic".to_owned(),
@@ -1829,8 +1878,32 @@ Body.
                         field: "topic".to_owned(),
                         target: EntryId::new("methodology").unwrap(),
                     },
-                ]
+            ]
         ));
+    }
+
+    #[test]
+    fn lake_new_creates_entry() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_path = temp.path().join(CONFIG_FILE_NAME);
+        let docs = temp.path().join("docs");
+        SirnoConfig::new("docs").write_new(&config_path).unwrap();
+        fs::create_dir(&docs).unwrap();
+
+        Cli::parse_from([
+            "sirno",
+            "--config",
+            config_path.to_str().unwrap(),
+            "lake",
+            "new",
+            "alpha",
+            "--desc",
+            "Alpha entry.",
+        ])
+        .run()
+        .unwrap();
+
+        assert!(docs.join("alpha.md").exists());
     }
 
     #[test]
@@ -1854,7 +1927,10 @@ Body.
         let cli = Cli::parse_from(["sirno", "freeze", "alpha", "--lake-path", "scratch-docs"]);
 
         assert_eq!(cli.lake_path.as_deref(), Some(Path::new("scratch-docs")));
-        assert!(matches!(cli.command, Command::Freeze { id } if id == "alpha"));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Freeze { id }) if id == "alpha"
+        ));
     }
 
     #[test]
@@ -1887,7 +1963,7 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::Query { exact, .. }
+            Command::TopLevelLake(LakeCommand::Query { exact, .. })
                 if exact == vec![CliStructuralPredicate {
                     field: "topic".to_owned(),
                     target: EntryId::new("concept").unwrap(),
@@ -1899,7 +1975,12 @@ Body.
     fn query_accepts_short_alias_and_options() {
         let cli =
             Cli::parse_from(["sirno", "q", "-x", "topic=concept", "-f", "id,path", "-o", "human"]);
-        let Command::Query { exact, fields: Some(fields), format: Some(format), .. } = cli.command
+        let Command::TopLevelLake(LakeCommand::Query {
+            exact,
+            fields: Some(fields),
+            format: Some(format),
+            ..
+        }) = cli.command
         else {
             panic!("expected query command with short options");
         };
@@ -1916,9 +1997,41 @@ Body.
     }
 
     #[test]
+    fn lake_query_accepts_short_alias_and_options() {
+        let cli = Cli::parse_from([
+            "sirno",
+            "lake",
+            "q",
+            "-x",
+            "topic=concept",
+            "-f",
+            "id,path",
+            "-o",
+            "human",
+        ]);
+        let Command::Lake {
+            command: LakeCommand::Query { exact, fields: Some(fields), format: Some(format), .. },
+        } = cli.command
+        else {
+            panic!("expected grouped query command with short options");
+        };
+
+        assert_eq!(
+            exact,
+            vec![CliStructuralPredicate {
+                field: "topic".to_owned(),
+                target: EntryId::new("concept").unwrap(),
+            }]
+        );
+        assert_eq!(fields.fields, vec![CliQueryField::Id, CliQueryField::Path]);
+        assert!(matches!(format, CliQueryOutputFormat::Human));
+    }
+
+    #[test]
     fn query_accepts_comma_separated_fields() {
         let cli = Cli::parse_from(["sirno", "query", "--fields", "id,name,path,desc"]);
-        let Command::Query { fields: Some(fields), .. } = cli.command else {
+        let Command::TopLevelLake(LakeCommand::Query { fields: Some(fields), .. }) = cli.command
+        else {
             panic!("expected query command with fields");
         };
 
@@ -1934,7 +2047,10 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::Query { format: Some(CliQueryOutputFormat::Json), .. }
+            Command::TopLevelLake(LakeCommand::Query {
+                format: Some(CliQueryOutputFormat::Json),
+                ..
+            })
         ));
     }
 
@@ -1944,7 +2060,10 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::Query { format: Some(CliQueryOutputFormat::Human), .. }
+            Command::TopLevelLake(LakeCommand::Query {
+                format: Some(CliQueryOutputFormat::Human),
+                ..
+            })
         ));
     }
 
@@ -2024,7 +2143,10 @@ Body.
     fn check_accepts_short_mode() {
         let cli = Cli::parse_from(["sirno", "check", "-m", "review"]);
 
-        assert!(matches!(cli.command, Command::Check { mode: Some(CliCheckMode::Review), .. }));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Check { mode: Some(CliCheckMode::Review), .. })
+        ));
     }
 
     #[test]
@@ -2033,7 +2155,7 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::Rg { with_generated_footer: false, args }
+            Command::TopLevelLake(LakeCommand::Rg { with_generated_footer: false, args })
                 if args == vec![OsString::from("--json"), OsString::from("metadata")]
         ));
     }
@@ -2044,7 +2166,7 @@ Body.
 
         assert!(matches!(
             cli.command,
-            Command::Rg { with_generated_footer: true, args }
+            Command::TopLevelLake(LakeCommand::Rg { with_generated_footer: true, args })
                 if args == vec![OsString::from("metadata")]
         ));
     }
@@ -2111,8 +2233,14 @@ Body.
         let melt = Cli::parse_from(["sirno", "melt", "alpha"]);
         let unfreeze = Cli::parse_from(["sirno", "unfreeze", "alpha"]);
 
-        assert!(matches!(melt.command, Command::Melt { id, .. } if id == "alpha"));
-        assert!(matches!(unfreeze.command, Command::Melt { id, .. } if id == "alpha"));
+        assert!(matches!(
+            melt.command,
+            Command::TopLevelLake(LakeCommand::Melt { id, .. }) if id == "alpha"
+        ));
+        assert!(matches!(
+            unfreeze.command,
+            Command::TopLevelLake(LakeCommand::Melt { id, .. }) if id == "alpha"
+        ));
     }
 
     #[test]
@@ -2279,14 +2407,17 @@ Body.
     fn witness_accepts_entry_id() {
         let cli = Cli::parse_from(["sirno", "witness", "witness"]);
 
-        assert!(matches!(cli.command, Command::Witness { id, full: false } if id == "witness"));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Witness { id, full: false }) if id == "witness"
+        ));
     }
 
     #[test]
     fn status_accepts_short_alias() {
         let cli = Cli::parse_from(["sirno", "st"]);
 
-        assert!(matches!(cli.command, Command::Status));
+        assert!(matches!(cli.command, Command::TopLevelLake(LakeCommand::Status)));
     }
 
     #[test]
@@ -2294,22 +2425,53 @@ Body.
         let short = Cli::parse_from(["sirno", "w", "alpha"]);
         let mnemonic = Cli::parse_from(["sirno", "wit", "beta"]);
 
-        assert!(matches!(short.command, Command::Witness { id, full: false } if id == "alpha"));
-        assert!(matches!(mnemonic.command, Command::Witness { id, full: false } if id == "beta"));
+        assert!(matches!(
+            short.command,
+            Command::TopLevelLake(LakeCommand::Witness { id, full: false }) if id == "alpha"
+        ));
+        assert!(matches!(
+            mnemonic.command,
+            Command::TopLevelLake(LakeCommand::Witness { id, full: false }) if id == "beta"
+        ));
+    }
+
+    #[test]
+    fn lake_subcommand_accepts_common_aliases() {
+        let status = Cli::parse_from(["sirno", "lake", "st"]);
+        let short_witness = Cli::parse_from(["sirno", "lake", "w", "alpha"]);
+        let mnemonic_witness = Cli::parse_from(["sirno", "lake", "wit", "beta"]);
+
+        assert!(matches!(status.command, Command::Lake { command: LakeCommand::Status }));
+        assert!(matches!(
+            short_witness.command,
+            Command::Lake { command: LakeCommand::Witness { id, full: false } }
+                if id == "alpha"
+        ));
+        assert!(matches!(
+            mnemonic_witness.command,
+            Command::Lake { command: LakeCommand::Witness { id, full: false } }
+                if id == "beta"
+        ));
     }
 
     #[test]
     fn witness_accepts_full_flag() {
         let cli = Cli::parse_from(["sirno", "witness", "witness", "--full"]);
 
-        assert!(matches!(cli.command, Command::Witness { id, full: true } if id == "witness"));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Witness { id, full: true }) if id == "witness"
+        ));
     }
 
     #[test]
     fn witness_accepts_short_full_flag() {
         let cli = Cli::parse_from(["sirno", "witness", "witness", "-f"]);
 
-        assert!(matches!(cli.command, Command::Witness { id, full: true } if id == "witness"));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::Witness { id, full: true }) if id == "witness"
+        ));
     }
 
     #[test]
@@ -2422,7 +2584,10 @@ Body.
     fn gen_link_accepts_dry_flag() {
         let cli = Cli::parse_from(["sirno", "gen-link", "--dry"]);
 
-        assert!(matches!(cli.command, Command::GenLink { dry: true, command: None, .. }));
+        assert!(matches!(
+            cli.command,
+            Command::TopLevelLake(LakeCommand::GenLink { dry: true, command: None, .. })
+        ));
     }
 
     #[test]
@@ -2430,8 +2595,14 @@ Body.
         let short = Cli::parse_from(["sirno", "gen-link", "-n"]);
         let long = Cli::parse_from(["sirno", "gen-link", "--dry-run"]);
 
-        assert!(matches!(short.command, Command::GenLink { dry: true, command: None, .. }));
-        assert!(matches!(long.command, Command::GenLink { dry: true, command: None, .. }));
+        assert!(matches!(
+            short.command,
+            Command::TopLevelLake(LakeCommand::GenLink { dry: true, command: None, .. })
+        ));
+        assert!(matches!(
+            long.command,
+            Command::TopLevelLake(LakeCommand::GenLink { dry: true, command: None, .. })
+        ));
     }
 
     #[test]

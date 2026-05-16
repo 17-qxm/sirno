@@ -18,6 +18,10 @@ The global `-L, --lake-path PATH` option overrides the configured public *lake*
 for commands that read or write the active *lake*.
 Common command aliases keep terminal use compact:
 `q` for `query`, `st` for `status`, and `w` or `wit` for `witness`.
+Lake operations also live under `sirno lake`.
+The grouped spelling uses the same subcommands and aliases as the top-level spelling.
+For example, `sirno query`, `sirno q`, `sirno lake query`, and `sirno lake q`
+select the same operation.
 Those commands should remain plain enough to use from a terminal
 and stable enough for agents and skills to call.
 
