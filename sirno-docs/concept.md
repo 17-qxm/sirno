@@ -2,10 +2,11 @@
 name: Concept
 desc: A named idea that compresses project knowledge.
 category:
+  - category
   - meta
   - concept
 belongs:
-  - meta
+  - category
 ---
 
 A concept is a named idea that compresses project knowledge.
@@ -40,7 +41,7 @@ The project supplies the vocabulary that makes its own design legible.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [meta](meta.md)
+  - [category](category.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

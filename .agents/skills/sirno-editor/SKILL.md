@@ -94,8 +94,9 @@ Check `Sirno.toml` before relying on a field in commands or generated links.
 Use `category` for kind.
 An entry categorized by `concept` should define a compressed idea.
 An entry categorized by `narrative` should record a route, story, or motivation through project ideas.
-An entry categorized by `meta` should define project vocabulary or documentation method.
-The local documentation method recommends that category targets are categorized by `meta`.
+An entry categorized by `meta` should define the project's principles, vocabulary, or documentation method.
+An entry categorized by `category` may itself be used as a category target.
+The local documentation method requires that category targets are categorized by `category`.
 
 Use `belongs` for review locality.
 A `belongs` target is an entry that gives a shared subject or design region a front door.

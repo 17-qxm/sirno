@@ -59,7 +59,7 @@ The route through the resolution is:
 1. Read `project-self-application` for the recursive pressure.
 2. Read `perspective-and-terms` for the speaking positions and term styling.
 3. Read `meta` for the documentation-method surface.
-4. Read `category` for the recommendation that category targets are `meta` *entries*.
+4. Read `category` for the recommendation that category targets are categorized by `category`.
 5. Read `structural-check` for the configured-reference boundary.
 6. Return to `methodology` for the habit contributors should follow.
 

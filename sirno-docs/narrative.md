@@ -2,10 +2,11 @@
 name: Narrative
 desc: A route, story, or motivation through concepts for a reader.
 category:
+  - category
   - meta
   - concept
 belongs:
-  - meta
+  - category
 ---
 
 A narrative records a cognitive route, story, or motivation through concepts.
@@ -50,7 +51,7 @@ but they should still treat entries as the source of durable project knowledge.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [meta](meta.md)
+  - [category](category.md)
 - belongs (from):
   - [bootstrap-resolution](bootstrap-resolution.md)
   - [methodology](methodology.md)
