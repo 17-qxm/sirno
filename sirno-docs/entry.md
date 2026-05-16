@@ -22,7 +22,7 @@ so the final `.md` filename stays inside common component limits.
 
 Each *entry* has a YAML metadata block and a prose body.
 The required metadata fields are `name` and `description`.
-The default *structural fields* are `category`, `belongs`, and `refines`.
+This repository recommends `category`, `belongs`, and `refines`.
 The active structural field set is configured in `Sirno.toml`.
 The `frozen:` field makes the entry file read-only through `sirno freeze ENTRY_ID`.
 

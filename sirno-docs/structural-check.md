@@ -13,7 +13,6 @@ Structural checks include required metadata fields, accepted field shapes,
 reference existence, generated footer boundaries,
 and witness lookup validity when requested.
 They check references through fields configured under `[structural]`.
-They also check that every configured `category` target is itself categorized by `meta`.
 When `[repo].members` is configured,
 review checks report repository witness blocks that name missing entries.
 
@@ -23,8 +22,7 @@ Freshness is controlled by `[check].link`,
 which is enabled by default.
 
 During editing, dangling structural ids may warn.
-Category targets that are not categorized by `meta` also warn during editing.
-At an explicit review boundary, those diagnostics are errors.
+At an explicit review boundary, dangling references are errors.
 List-valued metadata fields that are absent from `[structural]` always warn.
 
 Checks keep local movement fast while making review boundaries strict.
@@ -44,12 +42,8 @@ Malformed structural values are errors because tools cannot safely infer target 
 Unconfigured structural fields are warnings because the entry names structure the project config does not enable.
 
 Metadata target checks keep the graph navigable.
-If an entry categorizes itself by an id,
-belongs under an id,
-or refines an id,
+If an entry names a target through configured structural metadata,
 that target should exist by the time the lake is reviewed.
-If an entry uses an id as a category,
-that target should define project vocabulary or documentation method through `meta`.
 This lets query results, generated footers, and reader navigation agree about the same set of entries.
 
 Semantic review remains human and agent work.

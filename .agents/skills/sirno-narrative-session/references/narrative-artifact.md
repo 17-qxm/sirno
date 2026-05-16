@@ -84,8 +84,11 @@ Name the entries and explain why they appear in that order.
   "id": "new-contributor-route",
   "name": "New Contributor Route",
   "description": "A narrative route for a new contributor learning Sirno.",
-  "belongs": ["sirno"],
-  "refines": ["narrative"],
+  "structural": {
+    "category": ["narrative"],
+    "belongs": ["sirno"],
+    "refines": ["narrative"]
+  },
   "body": [
     "This route serves a new contributor who needs the project model before editing code.",
     "The pull is simple: a stable entry id lets the work name its design object early.",
@@ -96,5 +99,5 @@ Name the entries and explain why they appear in that order.
 }
 ```
 
-The script always writes `category: narrative`.
+The script writes structural fields exactly as supplied in `structural`.
 It refuses to overwrite an existing entry unless `--force` is passed.

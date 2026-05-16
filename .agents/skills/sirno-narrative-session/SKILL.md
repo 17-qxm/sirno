@@ -4,7 +4,7 @@ description: >-
   Conduct adaptive Sirno narrative sessions with users and materialize the resulting route as a
   Sirno Lake entry. Use when Codex needs to teach, onboard, review, or explore project knowledge
   through questions, feedback loops, reader-state tracking, narrative route design, or serialized
-  `category: narrative` artifacts in `sirno-docs/`.
+  narrative artifacts in `sirno-docs/`.
 ---
 
 # Sirno Narrative Session
@@ -110,9 +110,10 @@ when the route will guide future onboarding or review,
 or when the session produces a reusable way through a design region.
 
 Choose a lowercase kebab-case id.
-Use `category: narrative`.
-Use `belongs` for the project area the route belongs to.
-Use `refines: narrative` when the entry is a specific form of the general narrative concept.
+Use configured structural metadata.
+This repository recommends `category: narrative` for narrative entries,
+`belongs` for the project area the route belongs to,
+and `refines: narrative` when the entry is a specific form of the general narrative concept.
 Add other `refines` targets only when the route makes a broader entry concrete.
 
 The entry body should state:

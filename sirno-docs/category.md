@@ -28,8 +28,7 @@ An entry categorized by `meta` should define project vocabulary or documentation
 Because categories are entries,
 their meanings can be documented in the same lake they classify.
 This avoids a hidden enum in the implementation becoming the only source of truth.
-The project can grow vocabulary by adding entries,
-and Sirno can still check that category targets are documented as categories.
+The project can grow vocabulary by adding entries.
 
 Categories should stay semantic rather than decorative.
 If a label only helps browsing by topic,

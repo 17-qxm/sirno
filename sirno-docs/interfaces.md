@@ -40,6 +40,7 @@ The checkout is immutable unless `--unsafe-mutable` is supplied.
 
 `sirno new` creates one Markdown *entry* from typed command-line metadata.
 The `-d`, `-n`, and `-b` flags are short forms for `--description`, `--name`, and `--body`.
+The `--structural FIELD=ENTRY_ID` option adds configured structural metadata targets.
 It refuses to overwrite an existing *entry* file.
 
 `sirno freeze ENTRY_ID` adds `frozen:` to one public *entry*

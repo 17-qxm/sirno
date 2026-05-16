@@ -925,9 +925,9 @@ path = "DESIGN.md"
 path = "docs"
 
 [structural]
-category = { link = { to = true } }
-belongs = { link = { from = true, to = true, clique = true } }
-refines = { link = { from = true } }
+kind = { link = { to = true } }
+area = { link = { from = true, to = true, clique = true } }
+parent = { link = { from = true } }
 "#,
         );
 
@@ -935,19 +935,19 @@ refines = { link = { from = true } }
             config.structural,
             StructuralSettings::from_fields([
                 (
-                    "category",
+                    "kind",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::new(true, false, false),
                     ),
                 ),
                 (
-                    "belongs",
+                    "area",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::new(true, true, true),
                     ),
                 ),
                 (
-                    "refines",
+                    "parent",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::new(false, true, false),
                     ),
@@ -987,7 +987,7 @@ topic = { link = {} }
 [lake]
 path = "docs"
 
-[structural.category]
+[structural.kind]
 link = { to = true }
 
 [structural.topic]
@@ -999,7 +999,7 @@ link = { clique = true }
             config.structural,
             StructuralSettings::from_fields([
                 (
-                    "category",
+                    "kind",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::new(true, false, false),
                     ),
@@ -1293,8 +1293,7 @@ delimiters = []
         assert!(!source.contains("# Closing witness delimiter regex."));
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("[structural]"));
-        assert!(source.contains("# Structural metadata field"));
-        assert!(source.contains("belongs = { link = { to = true, from = true } }"));
+        assert!(!source.contains("# Structural metadata field"));
         assert!(!source.contains("[mono]"));
         assert!(!source.contains("[repo]"));
     }
@@ -1313,18 +1312,18 @@ delimiters = []
             check: CheckSettings { link: false },
             structural: StructuralSettings::from_fields([
                 (
-                    "category",
+                    "kind",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::enabled(),
                     ),
                 ),
                 (
-                    "belongs",
+                    "area",
                     crate::links::StructuralFieldSettings::new(
                         crate::links::StructuralLinkSettings::new(true, true, true),
                     ),
                 ),
-                ("refines", crate::links::StructuralFieldSettings::default()),
+                ("parent", crate::links::StructuralFieldSettings::default()),
             ]),
         };
 
@@ -1346,8 +1345,8 @@ delimiters = []
         assert!(source.contains("# Require generated footers"));
         assert!(source.contains("[structural]"));
         assert!(source.contains("# Structural metadata field"));
-        assert!(source.contains("category = { link = { to = true, from = true } }"));
-        assert!(source.contains("belongs = { link = { to = true, from = true, clique = true } }"));
+        assert!(source.contains("kind = { link = { to = true, from = true } }"));
+        assert!(source.contains("area = { link = { to = true, from = true, clique = true } }"));
     }
 
     #[test]

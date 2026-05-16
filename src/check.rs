@@ -5,11 +5,9 @@
 
 use std::collections::BTreeMap;
 
-use crate::entry::{CATEGORY_FIELD, Entry};
+use crate::entry::Entry;
 use crate::id::EntryId;
 use crate::links::StructuralSettings;
-
-const META_CATEGORY_ID: &str = "meta";
 
 /// Boundary at which Sirno checks structure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,15 +32,12 @@ impl CheckMode {
     ///
     /// Parsing already enforces required fields, accepted field shapes, and valid id syntax.
     /// This pass checks entry ids named by structural fields.
-    /// It also checks that `category` targets are categorized by `meta`.
     pub fn check_entries<'a>(
         self, entries: impl IntoIterator<Item = &'a Entry>, structural: &StructuralSettings,
     ) -> CheckReport {
         let entries = entries.into_iter().collect::<Vec<_>>();
         let entries_by_id =
             entries.iter().map(|entry| (entry.id.clone(), *entry)).collect::<BTreeMap<_, _>>();
-        let meta_id = EntryId::new(META_CATEGORY_ID)
-            .unwrap_or_else(|error| panic!("invalid built-in meta category id: {error}"));
         let severity = self.severity();
 
         let mut report = CheckReport::new();
@@ -68,30 +63,6 @@ impl CheckMode {
                             target: Some(target.clone()),
                         });
                     }
-                }
-            }
-            if !structural.contains_field(CATEGORY_FIELD) {
-                continue;
-            }
-            for target in entry.metadata.structural_targets_for(CATEGORY_FIELD) {
-                if !entries_by_id.contains_key(target) {
-                    continue;
-                }
-                let Some(category_entry) = entries_by_id.get(target) else {
-                    continue;
-                };
-                if !category_entry
-                    .metadata
-                    .structural_targets_for(CATEGORY_FIELD)
-                    .contains(&meta_id)
-                {
-                    report.push(CheckDiagnostic {
-                        severity,
-                        kind: CheckDiagnosticKind::CategoryTargetNotMeta,
-                        entry: entry.id.clone(),
-                        field: CATEGORY_FIELD.to_owned(),
-                        target: Some(target.clone()),
-                    });
                 }
             }
         }
@@ -126,8 +97,6 @@ pub enum CheckDiagnosticKind {
     UnconfiguredStructuralField,
     /// A structural target id does not name an entry.
     MissingTarget,
-    /// A category target is not itself categorized by `meta`.
-    CategoryTargetNotMeta,
 }
 
 /// One structural diagnostic.
@@ -158,12 +127,6 @@ impl CheckDiagnostic {
                 self.entry,
                 self.target.as_ref().expect("missing target diagnostic has target"),
                 self.field
-            ),
-            | CheckDiagnosticKind::CategoryTargetNotMeta => format!(
-                "`{}` uses `{}` as a category, but `{}` is not categorized by `meta`",
-                self.entry,
-                self.target.as_ref().expect("category diagnostic has target"),
-                self.target.as_ref().expect("category diagnostic has target")
             ),
         }
     }
@@ -206,29 +169,35 @@ impl CheckReport {
 mod tests {
     use super::*;
     use crate::entry::EntryMetadata;
+    use crate::links::StructuralFieldSettings;
+
+    const FIELD_TOPIC: &str = "topic";
 
     fn entry(id: &str) -> Entry {
         Entry::new(EntryId::new(id).unwrap(), EntryMetadata::new(id, "description").unwrap(), "")
     }
 
+    fn structural_settings() -> StructuralSettings {
+        StructuralSettings::from_fields([(FIELD_TOPIC, StructuralFieldSettings::default())])
+    }
+
     #[test]
     fn clean_entries_produce_clean_report() {
         let mut concept = entry("concept");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        concept.metadata.push_structural_target(FIELD_TOPIC, EntryId::new("meta").unwrap());
         let mut meta = entry("meta");
-        meta.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        meta.metadata.push_structural_target(FIELD_TOPIC, EntryId::new("meta").unwrap());
 
-        let report =
-            CheckMode::Review.check_entries([&concept, &meta], &StructuralSettings::default());
+        let report = CheckMode::Review.check_entries([&concept, &meta], &structural_settings());
         assert!(report.is_clean());
     }
 
     #[test]
     fn edit_mode_reports_dangling_reference_as_warning() {
         let mut concept = entry("concept");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        concept.metadata.push_structural_target(FIELD_TOPIC, EntryId::new("meta").unwrap());
 
-        let report = CheckMode::Edit.check_entries([&concept], &StructuralSettings::default());
+        let report = CheckMode::Edit.check_entries([&concept], &structural_settings());
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::MissingTarget);
         assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Warning);
         assert!(!report.has_errors());
@@ -237,50 +206,10 @@ mod tests {
     #[test]
     fn review_mode_reports_dangling_reference_as_error() {
         let mut concept = entry("concept");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        concept.metadata.push_structural_target(FIELD_TOPIC, EntryId::new("meta").unwrap());
 
-        let report = CheckMode::Review.check_entries([&concept], &StructuralSettings::default());
+        let report = CheckMode::Review.check_entries([&concept], &structural_settings());
         assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::MissingTarget);
-        assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Error);
-        assert!(report.has_errors());
-    }
-
-    #[test]
-    fn edit_mode_reports_category_target_not_categorized_by_meta_as_warning() {
-        let mut feature = entry("feature");
-        feature.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("topic").unwrap());
-        let mut topic = entry("topic");
-        topic.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("concept").unwrap());
-        let mut concept = entry("concept");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
-        let mut meta = entry("meta");
-        meta.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
-
-        let report = CheckMode::Edit
-            .check_entries([&feature, &topic, &concept, &meta], &StructuralSettings::default());
-
-        assert_eq!(report.diagnostics().len(), 1);
-        assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::CategoryTargetNotMeta);
-        assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Warning);
-        assert!(!report.has_errors());
-    }
-
-    #[test]
-    fn review_mode_reports_category_target_not_categorized_by_meta_as_error() {
-        let mut feature = entry("feature");
-        feature.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("topic").unwrap());
-        let mut topic = entry("topic");
-        topic.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("concept").unwrap());
-        let mut concept = entry("concept");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
-        let mut meta = entry("meta");
-        meta.metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
-
-        let report = CheckMode::Review
-            .check_entries([&feature, &topic, &concept, &meta], &StructuralSettings::default());
-
-        assert_eq!(report.diagnostics().len(), 1);
-        assert_eq!(report.diagnostics()[0].kind, CheckDiagnosticKind::CategoryTargetNotMeta);
         assert_eq!(report.diagnostics()[0].severity, CheckSeverity::Error);
         assert!(report.has_errors());
     }
@@ -288,7 +217,7 @@ mod tests {
     #[test]
     fn unconfigured_structural_fields_warn() {
         let mut concept = entry("concept");
-        concept.metadata.push_structural_target("topic", EntryId::new("meta").unwrap());
+        concept.metadata.push_structural_target(FIELD_TOPIC, EntryId::new("meta").unwrap());
 
         let report = CheckMode::Review.check_entries([&concept], &StructuralSettings::default());
 

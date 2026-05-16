@@ -34,7 +34,7 @@ Look for:
 
 - concepts that compress repeated project knowledge
 - categories that define project vocabulary
-- entries that explain `category`, `belongs`, `refines`, and witness lookup
+- entries that explain recommended structural fields and witness lookup
 - transform entries that explain movement between forms
 - interface, storage, metadata, and checking commitments
 - witnessable claims that should connect to repository artifacts
@@ -56,7 +56,7 @@ Preserve stable facts from the current project model:
 - central definition and scope
 - configured `lake` path and optional `mono` path
 - entry id rules and metadata schema
-- `category`, `belongs`, `refines`, and witness lookup meanings
+- configured structural field and witness lookup meanings
 - generated footer ownership
 - witness lookup conventions
 - future-work items that are intentionally reserved
@@ -88,11 +88,14 @@ Use human-readable names and concise descriptions.
 
 ## Structural Field Model
 
+This repository recommends the following structural field model.
+Check `Sirno.toml` before relying on a field in commands or generated links.
+
 Use `category` for kind.
 An entry categorized by `concept` should define a compressed idea.
 An entry categorized by `narrative` should record a route, story, or motivation through project ideas.
 An entry categorized by `meta` should define project vocabulary or documentation method.
-Every target used in a `category` field should itself be categorized by `meta`.
+The local documentation method recommends that category targets are categorized by `meta`.
 
 Use `belongs` for review locality.
 A `belongs` target is an entry that gives a shared subject or design region a front door.
@@ -160,7 +163,7 @@ but more durable than a plan item.
 1. Read repository instructions, `Sirno.toml`, the configured monograph when present, and the existing lake.
 2. Inspect the current Sirno CLI before assuming which commands exist.
 3. Map candidate entries before editing:
-   ids, names, descriptions, categories, `belongs` targets, `refines` targets, and witness status.
+   ids, names, descriptions, structural targets, and witness status.
 4. Create missing entries through Sirno's current entry-creation command when available.
 5. Expand or revise bodies with direct, reader-friendly prose.
 6. Leave generated footer regions untouched.

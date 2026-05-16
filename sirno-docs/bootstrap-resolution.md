@@ -59,15 +59,14 @@ The route through the resolution is:
 1. Read `project-self-application` for the recursive pressure.
 2. Read `perspective-and-terms` for the speaking positions and term styling.
 3. Read `meta` for the documentation-method surface.
-4. Read `category` for the rule that category targets are `meta` *entries*.
-5. Read `structural-check` for the enforcement boundary.
+4. Read `category` for the recommendation that category targets are `meta` *entries*.
+5. Read `structural-check` for the configured-reference boundary.
 6. Return to `methodology` for the habit contributors should follow.
 
-The implementation follows the same conclusion.
-`sirno check` now reports a `category` target that is not categorized by `meta`.
-During editing, that can be a warning.
-At a review boundary, it is an error.
-The check keeps vocabulary explicit without freezing vocabulary in code.
+The implementation keeps the same conclusion in the lake,
+not in field-specific code.
+`sirno check` validates configured structural references
+without knowing the recommended field names.
 
 The detail intentionally deferred is local wording.
 This narrative names the sequence.

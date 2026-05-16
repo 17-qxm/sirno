@@ -986,9 +986,13 @@ pub enum EntryDirectoryError {
 mod tests {
     use super::*;
     use crate::{
-        BELONGS_FIELD, CATEGORY_FIELD, EntryMetadata, REFINES_FIELD, RepoMember,
-        StructuralFieldSettings, StructuralLinkSettings, WitnessCheckSettings, WitnessSettings,
+        EntryMetadata, RepoMember, StructuralFieldSettings, StructuralLinkSettings,
+        WitnessCheckSettings, WitnessSettings,
     };
+
+    const FIELD_KIND: &str = "kind";
+    const FIELD_AREA: &str = "area";
+    const FIELD_PARENT: &str = "parent";
 
     fn write_entry(root: &Path, name: &str, body: &str) {
         fs::write(root.join(name), body).unwrap();
@@ -1017,11 +1021,11 @@ mod tests {
         )
     }
 
-    fn all_default_fields_linked() -> StructuralSettings {
+    fn all_test_fields_linked() -> StructuralSettings {
         structural_settings([
-            (CATEGORY_FIELD, StructuralLinkSettings::enabled()),
-            (BELONGS_FIELD, StructuralLinkSettings::enabled()),
-            (REFINES_FIELD, StructuralLinkSettings::enabled()),
+            (FIELD_KIND, StructuralLinkSettings::enabled()),
+            (FIELD_AREA, StructuralLinkSettings::enabled()),
+            (FIELD_PARENT, StructuralLinkSettings::enabled()),
         ])
     }
 
@@ -1042,9 +1046,7 @@ mod tests {
             "\
 ---
 name: Meta
-description: A category for categories.
-category:
-  - meta
+description: A metadata entry.
 ---
 
 Body.
@@ -1057,8 +1059,6 @@ Body.
 ---
 name: Concept
 description: A named idea.
-category:
-  - meta
 ---
 
 Body.
@@ -1142,7 +1142,7 @@ Body.
             "\
 ---
 name: Meta
-description: A category for categories.
+description: A metadata entry.
 ---
 
 Body.
@@ -1173,13 +1173,24 @@ Body.
 ---
 name: Concept
 description: A named idea.
-category:
+kind:
   - meta
 ---
 ",
         );
 
-        let report = entry_directory(temp.path()).check(CheckMode::Review).unwrap();
+        let report = entry_directory(temp.path())
+            .check_with_settings(
+                CheckMode::Review,
+                &EntryDirectoryCheckSettings {
+                    structural: structural_settings([(
+                        FIELD_KIND,
+                        StructuralLinkSettings::disabled(),
+                    )]),
+                    ..EntryDirectoryCheckSettings::default()
+                },
+            )
+            .unwrap();
 
         assert!(report.has_errors());
         assert_eq!(report.structural_report().diagnostics().len(), 1);
@@ -1281,7 +1292,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         let mut metadata = EntryMetadata::new("Local Idea", "A local design idea.").unwrap();
-        metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("meta").unwrap());
+        metadata.push_structural_target(FIELD_KIND, EntryId::new("meta").unwrap());
         let entry = Entry::new(EntryId::new("local-idea").unwrap(), metadata, "");
 
         let path = entry_directory(&root).create_entry(&entry).unwrap();
@@ -1289,7 +1300,7 @@ Body.
 
         assert_eq!(path, root.join("local-idea.md"));
         assert!(source.contains("name: Local Idea\n"));
-        assert!(source.contains("category:\n  - meta\n"));
+        assert!(source.contains("kind:\n  - meta\n"));
     }
 
     #[test]
@@ -1440,7 +1451,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let settings = all_default_fields_linked();
+        let settings = all_test_fields_linked();
 
         let report = entry_directory(&root).generate_links(&settings).unwrap();
         let concept = fs::read_to_string(root.join("concept.md")).unwrap();
@@ -1449,9 +1460,9 @@ Body.
         assert_eq!(report.changed_paths().len(), 3);
         assert!(concept.contains(crate::links::BEGIN_LINKS_GUARD));
         assert!(concept.contains("\n---\n\n> **Sirno generated links begin."));
-        assert!(concept.contains("- [meta](meta.md)"));
+        assert!(concept.contains("- kind (to): (none)"));
         assert!(!concept.contains("## Sirno Links"));
-        assert!(!concept.contains("category: [meta](meta.md)"));
+        assert!(!concept.contains("kind: [meta](meta.md)"));
     }
 
     #[test]
@@ -1476,7 +1487,7 @@ Body.
 ---
 name: Left
 description: A neighborhood member.
-belongs:
+area:
   - core
 ---
 
@@ -1490,7 +1501,7 @@ Body.
 ---
 name: Right
 description: A neighborhood member.
-belongs:
+area:
   - core
 ---
 
@@ -1498,7 +1509,7 @@ Body.
 ",
         );
         let settings =
-            structural_settings([(BELONGS_FIELD, StructuralLinkSettings::new(true, true, true))]);
+            structural_settings([(FIELD_AREA, StructuralLinkSettings::new(true, true, true))]);
 
         entry_directory(temp.path()).generate_links(&settings).unwrap();
         let core = fs::read_to_string(temp.path().join("core.md")).unwrap();
@@ -1577,7 +1588,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = all_default_fields_linked();
+        let old_settings = all_test_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)
@@ -1601,7 +1612,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = all_default_fields_linked();
+        let old_settings = all_test_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)
@@ -1624,7 +1635,7 @@ Body.
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("docs");
         entry_directory(&root).init().unwrap();
-        let old_settings = all_default_fields_linked();
+        let old_settings = all_test_fields_linked();
         entry_directory(&root).generate_links(&old_settings).unwrap();
 
         let report = entry_directory(&root)

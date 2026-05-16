@@ -26,8 +26,8 @@ pub use crate::config::{
     RepoMember, RepoSettings, SirnoConfig, WitnessDelimiterSettings, WitnessSettings,
 };
 pub use crate::entry::{
-    BELONGS_FIELD, CATEGORY_FIELD, DESCRIPTION_FIELD, Entry, EntryMetadata, EntryParseError,
-    FROZEN_FIELD, FrozenMarker, NAME_FIELD, REFINES_FIELD,
+    DESCRIPTION_FIELD, Entry, EntryMetadata, EntryParseError, FROZEN_FIELD, FrozenMarker,
+    NAME_FIELD,
 };
 pub use crate::frost::{FrostError, SirnoFrost};
 pub use crate::id::{EntryId, EntryIdError};

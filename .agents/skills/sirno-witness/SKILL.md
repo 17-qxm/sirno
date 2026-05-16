@@ -33,8 +33,8 @@ Multiple small blocks for one entry are better than one broad block that forces 
 Create a new entry when the evidence supports a related but different claim.
 Do not reuse a near-enough entry id just to avoid lake editing.
 Create a more specific entry when the evidence supports a narrower claim.
-Use `refines` to point the specific entry at the broader entry when that improves navigation.
-Choose `belongs` targets for review locality.
+Use the configured structural fields for navigation.
+This repository recommends `refines` for broader-entry targets and `belongs` for review locality.
 Keep the same `belongs` target when the evidence belongs to the same module-like review unit.
 Add another `belongs` target when the entry sits at a real intersection that should be reviewed from both sides.
 Create a new `belongs` target only when the evidence belongs to a new design/program boundary.

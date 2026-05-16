@@ -425,7 +425,7 @@ mod tests {
     use super::*;
     use std::fs;
 
-    use crate::entry::{CATEGORY_FIELD, FrozenMarker};
+    use crate::entry::FrozenMarker;
     use crate::lake::EntryDirectoryWritePolicy;
     use crate::links::{GeneratedLinkBody, GeneratedLinkIndex, StructuralSettings};
 
@@ -447,7 +447,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let mut frost = SirnoFrost::open(temp.path()).unwrap();
         let mut metadata = EntryMetadata::new("Witness", "Repository evidence.").unwrap();
-        metadata.push_structural_target(CATEGORY_FIELD, EntryId::new("concept").unwrap());
+        metadata.push_structural_target("topic", EntryId::new("concept").unwrap());
         let entry = Entry::new(EntryId::new("witness").unwrap(), metadata, "Body.\n");
 
         frost.put_entry(&entry).unwrap();

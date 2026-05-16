@@ -14,11 +14,6 @@ use crate::id::{EntryId, EntryIdError};
 
 pub const NAME_FIELD: &str = "name";
 pub const DESCRIPTION_FIELD: &str = "description";
-// sirno:witness:structural-field:begin
-pub const CATEGORY_FIELD: &str = "category";
-pub const BELONGS_FIELD: &str = "belongs";
-pub const REFINES_FIELD: &str = "refines";
-// sirno:witness:structural-field:end
 pub const FROZEN_FIELD: &str = "frozen";
 
 // sirno:witness:entry:begin
@@ -78,21 +73,16 @@ impl Entry {
     /// Later operations do not privilege them.
     pub fn default_seed_entries() -> Result<Vec<Self>, EntryParseError> {
         // sirno:witness:meta:begin
-        let mut meta =
-            EntryMetadata::new("Meta", "A category for entries that define project vocabulary.")?;
-        meta.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
+        let meta = EntryMetadata::new("Meta", "An entry that defines project vocabulary.")?;
         // sirno:witness:meta:end
 
         // sirno:witness:concept:begin
-        let mut concept =
+        let concept =
             EntryMetadata::new("Concept", "A named idea that compresses project knowledge.")?;
-        concept.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
         // sirno:witness:concept:end
 
         // sirno:witness:narrative:begin
-        let mut narrative =
-            EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
-        narrative.push_structural_target(CATEGORY_FIELD, seed_id("meta"));
+        let narrative = EntryMetadata::new("Narrative", "A route through concepts for a reader.")?;
         // sirno:witness:narrative:end
 
         Ok(vec![
@@ -343,15 +333,7 @@ fn render_id_list(
 fn render_structural_fields(
     out: &mut String, structural: &BTreeMap<String, Vec<EntryId>>,
 ) -> Result<(), EntryRenderError> {
-    for field in [CATEGORY_FIELD, BELONGS_FIELD, REFINES_FIELD] {
-        if let Some(values) = structural.get(field) {
-            render_id_list(out, field, values)?;
-        }
-    }
     for (field, values) in structural {
-        if matches!(field.as_str(), CATEGORY_FIELD | BELONGS_FIELD | REFINES_FIELD) {
-            continue;
-        }
         render_id_list(out, field, values)?;
     }
     Ok(())
@@ -439,7 +421,7 @@ mod tests {
 ---
 name: Witness
 description: An entry whose claim is evidenced by repository artifacts.
-category:
+topic:
   - concept
 ---
 
@@ -449,7 +431,7 @@ Body.
         let entry = Entry::from_markdown(entry_id(), source).unwrap();
         assert_eq!(entry.metadata.name, "Witness");
         assert_eq!(
-            entry.metadata.structural_targets_for(CATEGORY_FIELD),
+            entry.metadata.structural_targets_for("topic"),
             &[EntryId::new("concept").unwrap()]
         );
         assert_eq!(entry.body, "Body.\n");
@@ -460,13 +442,13 @@ Body.
         let source = "\
 ---
 name: Bad
-description: Bad category.
-category: concept
+description: Bad structural metadata.
+topic: concept
 ---
 ";
 
         let error = Entry::from_markdown(entry_id(), source).unwrap_err();
-        assert!(matches!(error, EntryParseError::FieldMustBeList(field) if field == "category"));
+        assert!(matches!(error, EntryParseError::FieldMustBeList(field) if field == "topic"));
     }
 
     #[test]

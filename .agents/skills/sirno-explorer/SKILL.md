@@ -35,8 +35,8 @@ cargo run -- query TERMS --fields id,desc
 Use exact structural predicates when the route is known:
 
 ```sh
-cargo run -- query --exact belongs=sirno-lake --fields id,desc
-cargo run -- query --exact category=concept --exact refines=storage-and-interfaces --fields id,desc
+cargo run -- query --exact FIELD=ENTRY_ID --fields id,desc
+cargo run -- query --exact FIELD=ENTRY_ID --exact OTHER_FIELD=OTHER_ENTRY_ID --fields id,desc
 ```
 
 Read the `desc` field before narrowing the route.
@@ -84,18 +84,19 @@ cargo run -- query parser metadata --fields id,desc
 Start exact when the user names a structural field or known entry id:
 
 ```sh
-cargo run -- query --exact belongs=structural-field --fields id,desc
+cargo run -- query --exact FIELD=ENTRY_ID --fields id,desc
 ```
 
 Combine vague and exact filters when useful:
 
 ```sh
-cargo run -- query generated footer --exact category=concept --fields id,desc
+cargo run -- query generated footer --exact FIELD=ENTRY_ID --fields id,desc
 ```
 
 Use `--fields id,path,desc` when you need entry file paths from the result set.
 Use the configured structural field names from `Sirno.toml`.
-Do not assume every project uses only `category`, `belongs`, and `refines`.
+This repository recommends `category`, `belongs`, and `refines`,
+but commands should use the structural fields configured in `Sirno.toml`.
 
 Use `sirno rg` when you need literal text inside Sirno documents:
 phrases, command names, examples, old wording, headings, or entry ids used in prose.
@@ -131,7 +132,7 @@ When witness output is broad:
 
 When an entry has no witness:
 
-- check related entries through `belongs` or `refines`
+- check related entries through configured structural fields
 - search the repository for the entry id and key terms
 - state whether the result is documentation-only, unwitnessed, or not found
 

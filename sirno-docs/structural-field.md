@@ -9,8 +9,8 @@ belongs:
 
 A structural field is a configured metadata field that Sirno reads as project structure.
 
-The default structural fields are `category`, `belongs`, and `refines`.
-`Sirno.toml` may replace that set under `[structural]`.
+This repository recommends `category`, `belongs`, and `refines`.
+`Sirno.toml` defines the active set under `[structural]`.
 Configured fields are ordinary entry metadata,
 but Sirno treats their values as the graph that powers query, checking, and generated links.
 
@@ -22,8 +22,8 @@ This entry is the review front door for the structural field entries.
 It gives the field set one review front door while leaving each field entry free
 to carry its own meaning and other `belongs` targets.
 
-The repository witness for this entry should show the default field-name constants
-and the config settings that define the active structural field set.
+The repository witness for this entry should show the generic structural metadata map.
+The active field set is defined by `Sirno.toml`.
 
 ---
 

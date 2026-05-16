@@ -67,7 +67,7 @@ because malformed sentinels make Sirno ownership ambiguous.
 
 `[structural]` controls which metadata fields are treated as structural.
 Each field key maps to a table with `link = { to = bool, from = bool, clique = bool }`.
-The default field keys are `category`, `belongs`, and `refines`.
+This repository recommends `category`, `belongs`, and `refines`.
 Each `link` boolean is optional,
 and an absent boolean means false.
 

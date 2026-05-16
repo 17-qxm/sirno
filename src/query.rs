@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use tracing::trace;
 
-use crate::entry::{BELONGS_FIELD, CATEGORY_FIELD, Entry, REFINES_FIELD};
+use crate::entry::Entry;
 use crate::id::EntryId;
 
 /// Case-insensitive text term for an entry query.
@@ -64,21 +64,6 @@ impl EntryQuery {
         self.text_terms =
             terms.into_iter().map(EntryTextTerm::new).filter(|term| !term.is_empty()).collect();
         self
-    }
-
-    /// Set category targets.
-    pub fn with_category(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.with_structural_targets(CATEGORY_FIELD, targets)
-    }
-
-    /// Set belongs targets.
-    pub fn with_belongs(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.with_structural_targets(BELONGS_FIELD, targets)
-    }
-
-    /// Set refines targets.
-    pub fn with_refines(self, targets: impl IntoIterator<Item = EntryId>) -> Self {
-        self.with_structural_targets(REFINES_FIELD, targets)
     }
 
     /// Set targets for one structural field.
@@ -209,6 +194,9 @@ mod tests {
     use super::*;
     use crate::entry::EntryMetadata;
 
+    const FIELD_KIND: &str = "kind";
+    const FIELD_AREA: &str = "area";
+
     fn id(raw: &str) -> EntryId {
         EntryId::new(raw).unwrap()
     }
@@ -242,9 +230,10 @@ mod tests {
     #[test]
     fn structural_values_are_disjunctive_inside_one_field() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        concept.metadata.push_structural_target(FIELD_KIND, id("meta"));
 
-        let query = EntryQuery::new().with_category([id("narrative"), id("meta")]);
+        let query =
+            EntryQuery::new().with_structural_targets(FIELD_KIND, [id("narrative"), id("meta")]);
 
         assert!(query.matches(&concept));
     }
@@ -252,12 +241,15 @@ mod tests {
     #[test]
     fn structural_fields_are_conjunctive_across_fields() {
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
-        concept.metadata.push_structural_target(BELONGS_FIELD, id("knowledge"));
+        concept.metadata.push_structural_target(FIELD_KIND, id("meta"));
+        concept.metadata.push_structural_target(FIELD_AREA, id("knowledge"));
 
-        let matching =
-            EntryQuery::new().with_category([id("meta")]).with_belongs([id("knowledge")]);
-        let missing = EntryQuery::new().with_category([id("meta")]).with_belongs([id("reader")]);
+        let matching = EntryQuery::new()
+            .with_structural_targets(FIELD_KIND, [id("meta")])
+            .with_structural_targets(FIELD_AREA, [id("knowledge")]);
+        let missing = EntryQuery::new()
+            .with_structural_targets(FIELD_KIND, [id("meta")])
+            .with_structural_targets(FIELD_AREA, [id("reader")]);
 
         assert!(matching.matches(&concept));
         assert!(!missing.matches(&concept));
@@ -276,9 +268,9 @@ mod tests {
 
     #[test]
     fn vague_query_matches_structural_target_id() {
-        let meta = entry("meta", "Meta", "A category.", "");
+        let meta = entry("meta", "Meta", "A kind.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        concept.metadata.push_structural_target(FIELD_KIND, id("meta"));
         let entries = vec![concept, meta];
 
         let matches = VagueEntryQuery::new().with_text_terms(["meta"]).select_entries(&entries);
@@ -293,7 +285,7 @@ mod tests {
     fn vague_query_matches_structural_target_metadata() {
         let meta = entry("meta", "Meta", "Project vocabulary.", "");
         let mut concept = entry("concept", "Concept", "A named idea.", "");
-        concept.metadata.push_structural_target(CATEGORY_FIELD, id("meta"));
+        concept.metadata.push_structural_target(FIELD_KIND, id("meta"));
         let entries = vec![concept, meta];
 
         let matches =

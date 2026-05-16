@@ -14,7 +14,7 @@ The required fields are `name` and `description`,
 both plain strings.
 
 Configured structural fields are optional.
-The default field set is `category`, `belongs`, and `refines`.
+This repository configures `category`, `belongs`, and `refines`.
 They are always lists when present,
 and their values are entry ids.
 
@@ -34,7 +34,7 @@ and structural fields are lists of ids.
 The body can explain nuance,
 but the metadata must not require prose parsing.
 If a tool needs to know that one entry refines another,
-the `refines` field must say so.
+the configured structural metadata must say so.
 If an agent needs to inspect repository evidence for an entry,
 it should run `sirno witness ENTRY_ID --full`.
 
@@ -51,7 +51,7 @@ category:
 
 The schema keeps required scalar fields small.
 New list-valued metadata can become structural when `[structural]` configures that field.
-Unconfigured structural fields remain visible as check warnings.
+Unconfigured list-valued metadata fields remain visible as check warnings.
 
 ---
 
