@@ -1,15 +1,15 @@
 ---
 name: Sirno Frost
-desc: The private eter root that freezes immutable snapshots of the public Sirno Lake.
+desc: The private eter-backed path that freezes immutable snapshots of the public Sirno Lake.
 category:
   - concept
 refines:
   - versioning
 ---
 
-Sirno Frost is the optional private `eter` root for immutable Sirno Lake snapshots.
+Sirno Frost is the optional private `eter` storage path for immutable Sirno Lake snapshots.
 The default convention is `sirno-frost`.
-`[frost].path` in `Sirno.toml` names the root,
+`[frost].path` in `Sirno.toml` names the path,
 and the path must stay separate from the public Markdown *lake*.
 The public *lake* remains the editable working form.
 The *frost* layer is the durable snapshot substrate behind that form.
@@ -26,7 +26,8 @@ while preserving the public *entry* schema.
 `sirno frost init` configures Sirno Frost when needed
 and records the empty snapshot as version `0`.
 It does not immediately import or commit the public *lake*.
-`sirno frost move PATH` renames the configured *frost* root
+`--frost-path PATH` chooses a non-default path.
+`sirno frost move PATH` renames the configured *frost* path
 and writes the new path back to `[frost].path`.
 `sirno frost mv PATH` is its short form.
 The move refuses to replace an existing destination.

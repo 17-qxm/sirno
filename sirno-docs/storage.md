@@ -12,7 +12,7 @@ Sirno storage is the set of repository surfaces that hold design knowledge and o
 The public Markdown *lake* is the required editable working form.
 The configured *monograph* is optional.
 Configured repo members are optional and enable *witness* lookup.
-The private *frost* root is optional and managed through `eter`.
+The private *frost* path is optional and managed through `eter`.
 `eter` provides durable storage, indexing, immutable snapshots,
 field history, version retirement, and garbage collection.
 
@@ -26,7 +26,7 @@ where they can show code, tests, config, generated files, or assets that realize
 
 `Sirno.toml` names configured storage paths and policies.
 `Sirno.lock.toml` records the public *lake*'s *frost* state when Sirno Frost is configured.
-The public *lake*, private *frost* root, optional *monograph*,
+The public *lake*, private *frost* path, optional *monograph*,
 and repository artifacts remain separate surfaces with separate ownership rules.
 
 The storage model gives Sirno durable state without making the public *entry* files opaque.

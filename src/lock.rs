@@ -150,7 +150,7 @@ impl SirnoLock {
 #[serde(deny_unknown_fields)]
 // sirno:witness:versioning:begin
 pub struct FrostLock {
-    /// Public lake status relative to the configured Frost root.
+    /// Public lake status relative to the configured Frost path.
     pub status: FrostLockStatus,
     /// GC generation for the represented snapshot.
     pub generation: u64,

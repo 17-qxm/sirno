@@ -7,7 +7,7 @@ refines:
   - versioning
 ---
 
-`Sirno.lock.toml` records the public *lake*'s state relative to the configured *frost* root.
+`Sirno.lock.toml` records the public *lake*'s state relative to the configured *frost* path.
 It is TOML and lives next to `Sirno.toml`.
 It is written only when Sirno Frost is configured.
 

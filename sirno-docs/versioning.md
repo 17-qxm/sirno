@@ -11,7 +11,7 @@ refines:
 
 When Sirno Frost is configured,
 Sirno versions the `sirno` form by freezing the public Markdown *lake*
-into a separate `eter` *frost* root.
+into a separate `eter` *frost* path.
 
 The versioning *entry* is the front door for *frost* behavior.
 Its local refinements define the private Sirno Frost and public lock file.
@@ -31,17 +31,18 @@ checkout states,
 or other future *lake* snapshots.
 
 The public *lake* is always the editable working form.
-The *frost* root is private storage,
+The *frost* path is private storage,
 conventionally `sirno-frost`.
 It is not read as part of the *entry lake*,
 and it must not be placed where *lake* discovery can treat it as *entries*.
-`sirno frost move PATH` renames this root and updates `[frost].path`.
+`sirno frost move PATH` renames this path and updates `[frost].path`.
 `sirno frost mv PATH` is its short form.
-`Sirno.lock.toml` records the public *lake* state relative to that *frost* root.
+`Sirno.lock.toml` records the public *lake* state relative to that *frost* path.
 It contains one `[frost]` table with `status`, `generation`, `version`,
 and an optional `mutable` flag.
 
-`sirno frost init` configures the *frost* root and records empty version `0`.
+`sirno frost init` configures the *frost* path and records empty version `0`.
+`sirno frost init --frost-path PATH` chooses a non-default *frost* path.
 The first *frost* commit creates the first frozen snapshot.
 A *frost* commit imports the selected public *entry* set and writes one `eter` transaction.
 The transaction may touch one *entry* or many *entries*.
@@ -62,7 +63,7 @@ Direct edits to the public *lake* are working-state edits.
 They become frozen versions only after a *frost* commit.
 Reading interfaces without a version selector read the public *lake*.
 A version selector pairs the requested coordinate with the current *frost* generation.
-It reads from the *frost* root and changes the observed *lake* state
+It reads from the *frost* path and changes the observed *lake* state
 without changing query or check semantics.
 
 Checkout materializes one *frost* version into a public Markdown directory.

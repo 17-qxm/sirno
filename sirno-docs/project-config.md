@@ -20,7 +20,7 @@ Generated config files include concise comments that describe how each written f
 
 `[mono].path` optionally names the *monograph*.
 `[lake].path` names the Markdown *entry lake*.
-`[frost].path` optionally names the private Sirno Frost root.
+`[frost].path` optionally names the private Sirno Frost path.
 `[repo].members` optionally lists repository paths or globs scanned for *witness* blocks.
 `[witness]` configures the delimiter regexes used to find *witness* blocks.
 Relative paths are resolved from the directory that contains `Sirno.toml`.
@@ -31,7 +31,7 @@ A project can use Sirno without a configured *monograph*, repo members, or Sirno
 `sirno move PATH` changes `[lake].path` and renames the public *lake* directory.
 `sirno mv PATH` is its short form.
 `sirno frost init` adds the Sirno Frost config and records empty version `0`.
-`sirno frost move PATH` changes `[frost].path` and renames the private *frost* root.
+`sirno frost move PATH` changes `[frost].path` and renames the private *frost* path.
 `sirno frost mv PATH` is its short form.
 
 `Sirno.lock.toml` records the public *lake*'s *frost* state when Sirno Frost is configured.

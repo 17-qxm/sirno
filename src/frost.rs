@@ -64,7 +64,7 @@ pub struct SirnoFrost {
 // sirno:witness:sirno-frost:end
 
 impl SirnoFrost {
-    /// Open or initialize Sirno Frost rooted at `root`.
+    /// Open or initialize Sirno Frost at `root`.
     // sirno:witness:sirno-frost:begin
     pub fn open(root: impl Into<PathBuf>) -> Result<Self, FrostError> {
         trace!("sirno frost open begin");
@@ -75,7 +75,7 @@ impl SirnoFrost {
     }
     // sirno:witness:sirno-frost:end
 
-    /// The private Frost root path.
+    /// The private Frost backend path.
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -469,10 +469,10 @@ mod tests {
     #[test]
     fn commit_entry_directory_round_trips_single_entry() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let entry = test_entry("alpha", "Alpha");
         write_public_entry(public.path(), &entry);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
@@ -485,13 +485,13 @@ mod tests {
     #[test]
     fn commit_entry_directory_strips_generated_links_from_frost() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let mut entry = test_entry("alpha", "Alpha");
         let footer = GeneratedLinkIndex::from_entries(std::slice::from_ref(&entry))
             .render_entry(&entry, &StructuralSettings::default());
         entry.body = GeneratedLinkBody::new(&entry.body).apply(&footer).unwrap();
         write_public_entry(public.path(), &entry);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
@@ -505,11 +505,11 @@ mod tests {
     #[test]
     fn commit_entry_directory_rejects_frozen_entry() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let mut entry = test_entry("alpha", "Alpha");
         entry.metadata.frozen = Some(FrozenMarker::Present);
         write_public_entry(public.path(), &entry);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let error = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
@@ -533,29 +533,29 @@ mod tests {
     #[test]
     fn multi_entry_commit_uses_one_snapshot() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let version = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
             .unwrap();
 
         assert_eq!(frost.current_snapshot().unwrap(), version);
-        assert_entry_snapshot_file(frost_root.path(), &alpha.id, version);
-        assert_entry_snapshot_file(frost_root.path(), &beta.id, version);
+        assert_entry_snapshot_file(frost_path.path(), &alpha.id, version);
+        assert_entry_snapshot_file(frost_path.path(), &beta.id, version);
     }
 
     #[test]
     fn no_op_commit_returns_current_snapshot() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let entry = test_entry("alpha", "Alpha");
         write_public_entry(public.path(), &entry);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
@@ -571,12 +571,12 @@ mod tests {
     #[test]
     fn removing_public_entry_creates_frost_lifecycle_deletion() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())
@@ -595,13 +595,13 @@ mod tests {
     #[test]
     fn checkout_entry_directory_materializes_frozen_state() {
         let public = tempfile::tempdir().unwrap();
-        let frost_root = tempfile::tempdir().unwrap();
+        let frost_path = tempfile::tempdir().unwrap();
         let checkout = tempfile::tempdir().unwrap();
         let alpha = test_entry("alpha", "Alpha");
         let beta = test_entry("beta", "Beta");
         write_public_entry(public.path(), &alpha);
         write_public_entry(public.path(), &beta);
-        let mut frost = SirnoFrost::open(frost_root.path()).unwrap();
+        let mut frost = SirnoFrost::open(frost_path.path()).unwrap();
 
         let first = frost
             .commit_entry_directory(public.path(), &EntryDirectoryCheckSettings::default())

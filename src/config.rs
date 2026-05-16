@@ -127,11 +127,11 @@ impl LakeSettings {
 
 /// Configured Sirno Frost settings.
 ///
-/// Invariant: `path` points to the private `eter` root used by Sirno Frost.
+/// Invariant: `path` points to the private `eter` storage used by Sirno Frost.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FrostSettings {
-    /// Configured Sirno Frost root path.
+    /// Configured Sirno Frost path.
     pub path: PathBuf,
 }
 
@@ -298,7 +298,7 @@ impl WitnessSettings {
 ///
 /// `lake.path` points to the configured public Markdown entry lake path.
 /// `mono.path`, when present, points to the configured monograph path.
-/// `frost.path`, when present, points to the configured Sirno Frost root.
+/// `frost.path`, when present, points to the configured Sirno Frost path.
 /// `lake.ignore` contains paths relative to the lake root that Sirno skips.
 /// `repo.members`, when present, contains relative member paths or globs for witness lookup.
 /// `witness` controls the delimiter syntax for repository witness blocks.
@@ -359,7 +359,7 @@ impl SirnoConfig {
         self
     }
 
-    /// Return this config with a configured Sirno Frost root.
+    /// Return this config with a configured Sirno Frost path.
     pub fn with_frost(mut self, frost: impl Into<PathBuf>) -> Self {
         self.frost = Some(FrostSettings::new(frost));
         self
@@ -439,7 +439,7 @@ impl SirnoConfig {
         Self::resolve_config_relative(config_path.as_ref(), &self.lake.path)
     }
 
-    /// Resolve the Sirno Frost root path relative to a config file path when configured.
+    /// Resolve the Sirno Frost path relative to a config file path when configured.
     pub fn resolve_frost(&self, config_path: impl AsRef<Path>) -> Option<PathBuf> {
         self.frost
             .as_ref()
@@ -539,7 +539,7 @@ impl ConfigRenderer {
             self.push_field(
                 "path",
                 &frost.path,
-                "Sirno Frost root, kept outside the public lake.",
+                "Sirno Frost path, kept outside the public lake.",
             )?;
             // sirno:witness:project-config-comments:end
         }
@@ -725,12 +725,12 @@ pub enum ConfigError {
         /// Zero-based delimiter pair index.
         index: usize,
     },
-    /// The Sirno Frost root overlaps the public lake path.
+    /// The Sirno Frost path overlaps the public lake path.
     #[error("frost path must be separate from public lake path: lake={lake} frost={frost}")]
     FrostLakePath {
         /// Resolved public lake path.
         lake: PathBuf,
-        /// Resolved Sirno Frost root path.
+        /// Resolved Sirno Frost path.
         frost: PathBuf,
     },
     /// The config file could not be created.
@@ -1334,7 +1334,7 @@ delimiters = []
         assert!(source.contains("# Markdown monograph path"));
         assert!(source.contains("# Markdown entry lake path"));
         assert!(source.contains("# Lake-root paths Sirno skips"));
-        assert!(source.contains("# Sirno Frost root"));
+        assert!(source.contains("# Sirno Frost path"));
         assert!(source.contains("# Repository files, directories, or globs"));
         assert!(source.contains("# Witness delimiter regex pairs"));
         assert!(source.contains(&format!(

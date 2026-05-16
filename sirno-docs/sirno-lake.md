@@ -27,7 +27,7 @@ The *lake* is the human-readable intermediate representation:
 text first, structured enough for tools,
 and compact enough for humans and agents to inspect locally.
 When Sirno Frost is configured,
-its frozen state is versioned through a separate `eter` *frost* root,
+its frozen state is versioned through a separate `eter` *frost* path,
 so one version names one immutable set of *entries*.
 
 Each *entry* is an ordinary Markdown file with a YAML metadata block and prose body.
@@ -55,7 +55,7 @@ All of those forms use the same filenames and metadata.
 
 The *lake* is a working form.
 Direct edits become frozen versions only when Sirno Frost is configured
-and Sirno freezes the *lake* into the *frost* root.
+and Sirno freezes the *lake* into the *frost* path.
 
 Some files under a *lake* root may belong to adjacent tools.
 `[lake].ignore` lists paths relative to the *lake* root.

@@ -18,7 +18,7 @@ and Sirno is also the tool used to organize the description.
 The *lake* makes Sirno's design addressable in small *entries*.
 A materialized introduction *entry* gives the *lake* a first narrative route.
 A materialized methodology *entry* gives the *lake* a working guide.
-An optional Sirno Frost root can preserve frozen *lake* snapshots.
+An optional Sirno Frost path can preserve frozen *lake* snapshots.
 Repository artifacts can witness *entries* through `mosaika`.
 
 The recursive form is useful,

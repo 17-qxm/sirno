@@ -128,9 +128,9 @@ enum Command {
     /// Check current entry structure.
     // sirno:witness:interfaces:begin
     Check {
-        /// Sirno Frost root.
-        #[arg(long = "frost-root", conflicts_with = "lake_path")]
-        frost_root: Option<PathBuf>,
+        /// Sirno Frost path.
+        #[arg(long = "frost-path", conflicts_with = "lake_path")]
+        frost_path: Option<PathBuf>,
         /// Check boundary.
         #[arg(short = 'm', long, value_enum)]
         mode: Option<CliCheckMode>,
@@ -353,14 +353,14 @@ enum UtilCommand {
 enum FrostCommand {
     /// Configure Sirno Frost and freeze the current public Markdown lake.
     Init {
-        /// Sirno Frost root path written to Sirno.toml.
-        #[arg(long)]
-        frost: Option<PathBuf>,
+        /// Sirno Frost path written to Sirno.toml.
+        #[arg(long = "frost-path")]
+        frost_path: Option<PathBuf>,
     },
-    /// Move the configured Sirno Frost root.
+    /// Move the configured Sirno Frost path.
     #[command(visible_alias = "mv")]
     Move {
-        /// New Sirno Frost root path written to Sirno.toml.
+        /// New Sirno Frost path written to Sirno.toml.
         frost: PathBuf,
     },
     /// Freeze the current public Markdown lake.
@@ -514,9 +514,9 @@ impl Cli {
             | Command::Rg { with_generated_footer, args } => {
                 run_rg_command(lake_path.as_deref(), &config_path, with_generated_footer, args)
             }
-            | Command::Check { frost_root, mode } => {
-                if lake_path.is_some() && frost_root.is_some() {
-                    return Err(CliError::LakePathWithFrostRoot);
+            | Command::Check { frost_path, mode } => {
+                if lake_path.is_some() && frost_path.is_some() {
+                    return Err(CliError::LakePathWithFrostPath);
                 }
                 let mode = mode.unwrap_or(CliCheckMode::Review);
                 if lake_path.is_some() {
@@ -532,7 +532,7 @@ impl Cli {
                     };
                 }
 
-                let Some(frost_root) = frost_root else {
+                let Some(frost_path) = frost_path else {
                     let config = SirnoConfig::from_file(&config_path)?;
                     let report = EntryDirectory::new(config.resolve_lake(&config_path))
                         .check_with_settings(
@@ -547,7 +547,7 @@ impl Cli {
                     };
                 };
 
-                let frost = SirnoFrost::open(frost_root)?;
+                let frost = SirnoFrost::open(frost_path)?;
                 let report = frost.check_current(mode.into())?;
                 if report.is_clean() {
                     println!("ok: {}", frost.root().display());
@@ -641,11 +641,12 @@ impl FrostCommand {
         self, config_path: &std::path::Path, lake_path: Option<&Path>,
     ) -> Result<ExitCode, CliError> {
         match self {
-            | FrostCommand::Init { frost } => {
+            | FrostCommand::Init { frost_path } => {
                 let config = SirnoConfig::from_file(config_path)?;
                 let existing_frost = config.frost.as_ref().map(|settings| settings.path.clone());
-                let frost_path =
-                    frost.or_else(|| existing_frost.clone()).unwrap_or_else(default_frost_path);
+                let frost_path = frost_path
+                    .or_else(|| existing_frost.clone())
+                    .unwrap_or_else(default_frost_path);
                 if let Some(existing_frost) = existing_frost
                     && existing_frost != frost_path
                 {
@@ -657,9 +658,9 @@ impl FrostCommand {
                     if needs_config_write { config.with_frost(frost_path) } else { config };
                 config.validate_for_file(config_path)?;
 
-                let frost_root =
+                let frost_path =
                     config.resolve_frost(config_path).expect("frost path configured by init");
-                let frost = SirnoFrost::open(&frost_root)?;
+                let frost = SirnoFrost::open(&frost_path)?;
                 let version = frost.current_snapshot()?;
                 if needs_config_write {
                     config.write(config_path)?;
@@ -667,7 +668,7 @@ impl FrostCommand {
                 SirnoLock::current(version).write(SirnoLock::path_for_config(config_path))?;
                 println!(
                     "initialized frost {} at version {}",
-                    frost_root.display(),
+                    frost_path.display(),
                     version.version(),
                 );
                 Ok(ExitCode::SUCCESS)
@@ -693,7 +694,7 @@ impl FrostCommand {
             | FrostCommand::Commit => {
                 let context = FrostContext::load(config_path, lake_path)?;
                 context.reject_immutable_checkout()?;
-                let mut frost = SirnoFrost::open(&context.frost_root)?;
+                let mut frost = SirnoFrost::open(&context.frost_path)?;
                 let version =
                     frost.commit_entry_directory(&context.lake_path, &context.settings)?;
                 context.lake().set_writable(&context.settings)?;
@@ -708,7 +709,7 @@ impl FrostCommand {
             | FrostCommand::Checkout { version, unsafe_mutable } => {
                 let context = FrostContext::load(config_path, lake_path)?;
                 let version = frost_version(version)?;
-                let frost = SirnoFrost::open(&context.frost_root)?;
+                let frost = SirnoFrost::open(&context.frost_path)?;
                 let snapshot = frost.snapshot_for_version(version)?;
                 let paths = frost.checkout_entry_directory(
                     snapshot,
@@ -775,7 +776,7 @@ fn move_configured_path(source: &Path, destination: &Path) -> Result<bool, CliEr
 }
 
 struct FrostContext {
-    frost_root: PathBuf,
+    frost_path: PathBuf,
     lock_path: PathBuf,
     settings: EntryDirectoryCheckSettings,
     lake_path: PathBuf,
@@ -784,11 +785,11 @@ struct FrostContext {
 impl FrostContext {
     fn load(config_path: &Path, lake_path: Option<&Path>) -> Result<Self, CliError> {
         let config = SirnoConfig::from_file(config_path)?;
-        let Some(frost_root) = config.resolve_frost(config_path) else {
+        let Some(frost_path) = config.resolve_frost(config_path) else {
             return Err(CliError::FrostNotConfigured);
         };
         Ok(Self {
-            frost_root,
+            frost_path,
             lock_path: SirnoLock::path_for_config(config_path),
             settings: entry_directory_check_settings(config_path, &config),
             lake_path: resolve_lake_path(lake_path, config_path, &config),
@@ -1404,9 +1405,9 @@ enum CliError {
     /// Witness lookup requires an existing entry id.
     #[error("entry `{0}` does not exist")]
     MissingWitnessEntry(EntryId),
-    /// Lake path override does not apply to checking a Frost root directly.
-    #[error("`--lake-path` cannot be used with `check --frost-root`")]
-    LakePathWithFrostRoot,
+    /// Lake path override does not apply to checking a Frost path directly.
+    #[error("`--lake-path` cannot be used with `check --frost-path`")]
+    LakePathWithFrostPath,
     /// Dry-run mode applies only to generated-link writing.
     #[error("`--dry` only applies to `sirno gen-link` without a subcommand")]
     DryWithGenLinkSubcommand,
@@ -1500,7 +1501,8 @@ mod tests {
 
     #[test]
     fn init_does_not_accept_frost_path() {
-        let error = Cli::try_parse_from(["sirno", "init", "--frost", "sirno-frost"]).unwrap_err();
+        let error =
+            Cli::try_parse_from(["sirno", "init", "--frost-path", "sirno-frost"]).unwrap_err();
 
         assert!(error.to_string().contains("unexpected argument"));
     }
@@ -1545,12 +1547,20 @@ mod tests {
 
     #[test]
     fn frost_init_accepts_frost_path() {
-        let cli = Cli::parse_from(["sirno", "frost", "init", "--frost", "sirno-frost"]);
+        let cli = Cli::parse_from(["sirno", "frost", "init", "--frost-path", "sirno-frost"]);
 
         assert!(matches!(
             cli.command,
-            Command::Frost { command: FrostCommand::Init { frost: Some(_) } }
+            Command::Frost { command: FrostCommand::Init { frost_path: Some(_) } }
         ));
+    }
+
+    #[test]
+    fn frost_init_rejects_old_frost_flag() {
+        let error =
+            Cli::try_parse_from(["sirno", "frost", "init", "--frost", "sirno-frost"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     #[test]
@@ -1558,7 +1568,7 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let config_path = temp.path().join(CONFIG_FILE_NAME);
         let docs = temp.path().join("docs");
-        let frost_root = temp.path().join("sirno-frost");
+        let frost_path = temp.path().join("sirno-frost");
         SirnoConfig::new("docs").write_new(&config_path).unwrap();
         fs::create_dir(&docs).unwrap();
         fs::write(
@@ -1580,8 +1590,8 @@ Body.
 
         let config = SirnoConfig::from_file(&config_path).unwrap();
         let lock = SirnoLock::from_file(temp.path().join(LOCK_FILE_NAME)).unwrap();
-        let frost = SirnoFrost::open(&frost_root).unwrap();
-        let mut frost_paths = fs::read_dir(&frost_root)
+        let frost = SirnoFrost::open(&frost_path).unwrap();
+        let mut frost_paths = fs::read_dir(&frost_path)
             .unwrap()
             .map(|entry| entry.unwrap().file_name())
             .collect::<Vec<_>>();
@@ -1727,19 +1737,27 @@ Body.
     }
 
     #[test]
-    fn lake_path_conflicts_with_frost_root_check() {
+    fn lake_path_conflicts_with_frost_path_check() {
         let error = Cli::parse_from([
             "sirno",
             "--lake-path",
             "scratch-docs",
             "check",
-            "--frost-root",
+            "--frost-path",
             "sirno-frost",
         ])
         .run()
         .unwrap_err();
 
-        assert!(matches!(error, CliError::LakePathWithFrostRoot));
+        assert!(matches!(error, CliError::LakePathWithFrostPath));
+    }
+
+    #[test]
+    fn check_rejects_old_frost_root_flag() {
+        let error =
+            Cli::try_parse_from(["sirno", "check", "--frost-root", "sirno-frost"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     #[test]
