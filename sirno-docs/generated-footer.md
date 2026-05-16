@@ -4,7 +4,7 @@ desc: A Sirno-owned footer that projects selected metadata fields as links.
 category:
   - concept
 belongs:
-  - sirno-lake
+  - generated-navigation
 ---
 
 Sirno may generate and maintain a footer at the bottom of *entries*.
@@ -68,7 +68,7 @@ not to become another place for design prose.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno-lake](sirno-lake.md)
+  - [generated-navigation](generated-navigation.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

@@ -4,6 +4,8 @@ desc: The movement from changed repository artifacts back into Sirno entries.
 category:
   - concept
   - narrative
+belongs:
+  - transform-cycle
 refines:
   - transform
 ---
@@ -41,7 +43,8 @@ not merely comply with it.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [transform-cycle](transform-cycle.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

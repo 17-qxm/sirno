@@ -4,7 +4,7 @@ desc: A read-only entry marker that keeps protected Markdown out of Frost commit
 category:
   - concept
 belongs:
-  - sirno-lake
+  - frost-versioning
 ---
 
 An *entry freeze* is an explicit protection state for one public Markdown *entry*.
@@ -28,7 +28,7 @@ On other platforms, Sirno uses the platform read-only flag when the filesystem s
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno-lake](sirno-lake.md)
+  - [frost-versioning](frost-versioning.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

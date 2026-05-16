@@ -3,6 +3,8 @@ name: Test-Driven Development
 desc: A development style that lets tests state and protect expected behavior.
 category:
   - concept
+belongs:
+  - development-style
 refines:
   - concept-driven-development
 ---
@@ -30,7 +32,8 @@ reflect that discovery into the lake instead of leaving it trapped in test code.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [development-style](development-style.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

@@ -3,6 +3,8 @@ name: Intent-Driven Development
 desc: A development style that keeps implementation aligned with named purpose.
 category:
   - concept
+belongs:
+  - development-style
 refines:
   - concept-driven-development
 ---
@@ -29,7 +31,8 @@ The entry should keep that reason available without forcing readers to reconstru
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [development-style](development-style.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

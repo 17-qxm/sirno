@@ -51,6 +51,10 @@ but they should still treat entries as the source of durable project knowledge.
 
 - belongs (to):
   - [meta](meta.md)
-- belongs (from): (none)
+- belongs (from):
+  - [bootstrap-resolution](bootstrap-resolution.md)
+  - [methodology](methodology.md)
+  - [perspective-and-terms](perspective-and-terms.md)
+  - [readme](readme.md)
 
 > **Sirno generated links end.**

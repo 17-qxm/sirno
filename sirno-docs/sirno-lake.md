@@ -79,8 +79,6 @@ and where implementation evidence should be found when that evidence exists.
   - [sirno](sirno.md)
 - belongs (from):
   - [entry](entry.md)
-  - [entry-freeze](entry-freeze.md)
-  - [generated-footer](generated-footer.md)
   - [metadata](metadata.md)
   - [project-config](project-config.md)
   - [query](query.md)

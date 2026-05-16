@@ -5,7 +5,7 @@ category:
   - meta
   - narrative
 belongs:
-  - sirno
+  - narrative
 refines:
   - concept-driven-development
   - witness
@@ -56,7 +56,7 @@ They mark the motivation and the four principle sections.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno](sirno.md)
+  - [narrative](narrative.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

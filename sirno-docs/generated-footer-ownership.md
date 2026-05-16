@@ -3,6 +3,8 @@ name: Generated Footer Ownership
 desc: The guard-bounded boundary between Sirno-owned navigation and user-owned prose.
 category:
   - concept
+belongs:
+  - generated-navigation
 refines:
   - generated-footer
 ---
@@ -22,7 +24,8 @@ so Sirno Frost keeps canonical metadata and prose rather than navigation project
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [generated-navigation](generated-navigation.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

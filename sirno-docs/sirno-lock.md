@@ -3,6 +3,8 @@ name: Sirno Lock
 desc: The TOML file that records the frost state of the public lake.
 category:
   - concept
+belongs:
+  - frost-versioning
 refines:
   - versioning
 ---
@@ -36,7 +38,8 @@ Sirno refuses to commit an immutable checkout.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [frost-versioning](frost-versioning.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

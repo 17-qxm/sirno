@@ -3,6 +3,8 @@ name: Spec-Driven Development
 desc: A development style that starts from explicit behavioral commitments.
 category:
   - concept
+belongs:
+  - development-style
 refines:
   - concept-driven-development
 ---
@@ -30,7 +32,8 @@ reflect that boundary back into the lake so the specification remains a living d
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [development-style](development-style.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

@@ -3,6 +3,8 @@ name: Generated Link Policy
 desc: Configuration that chooses which structural links appear in generated footers.
 category:
   - concept
+belongs:
+  - generated-navigation
 refines:
   - generated-footer
 ---
@@ -30,7 +32,8 @@ Changing it alters generated navigation surfaces without changing structural met
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [generated-navigation](generated-navigation.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

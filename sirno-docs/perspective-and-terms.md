@@ -5,7 +5,7 @@ category:
   - meta
   - concept
 belongs:
-  - sirno
+  - narrative
 refines:
   - project-self-application
 ---
@@ -53,7 +53,7 @@ and how the terms keep it readable.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno](sirno.md)
+  - [narrative](narrative.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

@@ -5,7 +5,7 @@ category:
   - concept
   - narrative
 belongs:
-  - sirno
+  - narrative
 refines:
   - concept-driven-development
   - transform
@@ -114,7 +114,7 @@ People and agents keep the meaning alive.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno](sirno.md)
+  - [narrative](narrative.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

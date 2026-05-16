@@ -3,10 +3,6 @@ name: Introduction
 desc: A first narrative route through Sirno's project model.
 category:
   - narrative
-belongs:
-  - sirno
-refines:
-  - narrative
 ---
 
 *Semantic Intermediate Representation of Nominal Objects*
@@ -90,8 +86,7 @@ then follow `belongs`, `refines`, and *witnesses* to the local design you need.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to):
-  - [sirno](sirno.md)
+- belongs (to): (none)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

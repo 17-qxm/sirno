@@ -4,7 +4,7 @@ desc: A narrative route through Sirno's self-application problem and its resolut
 category:
   - narrative
 belongs:
-  - sirno
+  - narrative
 refines:
   - project-self-application
 ---
@@ -81,7 +81,7 @@ where the project documents its own documentation method.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno](sirno.md)
+  - [narrative](narrative.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

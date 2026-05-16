@@ -3,6 +3,8 @@ name: Sirno Frost
 desc: The private eter-backed path that freezes immutable snapshots of the public Sirno Lake.
 category:
   - concept
+belongs:
+  - frost-versioning
 refines:
   - versioning
 ---
@@ -90,7 +92,8 @@ and deletion handling in `src/frost.rs`.
 
 > **Sirno generated links begin. Do not edit this section.**
 
-- belongs (to): (none)
+- belongs (to):
+  - [frost-versioning](frost-versioning.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**

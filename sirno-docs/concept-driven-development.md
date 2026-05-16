@@ -5,7 +5,7 @@ category:
   - concept
   - narrative
 belongs:
-  - sirno
+  - development-style
 refines:
   - concept
 ---
@@ -58,7 +58,7 @@ The concept becomes a compact bridge between broad intent and detailed code.
 > **Sirno generated links begin. Do not edit this section.**
 
 - belongs (to):
-  - [sirno](sirno.md)
+  - [development-style](development-style.md)
 - belongs (from): (none)
 
 > **Sirno generated links end.**
